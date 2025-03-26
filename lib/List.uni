@@ -1,0 +1,395 @@
+// Unified List
+// Generic List class implementation in Unified
+
+// List is a dynamic array implementation with type parameter T
+struct List<T> {
+    // Internal fields
+    private data: Array<T>  // Fixed-size array backing the list
+    private capacity: Int   // Current capacity
+    private size: Int       // Current number of elements
+    
+    // Constructor
+    fn new() -> Self {
+        return Self{
+            data: Array<T>(16),  // Initial capacity of 16
+            capacity: 16,
+            size: 0
+        }
+    }
+    
+    // Constructor with initial capacity
+    fn withCapacity(capacity: Int) -> Self {
+        return Self{
+            data: Array<T>(capacity),
+            capacity: capacity,
+            size: 0
+        }
+    }
+    
+    // Constructor from iterable
+    fn from(iterable: impl Iterable<T>) -> Self {
+        let list = Self.new()
+        for item in iterable {
+            list.push(item)
+        }
+        return list
+    }
+    
+    // Retrieve length
+    fn len(self) -> Int {
+        return self.size
+    }
+    
+    // Check if empty
+    fn isEmpty(self) -> Bool {
+        return self.size == 0
+    }
+    
+    // Get element at index
+    fn get(self, index: Int) -> Option<&T> {
+        if index < 0 || index >= self.size {
+            return None
+        }
+        return Some(&self.data[index])
+    }
+    
+    // Get mutable reference to element at index
+    fn getMut(self: &mut Self, index: Int) -> Option<&mut T> {
+        if index < 0 || index >= self.size {
+            return None
+        }
+        return Some(&mut self.data[index])
+    }
+    
+    // Set element at index
+    fn set(self: &mut Self, index: Int, value: T) -> Result<(), String> {
+        if index < 0 || index >= self.size {
+            return Error("Index out of bounds")
+        }
+        self.data[index] = value
+        return Success(())
+    }
+    
+    // Add element to end
+    fn push(self: &mut Self, value: T) {
+        if self.size == self.capacity {
+            self.grow()
+        }
+        self.data[self.size] = value
+        self.size += 1
+    }
+    
+    // Remove and return last element
+    fn pop(self: &mut Self) -> Option<T> {
+        if self.size == 0 {
+            return None
+        }
+        self.size -= 1
+        return Some(move self.data[self.size])
+    }
+    
+    // Insert element at index
+    fn insert(self: &mut Self, index: Int, value: T) -> Result<(), String> {
+        if index < 0 || index > self.size {
+            return Error("Index out of bounds")
+        }
+        
+        if self.size == self.capacity {
+            self.grow()
+        }
+        
+        // Shift elements to make space
+        for i in (index..self.size).reverse() {
+            self.data[i + 1] = move self.data[i]
+        }
+        
+        self.data[index] = value
+        self.size += 1
+        return Success(())
+    }
+    
+    // Remove element at index
+    fn remove(self: &mut Self, index: Int) -> Result<T, String> {
+        if index < 0 || index >= self.size {
+            return Error("Index out of bounds")
+        }
+        
+        let value = move self.data[index]
+        
+        // Shift elements to fill gap
+        for i in (index + 1)..self.size {
+            self.data[i - 1] = move self.data[i]
+        }
+        
+        self.size -= 1
+        return Success(value)
+    }
+    
+    // Clear the list
+    fn clear(self: &mut Self) {
+        self.size = 0
+    }
+    
+    // First element
+    fn first(self) -> Option<&T> {
+        if self.size == 0 {
+            return None
+        }
+        return Some(&self.data[0])
+    }
+    
+    // Last element
+    fn last(self) -> Option<&T> {
+        if self.size == 0 {
+            return None
+        }
+        return Some(&self.data[self.size - 1])
+    }
+    
+    // Append another list
+    fn append(self: &mut Self, other: &List<T>) where T: Clone {
+        for i in 0..other.size {
+            self.push(other.data[i].clone())
+        }
+    }
+    
+    // Find index of value
+    fn indexOf(self, value: &T) -> Option<Int> where T: Eq {
+        for i in 0..self.size {
+            if self.data[i] == *value {
+                return Some(i)
+            }
+        }
+        return None
+    }
+    
+    // Check if list contains value
+    fn contains(self, value: &T) -> Bool where T: Eq {
+        return self.indexOf(value).isSome()
+    }
+    
+    // Filter elements
+    fn filter(self, predicate: fn(&T) -> Bool) -> List<T> where T: Clone {
+        let result = List<T>.new()
+        for i in 0..self.size {
+            if predicate(&self.data[i]) {
+                result.push(self.data[i].clone())
+            }
+        }
+        return result
+    }
+    
+    // Map function over elements
+    fn map<U>(self, transform: fn(&T) -> U) -> List<U> {
+        let result = List<U>.withCapacity(self.size)
+        for i in 0..self.size {
+            result.push(transform(&self.data[i]))
+        }
+        return result
+    }
+    
+    // Reduce list to single value
+    fn reduce<A>(self, initial: A, reducer: fn(A, &T) -> A) -> A {
+        let mut acc = initial
+        for i in 0..self.size {
+            acc = reducer(acc, &self.data[i])
+        }
+        return acc
+    }
+    
+    // Join list elements with separator
+    fn join(self, separator: String) -> String where T: ToString {
+        if self.size == 0 {
+            return ""
+        }
+        
+        let mut result = self.data[0].toString()
+        for i in 1..self.size {
+            result = result + separator + self.data[i].toString()
+        }
+        return result
+    }
+    
+    // Slice the list
+    fn slice(self, start: Int, end: Int) -> Result<List<T>, String> where T: Clone {
+        let actualStart = if start < 0 { self.size + start } else { start }
+        let actualEnd = if end < 0 { self.size + end } else { end }
+        
+        if actualStart < 0 || actualStart > self.size {
+            return Error("Start index out of bounds")
+        }
+        
+        if actualEnd < actualStart || actualEnd > self.size {
+            return Error("End index out of bounds")
+        }
+        
+        let result = List<T>.withCapacity(actualEnd - actualStart)
+        for i in actualStart..actualEnd {
+            result.push(self.data[i].clone())
+        }
+        return Success(result)
+    }
+    
+    // Sort the list
+    fn sort(self: &mut Self) where T: Ord {
+        if self.size <= 1 {
+            return
+        }
+        
+        // Using quicksort for simplicity here
+        self.quicksort(0, self.size - 1)
+    }
+    
+    // Sort with custom comparator
+    fn sortBy(self: &mut Self, compare: fn(&T, &T) -> Ordering) {
+        if self.size <= 1 {
+            return
+        }
+        
+        // Using quicksort with custom comparator
+        self.quicksortBy(0, self.size - 1, compare)
+    }
+    
+    // Reverse the list
+    fn reverse(self: &mut Self) {
+        let mut i = 0
+        let mut j = self.size - 1
+        
+        while i < j {
+            let temp = move self.data[i]
+            self.data[i] = move self.data[j]
+            self.data[j] = move temp
+            i += 1
+            j -= 1
+        }
+    }
+    
+    // Iterator support
+    fn iter(self) -> ListIterator<T> {
+        return ListIterator{list: self, index: 0}
+    }
+    
+    // Private: Grow the capacity
+    private fn grow(self: &mut Self) {
+        let newCapacity = self.capacity * 2
+        let newData = Array<T>(newCapacity)
+        
+        for i in 0..self.size {
+            newData[i] = move self.data[i]
+        }
+        
+        self.data = move newData
+        self.capacity = newCapacity
+    }
+    
+    // Private: Quicksort implementation
+    private fn quicksort(self: &mut Self, low: Int, high: Int) where T: Ord {
+        if low < high {
+            let pivot = self.partition(low, high)
+            self.quicksort(low, pivot - 1)
+            self.quicksort(pivot + 1, high)
+        }
+    }
+    
+    // Private: Partition for quicksort
+    private fn partition(self: &mut Self, low: Int, high: Int) -> Int where T: Ord {
+        let pivot = self.data[high]
+        let mut i = low - 1
+        
+        for j in low..high {
+            if self.data[j] <= pivot {
+                i += 1
+                let temp = move self.data[i]
+                self.data[i] = move self.data[j]
+                self.data[j] = move temp
+            }
+        }
+        
+        let temp = move self.data[i + 1]
+        self.data[i + 1] = move self.data[high]
+        self.data[high] = move temp
+        return i + 1
+    }
+    
+    // Private: Quicksort with custom comparator
+    private fn quicksortBy(self: &mut Self, low: Int, high: Int, compare: fn(&T, &T) -> Ordering) {
+        if low < high {
+            let pivot = self.partitionBy(low, high, compare)
+            self.quicksortBy(low, pivot - 1, compare)
+            self.quicksortBy(pivot + 1, high, compare)
+        }
+    }
+    
+    // Private: Partition for quicksort with custom comparator
+    private fn partitionBy(self: &mut Self, low: Int, high: Int, compare: fn(&T, &T) -> Ordering) -> Int {
+        let pivot = &self.data[high]
+        let mut i = low - 1
+        
+        for j in low..high {
+            if compare(&self.data[j], pivot) != Ordering.Greater {
+                i += 1
+                let temp = move self.data[i]
+                self.data[i] = move self.data[j]
+                self.data[j] = move temp
+            }
+        }
+        
+        let temp = move self.data[i + 1]
+        self.data[i + 1] = move self.data[high]
+        self.data[high] = move temp
+        return i + 1
+    }
+}
+
+// Iterator for List
+struct ListIterator<T> {
+    list: &List<T>
+    index: Int
+    
+    fn next(self: &mut Self) -> Option<&T> {
+        if self.index >= self.list.len() {
+            return None
+        }
+        
+        let item = self.list.get(self.index).unwrap()
+        self.index += 1
+        return Some(item)
+    }
+}
+
+// Usage examples
+fn exampleUsage() {
+    // Create a new list
+    let mut numbers = List<Int>.new()
+    
+    // Add elements
+    numbers.push(5)
+    numbers.push(1)
+    numbers.push(8)
+    numbers.push(3)
+    
+    // Access elements
+    let first = numbers.get(0).unwrap()  // 5
+    
+    // Modify elements
+    numbers.set(1, 10)  // [5, 10, 8, 3]
+    
+    // Remove elements
+    let removed = numbers.remove(2).unwrap()  // removed = 8, list = [5, 10, 3]
+    
+    // Check properties
+    let length = numbers.len()  // 3
+    let isEmpty = numbers.isEmpty()  // false
+    
+    // Process elements
+    let doubled = numbers.map(|x| x * 2)  // [10, 20, 6]
+    let sum = numbers.reduce(0, |acc, x| acc + x)  // 18
+    
+    // Sort elements
+    numbers.sort()  // [3, 5, 10]
+    
+    // Iterate over elements
+    for num in numbers.iter() {
+        print(num)
+    }
+}

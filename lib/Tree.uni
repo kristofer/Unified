@@ -1,0 +1,417 @@
+// Unified Tree
+// Generic Tree implementation in Unified
+
+// A generic Tree with data of type T
+struct Tree<T> {
+    // Root node of the tree
+    root: Option<&mut Node<T>>
+    
+    // Constructor for an empty tree
+    fn new() -> Self {
+        return Self{
+            root: None
+        }
+    }
+    
+    // Create a tree with a root value
+    fn withRoot(value: T) -> Self {
+        let root = Node<T>.new(value)
+        return Self{
+            root: Some(&mut root)
+        }
+    }
+    
+    // Check if tree is empty
+    fn isEmpty(self) -> Bool {
+        return self.root.isNone()
+    }
+    
+    // Get the root node
+    fn getRoot(self) -> Option<&Node<T>> {
+        return self.root.map(|node| &*node)
+    }
+    
+    // Get mutable reference to root node
+    fn getRootMut(self: &mut Self) -> Option<&mut Node<T>> {
+        return self.root
+    }
+    
+    // Set the root node
+    fn setRoot(self: &mut Self, value: T) {
+        let newRoot = Node<T>.new(value)
+        self.root = Some(&mut newRoot)
+    }
+    
+    // Get the height of the tree
+    fn height(self) -> Int {
+        match self.root {
+            Some(node) => node.height(),
+            None => 0
+        }
+    }
+    
+    // Get the number of nodes in the tree
+    fn size(self) -> Int {
+        match self.root {
+            Some(node) => node.size(),
+            None => 0
+        }
+    }
+    
+    // Find a node by value
+    fn find(self, value: &T) -> Option<&Node<T>> where T: Eq {
+        match self.root {
+            Some(node) => node.find(value),
+            None => None
+        }
+    }
+    
+    // Insert a value as a child of the specified parent value
+    fn insert(self: &mut Self, parentValue: &T, value: T) -> Result<(), String> where T: Eq {
+        match self.root {
+            Some(root) => {
+                let parent = root.find(parentValue)
+                match parent {
+                    Some(parent) => {
+                        parent.addChild(value);
+                        return Success(())
+                    },
+                    None => return Error("Parent node not found")
+                }
+            },
+            None => return Error("Tree is empty")
+        }
+    }
+    
+    // Remove a node and its subtree
+    fn remove(self: &mut Self, value: &T) -> Result<(), String> where T: Eq {
+        match self.root {
+            Some(root) => {
+                // Special case: removing root
+                if root.value == *value {
+                    self.root = None
+                    return Success(())
+                }
+                
+                return root.removeChild(value)
+            },
+            None => return Error("Tree is empty")
+        }
+    }
+    
+    // Perform a depth-first traversal
+    fn depthFirstTraversal(self, visit: fn(&T)) {
+        match self.root {
+            Some(node) => node.depthFirstTraversal(visit),
+            None => {}
+        }
+    }
+    
+    // Perform a breadth-first traversal
+    fn breadthFirstTraversal(self, visit: fn(&T)) {
+        match self.root {
+            Some(node) => node.breadthFirstTraversal(visit),
+            None => {}
+        }
+    }
+    
+    // Map function over all nodes
+    fn map<U>(self, transform: fn(&T) -> U) -> Tree<U> {
+        let result = Tree<U>.new()
+        
+        match self.root {
+            Some(node) => {
+                result.root = Some(&mut node.map(transform))
+            },
+            None => {}
+        }
+        
+        return result
+    }
+    
+    // Filter nodes based on predicate
+    fn filter(self, predicate: fn(&T) -> Bool) -> Tree<T> {
+        let result = Tree<T>.new()
+        
+        match self.root {
+            Some(node) => {
+                let filteredRoot = node.filter(predicate)
+                if filteredRoot.isSome() {
+                    result.root = filteredRoot
+                }
+            },
+            None => {}
+        }
+        
+        return result
+    }
+    
+    // Convert to a list using depth-first traversal
+    fn toList(self) -> List<T> where T: Clone {
+        let list = List<T>.new()
+        
+        self.depthFirstTraversal(|value| {
+            list.push(value.clone())
+        })
+        
+        return list
+    }
+    
+    // Clear the tree
+    fn clear(self: &mut Self) {
+        self.root = None
+    }
+    
+    // Create a deep copy of the tree
+    fn clone(self) -> Tree<T> where T: Clone {
+        let result = Tree<T>.new()
+        
+        match self.root {
+            Some(node) => {
+                result.root = Some(&mut node.clone())
+            },
+            None => {}
+        }
+        
+        return result
+    }
+}
+
+// Node of the tree
+struct Node<T> {
+    // Value stored in the node
+    value: T
+    
+    // Children of this node
+    children: List<Node<T>>
+    
+    // Create a new node with a value
+    fn new(value: T) -> Self {
+        return Self{
+            value: value,
+            children: List<Node<T>>.new()
+        }
+    }
+    
+    // Add a child node with the given value
+    fn addChild(self: &mut Self, value: T) -> &mut Node<T> {
+        let child = Node<T>.new(value)
+        self.children.push(child)
+        return self.children.getMut(self.children.len() - 1).unwrap()
+    }
+    
+    // Add an existing node as a child
+    fn addChildNode(self: &mut Self, node: Node<T>) {
+        self.children.push(node)
+    }
+    
+    // Get child at the specified index
+    fn getChild(self, index: Int) -> Option<&Node<T>> {
+        if index < 0 || index >= self.children.len() {
+            return None
+        }
+        return self.children.get(index)
+    }
+    
+    // Get mutable reference to child at the specified index
+    fn getChildMut(self: &mut Self, index: Int) -> Option<&mut Node<T>> {
+        if index < 0 || index >= self.children.len() {
+            return None
+        }
+        return self.children.getMut(index)
+    }
+    
+    // Get the number of children
+    fn childCount(self) -> Int {
+        return self.children.len()
+    }
+    
+    // Check if the node is a leaf (has no children)
+    fn isLeaf(self) -> Bool {
+        return self.children.isEmpty()
+    }
+    
+    // Find a node with the given value
+    fn find(self, value: &T) -> Option<&Node<T>> where T: Eq {
+        if self.value == *value {
+            return Some(self)
+        }
+        
+        for child in self.children.iter() {
+            let result = child.find(value)
+            if result.isSome() {
+                return result
+            }
+        }
+        
+        return None
+    }
+    
+    // Find a node with the given value and return a mutable reference
+    fn findMut(self: &mut Self, value: &T) -> Option<&mut Node<T>> where T: Eq {
+        if self.value == *value {
+            return Some(self)
+        }
+        
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.getMut(i) {
+                let result = child.findMut(value)
+                if result.isSome() {
+                    return result
+                }
+            }
+        }
+        
+        return None
+    }
+    
+    // Remove a child node with the given value
+    fn removeChild(self: &mut Self, value: &T) -> Result<(), String> where T: Eq {
+        for i in 0..self.children.len() {
+            if let Some(child) = self.children.get(i) {
+                if child.value == *value {
+                    self.children.remove(i)
+                    return Success(())
+                }
+                
+                let result = child.removeChild(value)
+                if result.isSuccess() {
+                    return result
+                }
+            }
+        }
+        
+        return Error("Node not found")
+    }
+    
+    // Get the height of the subtree rooted at this node
+    fn height(self) -> Int {
+        if self.isLeaf() {
+            return 1
+        }
+        
+        let mut maxChildHeight = 0
+        for child in self.children.iter() {
+            let childHeight = child.height()
+            if childHeight > maxChildHeight {
+                maxChildHeight = childHeight
+            }
+        }
+        
+        return 1 + maxChildHeight
+    }
+    
+    // Get the number of nodes in the subtree rooted at this node
+    fn size(self) -> Int {
+        let mut count = 1  // Count this node
+        
+        for child in self.children.iter() {
+            count += child.size()
+        }
+        
+        return count
+    }
+    
+    // Perform a depth-first traversal starting from this node
+    fn depthFirstTraversal(self, visit: fn(&T)) {
+        visit(&self.value)
+        
+        for child in self.children.iter() {
+            child.depthFirstTraversal(visit)
+        }
+    }
+    
+    // Perform a breadth-first traversal starting from this node
+    fn breadthFirstTraversal(self, visit: fn(&T)) {
+        let mut queue = List<&Node<T>>.new()
+        queue.push(self)
+        
+        while !queue.isEmpty() {
+            let node = queue.remove(0).unwrap()
+            visit(&node.value)
+            
+            for child in node.children.iter() {
+                queue.push(child)
+            }
+        }
+    }
+    
+    // Map function over all nodes in the subtree
+    fn map<U>(self, transform: fn(&T) -> U) -> Node<U> {
+        let mut result = Node<U>.new(transform(&self.value))
+        
+        for child in self.children.iter() {
+            result.addChildNode(child.map(transform))
+        }
+        
+        return result
+    }
+    
+    // Filter nodes based on predicate
+    fn filter(self, predicate: fn(&T) -> Bool) -> Option<&mut Node<T>> {
+        if !predicate(&self.value) {
+            return None
+        }
+        
+        let mut result = Node<T>.new(self.value)
+        
+        for child in self.children.iter() {
+            let filteredChild = child.filter(predicate)
+            if filteredChild.isSome() {
+                result.addChildNode(filteredChild.unwrap())
+            }
+        }
+        
+        return Some(&mut result)
+    }
+    
+    // Create a deep copy of this node and its subtree
+    fn clone(self) -> Node<T> where T: Clone {
+        let mut result = Node<T>.new(self.value.clone())
+        
+        for child in self.children.iter() {
+            result.addChildNode(child.clone())
+        }
+        
+        return result
+    }
+}
+
+// Usage examples
+fn exampleUsage() {
+    // Create a tree
+    let mut familyTree = Tree<String>.withRoot("Grandparent")
+    
+    // Add children
+    familyTree.insert(&"Grandparent", "Parent1")
+    familyTree.insert(&"Grandparent", "Parent2")
+    
+    // Add grandchildren
+    familyTree.insert(&"Parent1", "Child1")
+    familyTree.insert(&"Parent1", "Child2")
+    familyTree.insert(&"Parent2", "Child3")
+    
+    // Retrieve nodes
+    let parent1 = familyTree.find(&"Parent1")
+    
+    // Traverse the tree
+    print("Depth-first traversal:")
+    familyTree.depthFirstTraversal(|name| {
+        print(*name)
+    })
+    
+    print("Breadth-first traversal:")
+    familyTree.breadthFirstTraversal(|name| {
+        print(*name)
+    })
+    
+    // Get tree properties
+    let height = familyTree.height()  // 3
+    let size = familyTree.size()      // 6
+    
+    // Transform the tree
+    let nameLength = familyTree.map(|name| name.len())
+    
+    // Filter the tree
+    let filteredTree = familyTree.filter(|name| name.startsWith("P"))
+}
