@@ -106,32 +106,18 @@ Identifier  : [a-zA-Z_][a-zA-Z0-9_]*;
 
 IntLiteral  : [0-9]+ | '0x' [0-9a-fA-F]+ | '0b' [01]+;
 FloatLiteral: [0-9]+ '.' [0-9]* ([eE] [+-]? [0-9]+)?;
-StringLiteral: '"' (EscapeSequence | ~["\\\r\n])* '"';
+//StringLiteral: '"' (EscapeSequence | ~["\\\r\n])* '"';
 CharLiteral : '\'' (EscapeSequence | ~['\\\r\n]) '\'';
 BoolLiteral : 'true' | 'false';
 NullLiteral : 'null' | 'nil';
 
-//EscapeSequence
-//    : '\\' [btnfr"'\\]
-//    | '\\' [0-7]{1,3}
-//    | '\\' 'u' [0-9a-fA-F]{4}
-//    ;
-
-// Skips and comments
-//WS          : [ \t\r\n\f]+ -> skip;
-//COMMENT     : '//' ~[\r\n]* -> skip;
-//MULTILINE_COMMENT: '/*' .*? '*/' -> skip;
+StringLiteral: '"' ( EscapeSequence | ~["\\\r\n] | Interpolation )* '"';
 
 // String interpolation special handling
 //StringInterpolation
 //    : '${' -> pushMode(INTERPOLATION_MODE)
 //    ;
 
-//mode INTERPOLATION_MODE;
-//CLOSE_INTERPOLATION: '}' -> popMode;
-// Include rules for expressions inside interpolation
-
-//StringLiteral: '"' ( EscapeSequence | ~["\\\r\n] | Interpolation )* '"';
 
 Interpolation
     : '${' -> pushMode(INTERPOLATION_MODE)

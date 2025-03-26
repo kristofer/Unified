@@ -1,0 +1,43 @@
+// Recursive implementation
+fn fibonacci_recursive(n: Int) -> Int {
+    if n <= 1 {
+        return n
+    }
+    return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
+}
+
+// Iterative implementation (more efficient)
+fn fibonacci(n: Int) -> Int {
+    if n <= 1 {
+        return n
+    }
+    
+    let mut a = 0
+    let mut b = 1
+    let mut result = 0
+    
+    for _ in 2..=n {
+        result = a + b
+        a = b
+        b = result
+    }
+    
+    return result
+}
+
+// Generate Fibonacci sequence
+fn fibonacci_sequence(n: Int) -> List<Int> {
+    let mut sequence = List<Int>.new()
+    
+    for i in 0..n {
+        sequence.push(fibonacci(i))
+    }
+    
+    return sequence
+}
+
+fn main() {
+    let seq = fibonacci_sequence(10)
+    print("First 10 Fibonacci numbers: ${seq.join(", ")}")
+    // Output: First 10 Fibonacci numbers: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34
+}

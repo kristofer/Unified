@@ -189,10 +189,10 @@ REGION
 Identifier
 IntLiteral
 FloatLiteral
-StringLiteral
 CharLiteral
 BoolLiteral
 NullLiteral
+StringLiteral
 Interpolation
 EscapeSequence
 WS
