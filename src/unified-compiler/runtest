@@ -1,0 +1,4 @@
+#!/bin/bash
+bin/unified-compiler -input $1 -output $1.out
+#cat $1.out
+#rm $1.out

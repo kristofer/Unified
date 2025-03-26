@@ -32,7 +32,7 @@ var UnifiedParserParserStaticData struct {
 func unifiedparserParserInit() {
 	staticData := &UnifiedParserParserStaticData
 	staticData.LiteralNames = []string{
-		"", "", "", "'('", "')'", "'['", "']'", "';'", "':'", "','", "'.'",
+		"", "'{'", "'}'", "'('", "')'", "'['", "']'", "';'", "':'", "','", "'.'",
 		"'->'", "'::'", "'+'", "'-'", "'*'", "'/'", "'%'", "'&'", "'|'", "'^'",
 		"'~'", "'<<'", "'>>'", "'&&'", "'||'", "'!'", "'=='", "'!='", "'<'",
 		"'>'", "'<='", "'>='", "'='", "'+='", "'-='", "'*='", "'/='", "'%='",
@@ -42,7 +42,6 @@ func unifiedparserParserInit() {
 		"'let'", "'var'", "'mut'", "'pub'", "", "'if'", "'else'", "'loop'",
 		"'while'", "'for'", "'in'", "'break'", "'continue'", "'return'", "'switch'",
 		"'case'", "'where'", "'move'", "'await'", "'async'", "'try'", "'region'",
-		"", "", "", "", "", "", "", "'${'",
 	}
 	staticData.SymbolicNames = []string{
 		"", "LBRACE", "RBRACE", "LPAREN", "RPAREN", "LBRACK", "RBRACK", "SEMI",
@@ -56,10 +55,8 @@ func unifiedparserParserInit() {
 		"TYPE", "REFINE", "CONST", "LET", "VAR", "MUT", "PUB", "SELF", "IF",
 		"ELSE", "LOOP", "WHILE", "FOR", "IN", "BREAK", "CONTINUE", "RETURN",
 		"SWITCH", "CASE", "WHERE", "MOVE", "AWAIT", "ASYNC", "TRY", "REGION",
-		"Identifier", "IntLiteral", "FloatLiteral", "CharLiteral", "BoolLiteral",
-		"NullLiteral", "StringLiteral", "Interpolation", "EscapeSequence", "WS",
-		"COMMENT", "MULTILINE_COMMENT", "INTERPOLATION_CLOSE", "INTERPOLATION_TEXT",
-		"NESTED_OPEN",
+		"Identifier", "IntLiteral", "FloatLiteral", "StringLiteral", "CharLiteral",
+		"BoolLiteral", "NullLiteral", "EscapeSequence", "WS", "COMMENT", "MULTILINE_COMMENT",
 	}
 	staticData.RuleNames = []string{
 		"program", "item", "moduleDecl", "importDecl", "importPath", "importList",
@@ -78,7 +75,7 @@ func unifiedparserParserInit() {
 	}
 	staticData.PredictionContextCache = antlr.NewPredictionContextCache()
 	staticData.serializedATN = []int32{
-		4, 1, 99, 1067, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
+		4, 1, 95, 1067, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7,
 		4, 2, 5, 7, 5, 2, 6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9, 2, 10, 7,
 		10, 2, 11, 7, 11, 2, 12, 7, 12, 2, 13, 7, 13, 2, 14, 7, 14, 2, 15, 7, 15,
 		2, 16, 7, 16, 2, 17, 7, 17, 2, 18, 7, 18, 2, 19, 7, 19, 2, 20, 7, 20, 2,
@@ -616,106 +613,102 @@ func NewUnifiedParser(input antlr.TokenStream) *UnifiedParser {
 
 // UnifiedParser tokens.
 const (
-	UnifiedParserEOF                 = antlr.TokenEOF
-	UnifiedParserLBRACE              = 1
-	UnifiedParserRBRACE              = 2
-	UnifiedParserLPAREN              = 3
-	UnifiedParserRPAREN              = 4
-	UnifiedParserLBRACK              = 5
-	UnifiedParserRBRACK              = 6
-	UnifiedParserSEMI                = 7
-	UnifiedParserCOLON               = 8
-	UnifiedParserCOMMA               = 9
-	UnifiedParserDOT                 = 10
-	UnifiedParserARROW               = 11
-	UnifiedParserDOUBLE_COLON        = 12
-	UnifiedParserPLUS                = 13
-	UnifiedParserMINUS               = 14
-	UnifiedParserSTAR                = 15
-	UnifiedParserDIV                 = 16
-	UnifiedParserMOD                 = 17
-	UnifiedParserBIT_AND             = 18
-	UnifiedParserBIT_OR              = 19
-	UnifiedParserBIT_XOR             = 20
-	UnifiedParserBIT_NOT             = 21
-	UnifiedParserLSHIFT              = 22
-	UnifiedParserRSHIFT              = 23
-	UnifiedParserAND                 = 24
-	UnifiedParserOR                  = 25
-	UnifiedParserNOT                 = 26
-	UnifiedParserEQ                  = 27
-	UnifiedParserNE                  = 28
-	UnifiedParserLT                  = 29
-	UnifiedParserGT                  = 30
-	UnifiedParserLE                  = 31
-	UnifiedParserGE                  = 32
-	UnifiedParserASSIGN              = 33
-	UnifiedParserPLUS_ASSIGN         = 34
-	UnifiedParserMINUS_ASSIGN        = 35
-	UnifiedParserSTAR_ASSIGN         = 36
-	UnifiedParserDIV_ASSIGN          = 37
-	UnifiedParserMOD_ASSIGN          = 38
-	UnifiedParserLSHIFT_ASSIGN       = 39
-	UnifiedParserRSHIFT_ASSIGN       = 40
-	UnifiedParserAND_ASSIGN          = 41
-	UnifiedParserXOR_ASSIGN          = 42
-	UnifiedParserOR_ASSIGN           = 43
-	UnifiedParserQUESTION            = 44
-	UnifiedParserNULL_COND           = 45
-	UnifiedParserRANGE               = 46
-	UnifiedParserRANGE_INCL          = 47
-	UnifiedParserINC                 = 48
-	UnifiedParserDEC                 = 49
-	UnifiedParserUNDERSCORE          = 50
-	UnifiedParserMODULE              = 51
-	UnifiedParserIMPORT              = 52
-	UnifiedParserAS                  = 53
-	UnifiedParserFN                  = 54
-	UnifiedParserSTRUCT              = 55
-	UnifiedParserENUM                = 56
-	UnifiedParserINTERFACE           = 57
-	UnifiedParserIMPL                = 58
-	UnifiedParserACTOR               = 59
-	UnifiedParserTYPE                = 60
-	UnifiedParserREFINE              = 61
-	UnifiedParserCONST               = 62
-	UnifiedParserLET                 = 63
-	UnifiedParserVAR                 = 64
-	UnifiedParserMUT                 = 65
-	UnifiedParserPUB                 = 66
-	UnifiedParserSELF                = 67
-	UnifiedParserIF                  = 68
-	UnifiedParserELSE                = 69
-	UnifiedParserLOOP                = 70
-	UnifiedParserWHILE               = 71
-	UnifiedParserFOR                 = 72
-	UnifiedParserIN                  = 73
-	UnifiedParserBREAK               = 74
-	UnifiedParserCONTINUE            = 75
-	UnifiedParserRETURN              = 76
-	UnifiedParserSWITCH              = 77
-	UnifiedParserCASE                = 78
-	UnifiedParserWHERE               = 79
-	UnifiedParserMOVE                = 80
-	UnifiedParserAWAIT               = 81
-	UnifiedParserASYNC               = 82
-	UnifiedParserTRY                 = 83
-	UnifiedParserREGION              = 84
-	UnifiedParserIdentifier          = 85
-	UnifiedParserIntLiteral          = 86
-	UnifiedParserFloatLiteral        = 87
-	UnifiedParserCharLiteral         = 88
-	UnifiedParserBoolLiteral         = 89
-	UnifiedParserNullLiteral         = 90
-	UnifiedParserStringLiteral       = 91
-	UnifiedParserInterpolation       = 92
-	UnifiedParserEscapeSequence      = 93
-	UnifiedParserWS                  = 94
-	UnifiedParserCOMMENT             = 95
-	UnifiedParserMULTILINE_COMMENT   = 96
-	UnifiedParserINTERPOLATION_CLOSE = 97
-	UnifiedParserINTERPOLATION_TEXT  = 98
-	UnifiedParserNESTED_OPEN         = 99
+	UnifiedParserEOF               = antlr.TokenEOF
+	UnifiedParserLBRACE            = 1
+	UnifiedParserRBRACE            = 2
+	UnifiedParserLPAREN            = 3
+	UnifiedParserRPAREN            = 4
+	UnifiedParserLBRACK            = 5
+	UnifiedParserRBRACK            = 6
+	UnifiedParserSEMI              = 7
+	UnifiedParserCOLON             = 8
+	UnifiedParserCOMMA             = 9
+	UnifiedParserDOT               = 10
+	UnifiedParserARROW             = 11
+	UnifiedParserDOUBLE_COLON      = 12
+	UnifiedParserPLUS              = 13
+	UnifiedParserMINUS             = 14
+	UnifiedParserSTAR              = 15
+	UnifiedParserDIV               = 16
+	UnifiedParserMOD               = 17
+	UnifiedParserBIT_AND           = 18
+	UnifiedParserBIT_OR            = 19
+	UnifiedParserBIT_XOR           = 20
+	UnifiedParserBIT_NOT           = 21
+	UnifiedParserLSHIFT            = 22
+	UnifiedParserRSHIFT            = 23
+	UnifiedParserAND               = 24
+	UnifiedParserOR                = 25
+	UnifiedParserNOT               = 26
+	UnifiedParserEQ                = 27
+	UnifiedParserNE                = 28
+	UnifiedParserLT                = 29
+	UnifiedParserGT                = 30
+	UnifiedParserLE                = 31
+	UnifiedParserGE                = 32
+	UnifiedParserASSIGN            = 33
+	UnifiedParserPLUS_ASSIGN       = 34
+	UnifiedParserMINUS_ASSIGN      = 35
+	UnifiedParserSTAR_ASSIGN       = 36
+	UnifiedParserDIV_ASSIGN        = 37
+	UnifiedParserMOD_ASSIGN        = 38
+	UnifiedParserLSHIFT_ASSIGN     = 39
+	UnifiedParserRSHIFT_ASSIGN     = 40
+	UnifiedParserAND_ASSIGN        = 41
+	UnifiedParserXOR_ASSIGN        = 42
+	UnifiedParserOR_ASSIGN         = 43
+	UnifiedParserQUESTION          = 44
+	UnifiedParserNULL_COND         = 45
+	UnifiedParserRANGE             = 46
+	UnifiedParserRANGE_INCL        = 47
+	UnifiedParserINC               = 48
+	UnifiedParserDEC               = 49
+	UnifiedParserUNDERSCORE        = 50
+	UnifiedParserMODULE            = 51
+	UnifiedParserIMPORT            = 52
+	UnifiedParserAS                = 53
+	UnifiedParserFN                = 54
+	UnifiedParserSTRUCT            = 55
+	UnifiedParserENUM              = 56
+	UnifiedParserINTERFACE         = 57
+	UnifiedParserIMPL              = 58
+	UnifiedParserACTOR             = 59
+	UnifiedParserTYPE              = 60
+	UnifiedParserREFINE            = 61
+	UnifiedParserCONST             = 62
+	UnifiedParserLET               = 63
+	UnifiedParserVAR               = 64
+	UnifiedParserMUT               = 65
+	UnifiedParserPUB               = 66
+	UnifiedParserSELF              = 67
+	UnifiedParserIF                = 68
+	UnifiedParserELSE              = 69
+	UnifiedParserLOOP              = 70
+	UnifiedParserWHILE             = 71
+	UnifiedParserFOR               = 72
+	UnifiedParserIN                = 73
+	UnifiedParserBREAK             = 74
+	UnifiedParserCONTINUE          = 75
+	UnifiedParserRETURN            = 76
+	UnifiedParserSWITCH            = 77
+	UnifiedParserCASE              = 78
+	UnifiedParserWHERE             = 79
+	UnifiedParserMOVE              = 80
+	UnifiedParserAWAIT             = 81
+	UnifiedParserASYNC             = 82
+	UnifiedParserTRY               = 83
+	UnifiedParserREGION            = 84
+	UnifiedParserIdentifier        = 85
+	UnifiedParserIntLiteral        = 86
+	UnifiedParserFloatLiteral      = 87
+	UnifiedParserStringLiteral     = 88
+	UnifiedParserCharLiteral       = 89
+	UnifiedParserBoolLiteral       = 90
+	UnifiedParserNullLiteral       = 91
+	UnifiedParserEscapeSequence    = 92
+	UnifiedParserWS                = 93
+	UnifiedParserCOMMENT           = 94
+	UnifiedParserMULTILINE_COMMENT = 95
 )
 
 // UnifiedParser rules.

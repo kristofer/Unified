@@ -1,0 +1,45 @@
+fn fizzbuzz(n: Int) {
+    for i in 1..=n {
+        if i % 15 == 0 {
+            print("FizzBuzz")
+        } else if i % 3 == 0 {
+            print("Fizz")
+        } else if i % 5 == 0 {
+            print("Buzz")
+        } else {
+            print("${i}")
+        }
+    }
+}
+
+// Alternative implementation using string building
+fn fizzbuzz_string(n: Int) -> List<String> {
+    let mut results = List<String>.new()
+    
+    for i in 1..=n {
+        let mut result = ""
+        
+        if i % 3 == 0 {
+            result += "Fizz"
+        }
+        
+        if i % 5 == 0 {
+            result += "Buzz"
+        }
+        
+        if result.isEmpty() {
+            result = "${i}"
+        }
+        
+        results.push(result)
+    }
+    
+    return results
+}
+
+fn main() {
+    fizzbuzz(20)
+    
+    let results = fizzbuzz_string(100)
+    print(results.join("\n"))
+}

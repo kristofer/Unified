@@ -150,7 +150,7 @@ constantDecl
     ;
 
 // Types
-type
+type 
     : identifier (LT typeList GT)?                   // Simple type or generic type
     | FN LPAREN typeList? RPAREN ARROW type          // Function type
     | LPAREN typeList RPAREN                         // Tuple type

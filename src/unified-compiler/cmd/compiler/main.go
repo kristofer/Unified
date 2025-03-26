@@ -52,15 +52,12 @@ func main() {
 
 	// Start parsing from the program rule
 	//programContext := p.Program()
-	_ = p.Program()
 
 	// Check for syntax errors
 	// if p.GetNumberOfSyntaxErrors() > 0 {
 	// 	fmt.Printf("Found %d syntax errors\n", p.GetNumberOfSyntaxErrors())
 	// 	os.Exit(1)
 	// }
-
-	fmt.Println("Parsing successful")
 
 	// 2. Build AST
 	programContext := p.Program()
