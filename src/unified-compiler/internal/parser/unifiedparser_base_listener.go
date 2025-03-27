@@ -296,12 +296,6 @@ func (s *BaseUnifiedParserListener) EnterBlockStatement(ctx *BlockStatementConte
 // ExitBlockStatement is called when production blockStatement is exited.
 func (s *BaseUnifiedParserListener) ExitBlockStatement(ctx *BlockStatementContext) {}
 
-// EnterTryStatement is called when production tryStatement is entered.
-func (s *BaseUnifiedParserListener) EnterTryStatement(ctx *TryStatementContext) {}
-
-// ExitTryStatement is called when production tryStatement is exited.
-func (s *BaseUnifiedParserListener) ExitTryStatement(ctx *TryStatementContext) {}
-
 // EnterPattern is called when production pattern is entered.
 func (s *BaseUnifiedParserListener) EnterPattern(ctx *PatternContext) {}
 
@@ -403,6 +397,12 @@ func (s *BaseUnifiedParserListener) EnterTupleExpr(ctx *TupleExprContext) {}
 
 // ExitTupleExpr is called when production tupleExpr is exited.
 func (s *BaseUnifiedParserListener) ExitTupleExpr(ctx *TupleExprContext) {}
+
+// EnterNamedTupleField is called when production namedTupleField is entered.
+func (s *BaseUnifiedParserListener) EnterNamedTupleField(ctx *NamedTupleFieldContext) {}
+
+// ExitNamedTupleField is called when production namedTupleField is exited.
+func (s *BaseUnifiedParserListener) ExitNamedTupleField(ctx *NamedTupleFieldContext) {}
 
 // EnterBlock is called when production block is entered.
 func (s *BaseUnifiedParserListener) EnterBlock(ctx *BlockContext) {}

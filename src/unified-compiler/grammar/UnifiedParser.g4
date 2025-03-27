@@ -180,7 +180,6 @@ statement
     | breakStatement
     | continueStatement
     | blockStatement
-    | tryStatement
     ;
 
 letStatement
@@ -239,10 +238,6 @@ blockStatement
     : block
     ;
 
-tryStatement
-    : TRY block
-    ;
-
 // Patterns
 pattern
     : identifier                                      // Variable pattern
@@ -272,7 +267,7 @@ fieldPatternList
 // Expressions
 expr
     : primary
-    | expr DOT identifier                            // Field access
+    | expr DOT  (identifier | IntLiteral)            // Field/index access
     | expr DOT identifier LPAREN argList? RPAREN     // Method call
     | expr LBRACK expr RBRACK                        // Index access
     | expr LPAREN argList? RPAREN                    // Function call
@@ -290,7 +285,13 @@ expr
     | expr BIT_OR expr                               // Bitwise OR
     | expr AND expr                                  // Logical AND
     | expr OR expr                                   // Logical OR
+    | expr QUESTION_QUESTION expr                    // Null coalescing
+    | expr QUESTION                                // Error propagation
     | expr QUESTION expr COLON expr                  // Conditional
+    // Add after the conditional expression rule and before assignment
+    | expr QUESTION expr COLON expr                  // Conditional
+    | expr (ASSIGN | PLUS_ASSIGN | /* other assignments */) expr // Assignment
+
     | expr (ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | DIV_ASSIGN | MOD_ASSIGN 
           | LSHIFT_ASSIGN | RSHIFT_ASSIGN | AND_ASSIGN | XOR_ASSIGN | OR_ASSIGN | RANGE 
           | RANGE_INCL | NULL_COND) expr             // Assignment and range
@@ -298,6 +299,7 @@ expr
     | asyncExpr                                      // Async block
     | IF expr block (ELSE IF expr block)* (ELSE block)? // If expression
     | SWITCH expr LBRACE (caseExpr)* RBRACE          // Switch expression
+    // In the expr rule, add null coalescing with appropriate precedence
     ;
 
 caseExpr
@@ -355,8 +357,17 @@ setExpr
     : LBRACE (expr (COMMA expr)*)? COMMA? RBRACE
     ;
 
+// tupleExpr
+//     : LPAREN (expr (COMMA expr)*)? COMMA? RPAREN
+//     ;
+
 tupleExpr
-    : LPAREN (expr (COMMA expr)*)? COMMA? RPAREN
+    : LPAREN (namedTupleField (COMMA namedTupleField)*)? COMMA? RPAREN
+    ;
+
+namedTupleField
+    : identifier COLON expr    // named field
+    | expr                     // unnamed field
     ;
 
 block

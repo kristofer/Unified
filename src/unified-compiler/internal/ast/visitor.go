@@ -445,7 +445,6 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 		operand := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
 		var op OperatorType
 
-
 		if ctx.PLUS() != nil {
 			op = OperatorUnaryPlus
 		} else if ctx.MINUS() != nil {
@@ -574,10 +573,6 @@ func (v *ASTBuilder) VisitStatement(ctx *parser.StatementContext) interface{} {
 	if blockCtx := ctx.BlockStatement(); blockCtx != nil {
 		return v.VisitBlockStatement(blockCtx.(*parser.BlockStatementContext))
 	}
-	if tryCtx := ctx.TryStatement(); tryCtx != nil {
-		return v.VisitTryStatement(tryCtx.(*parser.TryStatementContext))
-	}
-
 	return nil
 }
 
@@ -876,14 +871,14 @@ func (v *ASTBuilder) VisitBlockStatement(ctx *parser.BlockStatementContext) inte
 }
 
 // VisitTryStatement builds a try statement node
-func (v *ASTBuilder) VisitTryStatement(ctx *parser.TryStatementContext) interface{} {
-	body := v.VisitBlock(ctx.Block().(*parser.BlockContext)).(*Block)
+// func (v *ASTBuilder) VisitTryStatement(ctx *parser.TryStatementContext) interface{} {
+// 	body := v.VisitBlock(ctx.Block().(*parser.BlockContext)).(*Block)
 
-	return &TryStatement{
-		Body:     body,
-		Position: v.getPosition(ctx),
-	}
-}
+// 	return &TryStatement{
+// 		Body:     body,
+// 		Position: v.getPosition(ctx),
+// 	}
+// }
 
 // Statement node types
 type LetStatement struct {

@@ -473,8 +473,6 @@ func (v *DebugVisitor) VisitStatement(ctx *StatementContext) interface{} {
 		ctx.ContinueStatement().Accept(v)
 	} else if ctx.BlockStatement() != nil {
 		ctx.BlockStatement().Accept(v)
-	} else if ctx.TryStatement() != nil {
-		ctx.TryStatement().Accept(v)
 	}
 
 	v.indent--
@@ -716,9 +714,7 @@ func (v *DebugVisitor) VisitContinueStatement(ctx *ContinueStatementContext) int
 func (v *DebugVisitor) VisitBlockStatement(ctx *BlockStatementContext) interface{} {
 	return v.visitDefault("BlockStatement", ctx)
 }
-func (v *DebugVisitor) VisitTryStatement(ctx *TryStatementContext) interface{} {
-	return v.visitDefault("TryStatement", ctx)
-}
+
 func (v *DebugVisitor) VisitPattern(ctx *PatternContext) interface{} {
 	return v.visitDefault("Pattern", ctx)
 }

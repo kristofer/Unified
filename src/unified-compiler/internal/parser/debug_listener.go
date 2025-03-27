@@ -441,15 +441,6 @@ func (l *DebugListener) ExitBlockStatement(c *BlockStatementContext) {
     printPos("BlockStatement", c, false)
 }
 
-// TryStatement
-func (l *DebugListener) EnterTryStatement(c *TryStatementContext) {
-    printPos("TryStatement", c, true)
-}
-
-func (l *DebugListener) ExitTryStatement(c *TryStatementContext) {
-    printPos("TryStatement", c, false)
-}
-
 // Pattern
 func (l *DebugListener) EnterPattern(c *PatternContext) {
     printPos("Pattern", c, true)

@@ -59,6 +59,7 @@ OR_ASSIGN   : '|=';
 
 // Other operators
 QUESTION    : '?';
+QUESTION_QUESTION : '??';  // Null coalescing
 NULL_COND   : '?.';
 RANGE       : '..';
 RANGE_INCL  : '..=';

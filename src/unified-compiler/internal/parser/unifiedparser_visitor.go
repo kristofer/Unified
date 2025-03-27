@@ -145,9 +145,6 @@ type UnifiedParserVisitor interface {
 	// Visit a parse tree produced by UnifiedParser#blockStatement.
 	VisitBlockStatement(ctx *BlockStatementContext) interface{}
 
-	// Visit a parse tree produced by UnifiedParser#tryStatement.
-	VisitTryStatement(ctx *TryStatementContext) interface{}
-
 	// Visit a parse tree produced by UnifiedParser#pattern.
 	VisitPattern(ctx *PatternContext) interface{}
 
@@ -198,6 +195,9 @@ type UnifiedParserVisitor interface {
 
 	// Visit a parse tree produced by UnifiedParser#tupleExpr.
 	VisitTupleExpr(ctx *TupleExprContext) interface{}
+
+	// Visit a parse tree produced by UnifiedParser#namedTupleField.
+	VisitNamedTupleField(ctx *NamedTupleFieldContext) interface{}
 
 	// Visit a parse tree produced by UnifiedParser#block.
 	VisitBlock(ctx *BlockContext) interface{}

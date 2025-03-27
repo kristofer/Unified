@@ -145,9 +145,6 @@ type UnifiedParserListener interface {
 	// EnterBlockStatement is called when entering the blockStatement production.
 	EnterBlockStatement(c *BlockStatementContext)
 
-	// EnterTryStatement is called when entering the tryStatement production.
-	EnterTryStatement(c *TryStatementContext)
-
 	// EnterPattern is called when entering the pattern production.
 	EnterPattern(c *PatternContext)
 
@@ -198,6 +195,9 @@ type UnifiedParserListener interface {
 
 	// EnterTupleExpr is called when entering the tupleExpr production.
 	EnterTupleExpr(c *TupleExprContext)
+
+	// EnterNamedTupleField is called when entering the namedTupleField production.
+	EnterNamedTupleField(c *NamedTupleFieldContext)
 
 	// EnterBlock is called when entering the block production.
 	EnterBlock(c *BlockContext)
@@ -349,9 +349,6 @@ type UnifiedParserListener interface {
 	// ExitBlockStatement is called when exiting the blockStatement production.
 	ExitBlockStatement(c *BlockStatementContext)
 
-	// ExitTryStatement is called when exiting the tryStatement production.
-	ExitTryStatement(c *TryStatementContext)
-
 	// ExitPattern is called when exiting the pattern production.
 	ExitPattern(c *PatternContext)
 
@@ -402,6 +399,9 @@ type UnifiedParserListener interface {
 
 	// ExitTupleExpr is called when exiting the tupleExpr production.
 	ExitTupleExpr(c *TupleExprContext)
+
+	// ExitNamedTupleField is called when exiting the namedTupleField production.
+	ExitNamedTupleField(c *NamedTupleFieldContext)
 
 	// ExitBlock is called when exiting the block production.
 	ExitBlock(c *BlockContext)

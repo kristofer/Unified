@@ -191,10 +191,6 @@ func (v *BaseUnifiedParserVisitor) VisitBlockStatement(ctx *BlockStatementContex
 	return v.VisitChildren(ctx)
 }
 
-func (v *BaseUnifiedParserVisitor) VisitTryStatement(ctx *TryStatementContext) interface{} {
-	return v.VisitChildren(ctx)
-}
-
 func (v *BaseUnifiedParserVisitor) VisitPattern(ctx *PatternContext) interface{} {
 	return v.VisitChildren(ctx)
 }
@@ -260,6 +256,10 @@ func (v *BaseUnifiedParserVisitor) VisitSetExpr(ctx *SetExprContext) interface{}
 }
 
 func (v *BaseUnifiedParserVisitor) VisitTupleExpr(ctx *TupleExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseUnifiedParserVisitor) VisitNamedTupleField(ctx *NamedTupleFieldContext) interface{} {
 	return v.VisitChildren(ctx)
 }
 
