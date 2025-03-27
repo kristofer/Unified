@@ -29,7 +29,13 @@ func main() {
 
 	fmt.Printf("Parsing & Listening %s\n", *inputFile)
 	// Create the input stream
-	inputStream := antlr.NewInputStream(*inputFile)
+	sourceCode, err := os.ReadFile(*inputFile)
+	if err != nil {
+		fmt.Printf("Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+	//fmt.Printf("SourceCode: %v\n", string(sourceCode))
+	inputStream := antlr.NewInputStream(string(sourceCode))
 
 	// Create the lexer
 	lexer := parser.NewUnifiedLexer(inputStream)
@@ -37,6 +43,11 @@ func main() {
 	// Create the token stream
 	tokenStream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
+	// fmt.Printf("Len of TokenStream: %v\n", len(tokenStream.GetAllText()))
+	// tokenstr := tokenStream.GetAllTokens()
+	// for _, token := range tokenstr {
+	// 	fmt.Printf("Token: %v\n", token)
+	// }
 	// Create the parser
 	p := parser.NewUnifiedParser(tokenStream)
 
@@ -45,30 +56,43 @@ func main() {
 	p.AddParseListener(debugListener)
 
 	// For better error handling
-	p.RemoveErrorListeners()
-	p.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
+	//p.RemoveErrorListeners()
+	//p.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
 
 	// Start parsing from the program rule
 	// programContext := p.Program()
-	_ = p.Program()
+	pctxt := p.Program()
 
+	fmt.Printf("Context: %+v \nLen: %v\n", pctxt, len(pctxt.GetChildren()))
 	fmt.Printf("Parsing successful\n")
 	fmt.Printf("Debug visitor: %v\n", debugListener)
 
 	// Parse source code
-	inputStream = antlr.NewInputStream(*inputFile)
+	//inputStream = antlr.NewInputStream(*inputFile)
+	sourceCode, err = os.ReadFile(*inputFile)
+	if err != nil {
+		fmt.Printf("Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+	//fmt.Printf("SourceCode: %v\n", string(sourceCode))
+	inputStream = antlr.NewInputStream(string(sourceCode))
+
 	lexer = parser.NewUnifiedLexer(inputStream)
 	tokens := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 	p = parser.NewUnifiedParser(tokens)
-
 	// Create the debug visitor
 	debugVisitor := parser.NewDebugVisitor()
 	//debugVisitor := &parser.DebugVisitor{} // Use direct struct initialization
 
 	// Start parsing from the root rule and visit the tree
 	tree := p.Program()
-	fmt.Printf("Tree: %v \nLen: %v\n", tree, len(tree.GetChildren()))
+	fmt.Printf("Tree: %+v \nLen: %v\n", tree, len(tree.GetChildren()))
+	debugVisitor.Visit(tree)
+
 	tree.Accept(debugVisitor)
+	fmt.Printf("Debug visitor: %+v\n", debugVisitor)
+
+	fmt.Printf("Visiting successful\n")
 
 	// // Start parsing from the program rule
 	// //programContext := p.Program()
