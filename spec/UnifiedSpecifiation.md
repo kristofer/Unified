@@ -28,8 +28,7 @@ continue else     enum     false    fn       for
 if       impl     import   in       interface let
 loop     match    mod      module   move     mut
 pub      region   return   self     spawn    struct
-switch   true     try      type     var      where
-while
+switch   true     type     var      where    while
 ```
 
 ### 3.2 Operators and Punctuation
@@ -40,6 +39,8 @@ while
 <<=  >>=  ==   !=   <    >    <=   >=   &&   ||
 .    ..   ...  ,    ;    :    ::   ->   =>   ?
 ??   ?.   (    )    [    ]    {    }    @
+?.   ??   // Optional chaining and null coalescing
+..   ..=   // Range operators
 ```
 
 ### 3.3 Comments
@@ -80,6 +81,24 @@ Identifiers start with a letter or underscore, followed by zero or more letters,
 ### 4.2 Compound Types
 
 - **Tuples**: `(T1, T2, ...)` 
+```unified
+// Accessing tuple elements by index
+let point = (10, 20, 30)
+let x = point.0    // 10
+let y = point.1    // 20
+let z = point.2    // 30
+```
+
+```unified
+// Named tuples for better readability
+let user = (name: "Alice", age: 30, active: true)
+
+// Access by name
+let userName = user.name     // "Alice"
+let userAge = user.age       // 30
+let isActive = user.active   // true
+```
+
 - **Lists**: `List<T>`
 - **Maps**: `Map<K, V>`
 - **Sets**: `Set<T>`
@@ -204,6 +223,16 @@ let combined = a && b
 let bits = a & b
 ```
 
+### 6.4.1 Range Expressions
+
+```unified
+// Exclusive range (up to but not including the end value)
+let range = 1..5       // Range from 1 to 4
+
+// Inclusive range (including the end value)
+let includeRange = 1..=5  // Range from 1 to 5
+```
+
 ### 6.5 Control Flow Expressions
 
 ```unified
@@ -247,7 +276,10 @@ let mut y = 10
 
 ```unified
 counter = 0
-counter += 1
+// Compound assignment
+counter += 1      // Same as: counter = counter + 1
+value *= 2        // Same as: value = value * 2
+bits &= mask      // Same as: bits = bits & mask
 ```
 
 ### 7.3 Expression Statements
@@ -286,6 +318,19 @@ loop {
         continue
     }
     process()
+}
+
+// Loop with labeled break/continue
+'outer: for i in 0..5 {
+    'inner: for j in 0..5 {
+        if i * j > 10 {
+            break 'outer  // Breaks from the outer loop
+        }
+        if j % 2 == 0 {
+            continue 'inner  // Continues the inner loop
+        }
+        process(i, j)
+    }
 }
 ```
 
@@ -368,6 +413,53 @@ fn applyTwice(x: Int, f: fn(Int) -> Int) -> Int {
     return f(f(x))
 }
 ```
+
+## 8.5 Comprehensive Error Handling
+
+Unified uses `Result<T, E>` as its primary error handling mechanism instead of exceptions or try/catch blocks. This approach makes errors explicit in function signatures and forces developers to handle potential failures.
+
+```unified
+// Define result type
+enum Result<T, E> {
+    Success(T)
+    Error(E)
+}
+
+// Function that might fail
+fn readFile(path: String) -> Result<String, IOError> {
+    // Implementation that returns either Success or Error
+}
+
+// Using the result with pattern matching
+let fileResult = readFile("config.txt")
+match fileResult {
+    Success(content) -> processContent(content)
+    Error(err) -> log("Failed to read file: ${err}")
+}
+```
+
+For easier error propagation, use the ? operator to automatically unwrap success values or return errors:
+
+```unified
+fn loadConfig() -> Result<Config, ConfigError> {
+    let content = readFile("config.txt")?  // Returns early if Error
+    let config = parseConfig(content)?     // Also returns early if Error
+    return Success(config)
+}
+```
+For functions that chain multiple operations that might fail, use method chaining with combinators:
+
+```unified
+fn processFile() -> Result<Output, Error> {
+    return readFile("input.txt")
+        .map(|content| parseData(content))
+        .flatMap(|data| transformData(data))
+        .mapError(|err| Error.Processing(err))
+}
+```
+
+This approach makes error handling explicit, predictable, and prevents silent failures while remaining ergonomic through the ? operator and combinator methods.
+
 
 ## 9. Structs and Enums
 
@@ -822,6 +914,16 @@ let squares = [x * x for x in 1..10]
 
 // With condition
 let evenSquares = [x * x for x in 1..10 if x % 2 == 0]
+
+// Basic list comprehension
+let squares = [x * x for x in 1..10]  // [1, 4, 9, 16, 25, 36, 49, 64, 81]
+
+// With condition
+let evenSquares = [x * x for x in 1..10 if x % 2 == 0]  // [4, 16, 36, 64, 100]
+
+// With multiple transformations
+let pairs = [(x, y) for x in 1..3 for y in 'a'..'c']  
+// [(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')]
 ```
 
 ### 17.3 Optional Chaining
@@ -832,6 +934,12 @@ let name = user?.profile?.name
 
 // Null coalescing
 let displayName = user?.name ?? "Anonymous"
+
+// Optional chaining - safely access properties that might be null
+let streetName = user?.address?.street
+
+// Null coalescing - provide a default value when the expression is null
+let username = user?.name ?? "Anonymous"
 ```
 
 ### 17.4 Extension Methods

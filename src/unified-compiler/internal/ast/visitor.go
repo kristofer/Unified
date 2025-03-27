@@ -417,13 +417,69 @@ func (v *ASTBuilder) VisitBlock(ctx *parser.BlockContext) interface{} {
 
 // VisitExpr builds an Expression node
 func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
-	// Handle different expression types here
-	// Example: If it's a literal expression
-	if literalCtx := ctx.Primary().Literal(); literalCtx != nil {
-		return v.VisitLiteral(literalCtx.(*parser.LiteralContext))
+	// Handle primary expressions (identifiers, literals, etc.)
+	if primary := ctx.Primary(); primary != nil {
+		return v.VisitPrimary(primary.(*parser.PrimaryContext))
 	}
 
-	// Add handling for other expression types...
+	// Binary operations (handle according to child count and operator)
+	if len(ctx.AllExpr()) == 2 {
+		// Binary operations
+		left := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
+		right := v.VisitExpr(ctx.Expr(1).(*parser.ExprContext)).(Expression)
+
+		// Check the operator type
+		if ctx.PLUS() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorAdd,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		}
+		// Add similar cases for other binary operators...
+	}
+
+	// Unary operations
+	if len(ctx.AllExpr()) == 1 && (ctx.PLUS() != nil || ctx.MINUS() != nil || ctx.NOT() != nil) {
+		operand := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
+		var op OperatorType
+
+
+		if ctx.PLUS() != nil {
+			op = OperatorUnaryPlus
+		} else if ctx.MINUS() != nil {
+			op = OperatorUnaryMinus
+		} else if ctx.NOT() != nil {
+			op = OperatorNot
+		}
+
+		return &UnaryExpr{
+			Operator: op,
+			Operand:  operand,
+			Position: v.getPosition(ctx),
+		}
+	}
+
+	// Add cases for method calls, field access, etc.
+
+	// And more cases...
+
+	return nil
+}
+
+// VisitPrimary handles primary expressions
+func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
+	if literalCtx := ctx.Literal(); literalCtx != nil {
+		return v.VisitLiteral(literalCtx.(*parser.LiteralContext))
+	}
+	if identifierCtx := ctx.Identifier(); identifierCtx != nil {
+		return &Identifier{
+			Name:     identifierCtx.GetText(),
+			Position: v.getPosition(ctx),
+		}
+	}
+	// Handle other primary expressions...
 
 	return nil
 }
@@ -601,51 +657,51 @@ func (v *ASTBuilder) VisitRegionStatement(ctx *parser.RegionStatementContext) in
 
 // VisitIfStatement builds an if statement node
 func (v *ASTBuilder) VisitIfStatement(ctx *parser.IfStatementContext) interface{} {
-    // Process main if condition and block
-    condition := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
-    thenBlock := v.VisitBlock(ctx.Block(0).(*parser.BlockContext)).(*Block)
+	// Process main if condition and block
+	condition := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
+	thenBlock := v.VisitBlock(ctx.Block(0).(*parser.BlockContext)).(*Block)
 
-    // Process else-if branches
-    var elseIfBranches []*IfBranch
-    
-    // Count how many else-if branches we have
-    elseIfCount := 0
-    for i := 0; i < len(ctx.AllELSE()) && i < len(ctx.AllIF())-1; i++ {
-        if ctx.ELSE(i) != nil && i+1 < len(ctx.AllIF()) {
-            elseIfCount++
-        }
-    }
-    
-    // Process each else-if branch
-    for i := 0; i < elseIfCount; i++ {
-        // The condition is the expression after the first IF
-        exprIndex := i + 1 // Skip the first expression which belongs to the main if
-        blockIndex := i + 1 // Skip the first block which belongs to the main if
-        
-        elseIfCondition := v.VisitExpr(ctx.Expr(exprIndex).(*parser.ExprContext)).(Expression)
-        elseIfBlock := v.VisitBlock(ctx.Block(blockIndex).(*parser.BlockContext)).(*Block)
-        
-        elseIfBranches = append(elseIfBranches, &IfBranch{
-            Condition: elseIfCondition,
-            Body:      elseIfBlock,
-        })
-    }
+	// Process else-if branches
+	var elseIfBranches []*IfBranch
 
-    // Process else block if present
-    var elseBlock *Block
-    if len(ctx.AllELSE()) > len(ctx.AllIF())-1 { // There's one more ELSE than IF-1
-        // The last block is the else block
-        elseBlockIndex := len(ctx.AllBlock()) - 1
-        elseBlock = v.VisitBlock(ctx.Block(elseBlockIndex).(*parser.BlockContext)).(*Block)
-    }
+	// Count how many else-if branches we have
+	elseIfCount := 0
+	for i := 0; i < len(ctx.AllELSE()) && i < len(ctx.AllIF())-1; i++ {
+		if ctx.ELSE(i) != nil && i+1 < len(ctx.AllIF()) {
+			elseIfCount++
+		}
+	}
 
-    return &IfStatement{
-        Condition:      condition,
-        ThenBlock:      thenBlock,
-        ElseIfBranches: elseIfBranches,
-        ElseBlock:      elseBlock,
-        Position:       v.getPosition(ctx),
-    }
+	// Process each else-if branch
+	for i := 0; i < elseIfCount; i++ {
+		// The condition is the expression after the first IF
+		exprIndex := i + 1  // Skip the first expression which belongs to the main if
+		blockIndex := i + 1 // Skip the first block which belongs to the main if
+
+		elseIfCondition := v.VisitExpr(ctx.Expr(exprIndex).(*parser.ExprContext)).(Expression)
+		elseIfBlock := v.VisitBlock(ctx.Block(blockIndex).(*parser.BlockContext)).(*Block)
+
+		elseIfBranches = append(elseIfBranches, &IfBranch{
+			Condition: elseIfCondition,
+			Body:      elseIfBlock,
+		})
+	}
+
+	// Process else block if present
+	var elseBlock *Block
+	if len(ctx.AllELSE()) > len(ctx.AllIF())-1 { // There's one more ELSE than IF-1
+		// The last block is the else block
+		elseBlockIndex := len(ctx.AllBlock()) - 1
+		elseBlock = v.VisitBlock(ctx.Block(elseBlockIndex).(*parser.BlockContext)).(*Block)
+	}
+
+	return &IfStatement{
+		Condition:      condition,
+		ThenBlock:      thenBlock,
+		ElseIfBranches: elseIfBranches,
+		ElseBlock:      elseBlock,
+		Position:       v.getPosition(ctx),
+	}
 }
 
 // VisitLoopStatement builds a loop statement node
@@ -685,11 +741,17 @@ func (v *ASTBuilder) VisitWhileStatement(ctx *parser.WhileStatementContext) inte
 // VisitForStatement builds a for statement node
 func (v *ASTBuilder) VisitForStatement(ctx *parser.ForStatementContext) interface{} {
 	var label string
-	if ctx.Identifier(0) != nil {
+	var iterVar string
+
+	// Check if we have a label (which would be followed by a colon)
+	if ctx.COLON() != nil {
 		label = ctx.Identifier(0).GetText()
+		iterVar = ctx.Identifier(1).GetText() // Iterator is the second identifier
+	} else {
+		// No label, iterator is the first identifier
+		iterVar = ctx.Identifier(0).GetText()
 	}
 
-	iterVar := ctx.Identifier(1).GetText()
 	iterable := v.VisitExpr(ctx.Expr().(*parser.ExprContext)).(Expression)
 	body := v.VisitBlock(ctx.Block().(*parser.BlockContext)).(*Block)
 
@@ -834,170 +896,3 @@ type LetStatement struct {
 
 func (s *LetStatement) Pos() Position  { return s.Position }
 func (s *LetStatement) statementNode() {}
-
-type VarStatement struct {
-	Name     string
-	Type     Type
-	Value    Expression
-	Position Position
-}
-
-func (s *VarStatement) Pos() Position  { return s.Position }
-func (s *VarStatement) statementNode() {}
-
-type RegionStatement struct {
-	Name     string
-	Body     *Block
-	Position Position
-}
-
-func (s *RegionStatement) Pos() Position  { return s.Position }
-func (s *RegionStatement) statementNode() {}
-
-type ExprStatement struct {
-	Expression Expression
-	Position   Position
-}
-
-func (s *ExprStatement) Pos() Position  { return s.Position }
-func (s *ExprStatement) statementNode() {}
-
-type ReturnStatement struct {
-	Value    Expression
-	Position Position
-}
-
-func (s *ReturnStatement) Pos() Position  { return s.Position }
-func (s *ReturnStatement) statementNode() {}
-
-type IfBranch struct {
-	Condition Expression
-	Body      *Block
-}
-
-type IfStatement struct {
-	Condition      Expression
-	ThenBlock      *Block
-	ElseIfBranches []*IfBranch
-	ElseBlock      *Block
-	Position       Position
-}
-
-func (s *IfStatement) Pos() Position  { return s.Position }
-func (s *IfStatement) statementNode() {}
-
-type LoopStatement struct {
-	Label    string
-	Body     *Block
-	Position Position
-}
-
-func (s *LoopStatement) Pos() Position  { return s.Position }
-func (s *LoopStatement) statementNode() {}
-
-type WhileStatement struct {
-	Label     string
-	Condition Expression
-	Body      *Block
-	Position  Position
-}
-
-func (s *WhileStatement) Pos() Position  { return s.Position }
-func (s *WhileStatement) statementNode() {}
-
-type ForStatement struct {
-	Label    string
-	Variable string
-	Iterable Expression
-	Body     *Block
-	Position Position
-}
-
-func (s *ForStatement) Pos() Position  { return s.Position }
-func (s *ForStatement) statementNode() {}
-
-type SwitchStatement struct {
-	Value    Expression
-	Cases    []*CaseClause
-	Position Position
-}
-
-func (s *SwitchStatement) Pos() Position  { return s.Position }
-func (s *SwitchStatement) statementNode() {}
-
-type CaseClause struct {
-	Pattern    *Pattern
-	Statements []Statement
-	Position   Position
-}
-
-func (c *CaseClause) Pos() Position { return c.Position }
-
-// PatternKind represents the type of pattern
-type PatternKind int
-
-const (
-	PatternVariable PatternKind = iota
-	PatternWildcard
-	PatternLiteral
-	PatternRange
-	PatternConstructor
-	PatternBinding
-	PatternStruct
-	PatternTuple
-	PatternUnknown
-)
-
-type Pattern struct {
-	Kind          PatternKind
-	Value         string          // For variable patterns
-	Literal       *Literal        // For literal patterns
-	Range         [2]*Pattern     // For range patterns
-	FieldPatterns []*FieldPattern // For struct patterns
-	SubPatterns   []*Pattern      // For tuple/constructor patterns
-	Position      Position
-}
-
-func (p *Pattern) Pos() Position { return p.Position }
-
-type FieldPattern struct {
-	Name     string
-	Pattern  *Pattern
-	Position Position
-}
-
-func (f *FieldPattern) Pos() Position { return f.Position }
-
-type BreakStatement struct {
-	Label    string
-	Position Position
-}
-
-func (s *BreakStatement) Pos() Position  { return s.Position }
-func (s *BreakStatement) statementNode() {}
-
-type ContinueStatement struct {
-	Label    string
-	Position Position
-}
-
-func (s *ContinueStatement) Pos() Position  { return s.Position }
-func (s *ContinueStatement) statementNode() {}
-
-type BlockStatement struct {
-	Block    *Block
-	Position Position
-}
-
-func (s *BlockStatement) Pos() Position  { return s.Position }
-func (s *BlockStatement) statementNode() {}
-
-type TryStatement struct {
-	Body     *Block
-	Position Position
-}
-
-func (s *TryStatement) Pos() Position  { return s.Position }
-func (s *TryStatement) statementNode() {}
-
-// Add more visitor methods for other rule types...

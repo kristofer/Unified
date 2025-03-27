@@ -1,5 +1,9 @@
+fn hello() {
+    print("Hello World")
+}
+
 fn fizzbuzz(n: Int) {
-    for i in 1..=n {
+    for i in 1..n {
         if i % 15 == 0 {
             print("FizzBuzz")
         } else if i % 3 == 0 {
@@ -16,7 +20,7 @@ fn fizzbuzz(n: Int) {
 fn fizzbuzz_string(n: Int) -> List<String> {
     let mut results = List<String>.new()
     
-    for i in 1..=n {
+    for i in 1..n {
         let mut result = ""
         
         if i % 3 == 0 {
