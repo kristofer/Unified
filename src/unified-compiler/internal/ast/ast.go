@@ -757,12 +757,3 @@ type BlockStatement struct {
 
 func (s *BlockStatement) Pos() Position  { return s.Position }
 func (s *BlockStatement) statementNode() {}
-
-// TryStatement represents a try statement
-type TryStatement struct {
-	Body     *Block
-	Position Position
-}
-
-func (s *TryStatement) Pos() Position  { return s.Position }
-func (s *TryStatement) statementNode() {}

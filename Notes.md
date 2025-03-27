@@ -739,3 +739,7 @@ The `||` syntax is a common way to denote closures in several modern languages, 
 
 In Unified, closures are first-class values that can be passed to functions, returned from functions, and stored in variables, making them a powerful tool for functional programming patterns.
 
+
+
+## LLVM 
+
