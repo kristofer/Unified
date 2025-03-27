@@ -12,6 +12,6 @@ fi
 # Generate parser
 echo "Generating parser from grammar..."
 cd $(dirname "$0")/../grammar
-antlr4 -Dlanguage=Go -package parser -visitor -listener -o ../internal/parser UnifiedParser.g4
+antlr4 -Dlanguage=Go -package parser -visitor -listener -o ../internal/parser UnifiedParser.g4 UnifiedLexer.g4
 
 echo "Done generating parser code."

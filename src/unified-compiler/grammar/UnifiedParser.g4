@@ -285,13 +285,9 @@ expr
     | expr BIT_OR expr                               // Bitwise OR
     | expr AND expr                                  // Logical AND
     | expr OR expr                                   // Logical OR
-    | expr QUESTION_QUESTION expr                    // Null coalescing
-    | expr QUESTION                                // Error propagation
-    | expr QUESTION expr COLON expr                  // Conditional
-    // Add after the conditional expression rule and before assignment
-    | expr QUESTION expr COLON expr                  // Conditional
-    | expr (ASSIGN | PLUS_ASSIGN | /* other assignments */) expr // Assignment
-
+    | expr QUESTION                                   // Error propagation
+    | expr QUESTION_QUESTION expr                     // Null coalescing
+    | expr QUESTION expr COLON expr                   // Conditional
     | expr (ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN | DIV_ASSIGN | MOD_ASSIGN 
           | LSHIFT_ASSIGN | RSHIFT_ASSIGN | AND_ASSIGN | XOR_ASSIGN | OR_ASSIGN | RANGE 
           | RANGE_INCL | NULL_COND) expr             // Assignment and range
@@ -301,6 +297,7 @@ expr
     | SWITCH expr LBRACE (caseExpr)* RBRACE          // Switch expression
     // In the expr rule, add null coalescing with appropriate precedence
     ;
+
 
 caseExpr
     : CASE pattern (ARROW | COLON) expr
