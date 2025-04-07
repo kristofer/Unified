@@ -113,7 +113,49 @@ The language emphasizes memory safety without garbage collection overhead, expre
 
 This summary captures the key aspects of Unified we've designed, including its syntax, semantics, memory model, type system, concurrency features, and compilation strategy.
 
-## Implementation Notes
+# Implementation Notes
 
 26 Mar, Asked claude to create an ANTLR4 grammar file. `unified.g4`
 Will try to use ANTLR to gen parser, and ask claude to help build the middle-end of the parser from `.uni` code to LLVM IR.
+
+3 Apr 2025, how about making the backend to Unified be WASM instead of LLVM? 
+Asking claude this was the reply:
+
+Targeting WebAssembly (WASM) instead of LLVM as the backend for Unified is a very strategic pivot that makes a lot of sense given the circumstances. Here's why this could be a good direction:
+
+### Benefits of Targeting WASM
+
+1. **Better Go tooling integration**: Go has first-class support for WebAssembly compilation. You could use Go's established WASM tools rather than relying on unmaintained LLVM bindings.
+
+2. **Platform independence**: WASM is designed to be portable and runs in browsers, standalone runtimes (Wasmtime, WAMR, Wasmer), and can be embedded in many applications.
+
+3. **Growing ecosystem**: WASM is gaining tremendous momentum with WASI (WebAssembly System Interface) expanding its capabilities beyond the browser.
+
+4. **Modern specification**: Unlike LLVM which is primarily a compiler infrastructure, WASM is designed as a compilation target from the ground up.
+
+5. **Security model**: WASM's sandboxed execution model provides security guarantees that align well with Unified's safety goals.
+
+6. **Simpler implementation path**: The WASM specification is more constrained than LLVM's full feature set, which could make implementation more straightforward.
+
+### Implementation Approach
+
+You could structure the Unified compiler to:
+
+1. Parse Unified code into an AST
+2. Perform semantic analysis, type checking, and apply Unified's ownership rules
+3. Lower to a WASM-friendly intermediate representation
+4. Generate WASM binary format or text format (WAT)
+
+The Go ecosystem has good support for this via packages like `github.com/bytecodealliance/wasmtime-go` for runtime and testing.
+
+### Considerations
+
+- **Memory model**: You'd need to map Unified's ownership system and region-based memory to WASM's linear memory model
+- **Concurrency**: WASM is single-threaded in its core spec, though thread proposals exist. You'd need to implement Unified's actor model on top of this.
+- **Host interop**: Consider how Unified programs would interact with their host environment through WASI or custom interfaces
+
+### Verdict
+
+Switching from LLVM to WASM as a compilation target is an excellent strategic choice, especially given the Go ecosystem's better support for WASM compared to LLVM. It provides a more modern, portable runtime target while potentially simplifying your implementation path.
+
+This approach would also make Unified programs more deployable across different environments - from servers to browsers to edge computing - which could significantly increase adoption potential.
