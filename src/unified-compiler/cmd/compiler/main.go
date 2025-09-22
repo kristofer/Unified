@@ -110,26 +110,21 @@ func testparse(inputFile *string, outputFile *string) {
 	program := astBuilder.VisitProgram(parseTree.(*parser.ProgramContext)).(*ast.Program)
 
 	fmt.Printf("AST built with %d top-level items\n", len(program.Items))
-
-	// 3. Generate LLVM IR
-	generator := codegen.NewCodeGenerator(filepath.Base(*inputFile))
-	llvmIR, err := generator.Generate(program)
-	if err != nil {
-		fmt.Printf("Error generating LLVM IR: %v\n", err)
-		os.Exit(1)
+	
+	// Print some information about each item
+	for i, item := range program.Items {
+		switch v := item.(type) {
+		case *ast.FunctionDecl:
+			fmt.Printf("Item %d: Function '%s' with %d parameters\n", i, v.Name, len(v.Parameters))
+		case *ast.ConstantDecl:
+			fmt.Printf("Item %d: Constant '%s'\n", i, v.Name)
+		default:
+			fmt.Printf("Item %d: %T\n", i, v)
+		}
 	}
 
-	// 4. Write the LLVM IR to a file
-	err = os.WriteFile(*outputFile, []byte(llvmIR), 0644)
-	if err != nil {
-		fmt.Printf("Error writing output file: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("Successfully compiled %s to %s\n", *inputFile, *outputFile)
-
-	// Clean up LLVM resources
-	generator.Dispose()
+	// Skip LLVM generation for now
+	fmt.Printf("Successfully parsed %s - LLVM generation skipped\n", *inputFile)
 }
 
 func main() {
@@ -138,6 +133,6 @@ func main() {
 	outputFile := flag.String("output", "", "Output LLVM IR file")
 	flag.Parse()
 
-	testparse(inputFile, outputFile)
-	//compile(inputFile, outputFile)
+	//testparse(inputFile, outputFile)
+	compile(inputFile, outputFile)
 }

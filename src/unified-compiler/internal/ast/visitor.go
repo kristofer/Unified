@@ -379,6 +379,18 @@ func (v *ASTBuilder) processWhereClause(ctx *parser.WhereClauseContext) []*Where
 	return constraints
 }
 
+// Helper to process argument lists
+func (v *ASTBuilder) processArgList(ctx *parser.ArgListContext) []Expression {
+	arguments := []Expression{}
+
+	for _, exprCtx := range ctx.AllExpr() {
+		expr := v.VisitExpr(exprCtx.(*parser.ExprContext)).(Expression)
+		arguments = append(arguments, expr)
+	}
+
+	return arguments
+}
+
 // VisitWhereConstraint builds a WhereConstraint node
 func (v *ASTBuilder) VisitWhereConstraint(ctx *parser.WhereConstraintContext) interface{} {
 	subjectType := v.VisitType_(ctx.Type_().(*parser.TypeContext)).(Type)
@@ -393,6 +405,10 @@ func (v *ASTBuilder) VisitWhereConstraint(ctx *parser.WhereConstraintContext) in
 
 // VisitBlock builds a Block node
 func (v *ASTBuilder) VisitBlock(ctx *parser.BlockContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+
 	statements := []Statement{}
 
 	for _, stmtCtx := range ctx.AllStatement() {
@@ -417,9 +433,29 @@ func (v *ASTBuilder) VisitBlock(ctx *parser.BlockContext) interface{} {
 
 // VisitExpr builds an Expression node
 func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+
 	// Handle primary expressions (identifiers, literals, etc.)
 	if primary := ctx.Primary(); primary != nil {
 		return v.VisitPrimary(primary.(*parser.PrimaryContext))
+	}
+
+	// Handle function calls: expr LPAREN argList? RPAREN
+	if len(ctx.AllExpr()) == 1 && ctx.LPAREN() != nil && ctx.RPAREN() != nil {
+		function := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
+		
+		var arguments []Expression
+		if ctx.ArgList() != nil {
+			arguments = v.processArgList(ctx.ArgList().(*parser.ArgListContext))
+		}
+		
+		return &CallExpr{
+			Function:  function,
+			Arguments: arguments,
+			Position:  v.getPosition(ctx),
+		}
 	}
 
 	// Binary operations (handle according to child count and operator)
@@ -436,8 +472,91 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 				Right:    right,
 				Position: v.getPosition(ctx),
 			}
+		} else if ctx.MINUS() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorSub,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.STAR() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorMul,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.DIV() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorDiv,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.MOD() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorMod,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.EQ() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorEq,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.NE() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorNe,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.LT() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorLt,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.LE() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorLe,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.GT() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorGt,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.GE() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorGe,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.AND() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorAnd,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.OR() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorOr,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
 		}
-		// Add similar cases for other binary operators...
 	}
 
 	// Unary operations
@@ -469,6 +588,10 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 
 // VisitPrimary handles primary expressions
 func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+
 	if literalCtx := ctx.Literal(); literalCtx != nil {
 		return v.VisitLiteral(literalCtx.(*parser.LiteralContext))
 	}
@@ -485,6 +608,10 @@ func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
 
 // VisitLiteral builds a Literal node
 func (v *ASTBuilder) VisitLiteral(ctx *parser.LiteralContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+
 	if ctx.IntLiteral() != nil {
 		return &Literal{
 			Kind:     LiteralInt,

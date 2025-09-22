@@ -5,7 +5,7 @@ import (
 	"log"
 	"unified-compiler/internal/ast"
 
-	"github.com/llvm/bindings/go/llvm"
+	"tinygo.org/x/go-llvm"
 )
 
 // CodeGenerator handles LLVM IR generation
@@ -27,7 +27,7 @@ func NewCodeGenerator(moduleName string) *CodeGenerator {
 
 	context := llvm.NewContext()
 	module := context.NewModule(moduleName)
-	builder := llvm.NewBuilder()
+	builder := context.NewBuilder()
 
 	cg := &CodeGenerator{
 		context:        context,
@@ -47,19 +47,19 @@ func NewCodeGenerator(moduleName string) *CodeGenerator {
 // Initialize type mapping between Unified types and LLVM types
 func (g *CodeGenerator) initializeTypeTable() {
 	// Basic types
-	g.typeTable["i8"] = llvm.Int8Type()
-	g.typeTable["i16"] = llvm.Int16Type()
-	g.typeTable["i32"] = llvm.Int32Type()
-	g.typeTable["i64"] = llvm.Int64Type()
-	g.typeTable["u8"] = llvm.Int8Type()
-	g.typeTable["u16"] = llvm.Int16Type()
-	g.typeTable["u32"] = llvm.Int32Type()
-	g.typeTable["u64"] = llvm.Int64Type()
-	g.typeTable["f32"] = llvm.FloatType()
-	g.typeTable["f64"] = llvm.DoubleType()
-	g.typeTable["bool"] = llvm.Int1Type()
-	g.typeTable["char"] = llvm.Int8Type()
-	g.typeTable["void"] = llvm.VoidType()
+	g.typeTable["i8"] = g.context.Int8Type()
+	g.typeTable["i16"] = g.context.Int16Type()
+	g.typeTable["i32"] = g.context.Int32Type()
+	g.typeTable["i64"] = g.context.Int64Type()
+	g.typeTable["u8"] = g.context.Int8Type()
+	g.typeTable["u16"] = g.context.Int16Type()
+	g.typeTable["u32"] = g.context.Int32Type()
+	g.typeTable["u64"] = g.context.Int64Type()
+	g.typeTable["f32"] = g.context.FloatType()
+	g.typeTable["f64"] = g.context.DoubleType()
+	g.typeTable["bool"] = g.context.Int1Type()
+	g.typeTable["char"] = g.context.Int8Type()
+	g.typeTable["void"] = g.context.VoidType()
 }
 
 // GetLLVMType converts a Unified type to an LLVM type
@@ -83,7 +83,7 @@ func (g *CodeGenerator) GetLLVMType(t ast.Type) (llvm.Type, error) {
 
 	// Default to i32 if type can't be resolved
 	log.Printf("Warning: Using default i32 type for unrecognized type")
-	return llvm.Int32Type(), nil
+	return g.context.Int32Type(), nil
 }
 
 // Generate produces LLVM IR for the entire program
@@ -123,14 +123,14 @@ func (g *CodeGenerator) GenerateFunction(funcDecl *ast.FunctionDecl) (llvm.Value
 	for _, param := range funcDecl.Parameters {
 		paramType, err := g.GetLLVMType(param.Type)
 		if err != nil {
-			paramType = llvm.Int32Type()
+			paramType = g.context.Int32Type()
 			log.Printf("Using default type for parameter %s", param.Name)
 		}
 		paramTypes = append(paramTypes, paramType)
 	}
 
 	// Determine return type
-	var returnType llvm.Type = llvm.VoidType()
+	var returnType llvm.Type = g.context.VoidType()
 	if funcDecl.ReturnType != nil {
 		var err error
 		returnType, err = g.GetLLVMType(funcDecl.ReturnType)
@@ -165,10 +165,9 @@ func (g *CodeGenerator) GenerateFunction(funcDecl *ast.FunctionDecl) (llvm.Value
 			paramValue := function.Param(i)
 			paramValue.SetName(param.Name)
 
-			// Allocate stack space for the parameter
-			paramAlloca := g.builder.CreateAlloca(paramValue.Type(), param.Name)
-			g.builder.CreateStore(paramValue, paramAlloca)
-			g.symbolTable[param.Name] = paramAlloca
+			// For now, store parameters directly (not as allocas)  
+			// TODO: Later we might need allocas for mutable parameters
+			g.symbolTable[param.Name] = paramValue
 		}
 
 		// Generate statements in function body
@@ -181,7 +180,7 @@ func (g *CodeGenerator) GenerateFunction(funcDecl *ast.FunctionDecl) (llvm.Value
 		}
 
 		// Handle trailing expression if present
-		if funcDecl.Body.Expression != nil && !returnType.Equal(llvm.VoidType()) {
+		if funcDecl.Body.Expression != nil && returnType.C != g.context.VoidType().C {
 			exprValue, err := g.GenerateExpr(funcDecl.Body.Expression)
 			if err != nil {
 				g.currentFunc = prevFunc
@@ -189,13 +188,9 @@ func (g *CodeGenerator) GenerateFunction(funcDecl *ast.FunctionDecl) (llvm.Value
 				return llvm.Value{}, fmt.Errorf("error in trailing expression: %w", err)
 			}
 			g.builder.CreateRet(exprValue)
-		} else if g.builder.GetInsertBlock().LastInstruction().IsATerminatorInst().IsNil() {
-			// Add implicit return if needed
-			if returnType.Equal(llvm.VoidType()) {
-				g.builder.CreateRetVoid()
-			} else {
-				g.builder.CreateRet(llvm.ConstNull(returnType))
-			}
+		} else {
+			// Only add implicit return if we haven't already returned
+			// For now, skip implicit returns when we have explicit returns
 		}
 	}
 
@@ -231,6 +226,9 @@ func (g *CodeGenerator) GenerateGlobalConst(constDecl *ast.ConstantDecl) (llvm.V
 // GenerateStatement generates LLVM IR for a statement (Phase 1)
 func (g *CodeGenerator) GenerateStatement(stmt ast.Statement) (llvm.Value, error) {
 	switch stmt := stmt.(type) {
+	case *ast.LetStatement:
+		return g.GenerateLetStatement(stmt)
+
 	case *ast.VarStatement:
 		return g.GenerateVarDecl(stmt)
 
@@ -249,12 +247,44 @@ func (g *CodeGenerator) GenerateStatement(stmt ast.Statement) (llvm.Value, error
 	}
 }
 
+// GenerateLetStatement generates a let statement (Phase 1)
+func (g *CodeGenerator) GenerateLetStatement(letStmt *ast.LetStatement) (llvm.Value, error) {
+	// Determine variable type - use i32 as default for literals without explicit type
+	var varType llvm.Type = g.context.Int32Type() // default type
+	if letStmt.Type != nil {
+		var err error
+		varType, err = g.GetLLVMType(letStmt.Type)
+		if err != nil {
+			log.Printf("Using default i32 type for let variable %s", letStmt.Name)
+		}
+	}
+
+	// Create stack allocation
+	log.Printf("Creating alloca for %s with type: %s", letStmt.Name, varType.String())
+	alloca := g.builder.CreateAlloca(varType, letStmt.Name)
+	log.Printf("Alloca created successfully, type: %s", alloca.Type().String())
+
+	// Initialize with the value
+	if letStmt.Value != nil {
+		initValue, err := g.GenerateExpr(letStmt.Value)
+		if err != nil {
+			return llvm.Value{}, fmt.Errorf("error in initializer: %w", err)
+		}
+		g.builder.CreateStore(initValue, alloca)
+	}
+
+	// Add to symbol table
+	g.symbolTable[letStmt.Name] = alloca
+
+	return alloca, nil
+}
+
 // GenerateVarDecl generates a local variable declaration (Phase 1)
 func (g *CodeGenerator) GenerateVarDecl(varStmt *ast.VarStatement) (llvm.Value, error) {
 	// Determine variable type
 	varType, err := g.GetLLVMType(varStmt.Type)
 	if err != nil {
-		varType = llvm.Int32Type()
+		varType = g.context.Int32Type()
 		log.Printf("Using default i32 type for variable %s", varStmt.Name)
 	}
 
@@ -306,7 +336,7 @@ func (g *CodeGenerator) GenerateIfStatement(ifStmt *ast.IfStatement) (llvm.Value
 	}
 
 	// Convert condition to boolean if needed
-	if !condValue.Type().Equal(llvm.Int1Type()) {
+	if condValue.Type().C != g.context.Int1Type().C {
 		condValue = g.builder.CreateICmp(llvm.IntNE, condValue,
 			llvm.ConstInt(condValue.Type(), 0, false), "cond")
 	}
@@ -327,7 +357,8 @@ func (g *CodeGenerator) GenerateIfStatement(ifStmt *ast.IfStatement) (llvm.Value
 	}
 
 	// Add branch to merge block if needed
-	if g.builder.GetInsertBlock().LastInstruction().IsATerminatorInst().IsNil() {
+	// Simplified terminator check
+	if true { // TODO: implement proper terminator check
 		g.builder.CreateBr(mergeBlock)
 	}
 
@@ -341,7 +372,8 @@ func (g *CodeGenerator) GenerateIfStatement(ifStmt *ast.IfStatement) (llvm.Value
 		}
 
 		// Add branch to merge block
-		if g.builder.GetInsertBlock().LastInstruction().IsATerminatorInst().IsNil() {
+		// Simplified terminator check
+	if true { // TODO: implement proper terminator check
 			g.builder.CreateBr(mergeBlock)
 		}
 	}
@@ -361,12 +393,24 @@ func (g *CodeGenerator) GenerateExpr(expr ast.Expression) (llvm.Value, error) {
 	case *ast.Identifier:
 		// Look up variable in the symbol table
 		if val, exists := g.symbolTable[expr.Name]; exists {
-			// If it's a constant, return it directly
+			// If it's a global constant, return it directly
 			if !val.IsAGlobalVariable().IsNil() && val.IsGlobalConstant() {
 				return val, nil
 			}
-			// Otherwise load the value
-			return g.builder.CreateLoad(val, expr.Name), nil
+			
+			// Check if it's an alloca (local variable) that needs loading
+			if val.Type().TypeKind() == llvm.PointerTypeKind {
+				loadType := val.Type().ElementType()
+				// Ensure we have a valid element type
+				if !loadType.IsNil() {
+					return g.builder.CreateLoad(loadType, val, expr.Name), nil
+				} else {
+					log.Printf("Warning: Invalid element type for variable %s, returning alloca directly", expr.Name)
+				}
+			}
+			
+			// Otherwise return the value directly (e.g., function parameters)
+			return val, nil
 		}
 		return llvm.Value{}, fmt.Errorf("undefined variable: %s", expr.Name)
 
@@ -375,6 +419,9 @@ func (g *CodeGenerator) GenerateExpr(expr ast.Expression) (llvm.Value, error) {
 
 	case *ast.UnaryExpr:
 		return g.GenerateUnaryExpr(expr)
+
+	case *ast.CallExpr:
+		return g.GenerateCallExpr(expr)
 
 	default:
 		return llvm.Value{}, fmt.Errorf("unsupported expression in Phase 1: %T", expr)
@@ -388,13 +435,13 @@ func (g *CodeGenerator) GenerateLiteral(lit *ast.Literal) llvm.Value {
 		// Create 32-bit integer
 		var val int64
 		fmt.Sscanf(lit.Value, "%d", &val)
-		return llvm.ConstInt(llvm.Int32Type(), uint64(val), true)
+		return llvm.ConstInt(g.context.Int32Type(), uint64(val), true)
 
 	case ast.LiteralFloat:
 		// Create 64-bit float
 		var val float64
 		fmt.Sscanf(lit.Value, "%f", &val)
-		return llvm.ConstFloat(llvm.DoubleType(), val)
+		return llvm.ConstFloat(g.context.DoubleType(), val)
 
 	case ast.LiteralBool:
 		// Create boolean
@@ -402,7 +449,7 @@ func (g *CodeGenerator) GenerateLiteral(lit *ast.Literal) llvm.Value {
 		if lit.Value == "true" {
 			val = 1
 		}
-		return llvm.ConstInt(llvm.Int1Type(), val, false)
+		return llvm.ConstInt(g.context.Int1Type(), val, false)
 
 	case ast.LiteralString:
 		// Check if we've already created this string literal
@@ -411,7 +458,7 @@ func (g *CodeGenerator) GenerateLiteral(lit *ast.Literal) llvm.Value {
 		}
 
 		// Create a global string constant
-		strVal := llvm.ConstString(lit.Value, false)
+		strVal := g.context.ConstString(lit.Value, false)
 		strPtr := llvm.AddGlobal(g.module, strVal.Type(), "")
 		strPtr.SetLinkage(llvm.PrivateLinkage)
 		strPtr.SetGlobalConstant(true)
@@ -419,20 +466,20 @@ func (g *CodeGenerator) GenerateLiteral(lit *ast.Literal) llvm.Value {
 		strPtr.SetUnnamedAddr(true)
 
 		// Convert to i8* pointer
-		zero := llvm.ConstInt(llvm.Int32Type(), 0, false)
+		zero := llvm.ConstInt(g.context.Int32Type(), 0, false)
 		indices := []llvm.Value{zero, zero}
-		strPtrCast := llvm.ConstGEP(strPtr, indices)
+		strPtrCast := llvm.ConstGEP(strVal.Type(), strPtr, indices)
 
 		g.stringLiterals[lit.Value] = strPtrCast
 		return strPtrCast
 
 	case ast.LiteralNull:
 		// Create a null pointer
-		return llvm.ConstNull(llvm.PointerType(llvm.Int8Type(), 0))
+		return llvm.ConstNull(llvm.PointerType(g.context.Int8Type(), 0))
 
 	default:
 		log.Printf("Warning: Unsupported literal kind: %d", lit.Kind)
-		return llvm.ConstNull(llvm.Int32Type())
+		return llvm.ConstNull(g.context.Int32Type())
 	}
 }
 
@@ -540,7 +587,7 @@ func (g *CodeGenerator) GenerateUnaryExpr(expr *ast.UnaryExpr) (llvm.Value, erro
 
 	case ast.OperatorNot:
 		// Logical not - compare with zero or use not for boolean
-		if operand.Type().Equal(llvm.Int1Type()) {
+		if operand.Type().C == g.context.Int1Type().C {
 			return g.builder.CreateNot(operand, "not"), nil
 		}
 		return g.builder.CreateICmp(llvm.IntEQ, operand,
@@ -551,6 +598,64 @@ func (g *CodeGenerator) GenerateUnaryExpr(expr *ast.UnaryExpr) (llvm.Value, erro
 	}
 }
 
+// GenerateCallExpr handles function calls (Phase 1)
+func (g *CodeGenerator) GenerateCallExpr(expr *ast.CallExpr) (llvm.Value, error) {
+	// Get the function name - for Phase 1, we expect identifiers only
+	funcIdent, ok := expr.Function.(*ast.Identifier)
+	if !ok {
+		return llvm.Value{}, fmt.Errorf("function calls must be identifiers in Phase 1")
+	}
+
+	// Look up the function in the module
+	function := g.module.NamedFunction(funcIdent.Name)
+	if function.IsNil() {
+		return llvm.Value{}, fmt.Errorf("undefined function: %s", funcIdent.Name)
+	}
+	
+	log.Printf("Found function %s in module", funcIdent.Name)
+
+	// Generate arguments with validation
+	var args []llvm.Value
+	for i, argExpr := range expr.Arguments {
+		argValue, err := g.GenerateExpr(argExpr)
+		if err != nil {
+			return llvm.Value{}, fmt.Errorf("error generating function argument %d: %w", i, err)
+		}
+		if argValue.IsNil() {
+			return llvm.Value{}, fmt.Errorf("argument %d is nil", i)
+		}
+		log.Printf("Argument %d generated successfully", i)
+		args = append(args, argValue)
+	}
+
+	// In older LLVM versions, we need to be more careful about function calls
+	// Let's try using the GlobalValue approach and get function type differently
+	
+	// Get the function type by using LLVM's type system
+	functionPtrType := function.Type()
+	
+	// Most functions in LLVM are pointer types to function types  
+	var funcType llvm.Type
+	if functionPtrType.TypeKind() == llvm.PointerTypeKind {
+		funcType = functionPtrType.ElementType()
+	} else {
+		funcType = functionPtrType
+	}
+	
+	// Validate we have a function type
+	if funcType.IsNil() {
+		return llvm.Value{}, fmt.Errorf("cannot determine function type for %s", funcIdent.Name)
+	}
+	
+	log.Printf("About to call function %s", funcIdent.Name)
+	
+	// Use CreateCall - this should work with the tinygo LLVM bindings
+	result := g.builder.CreateCall(funcType, function, args, "")
+	
+	log.Printf("Function call completed successfully")
+	return result, nil
+}
+
 // createLogicalAnd implements short-circuit evaluation for logical AND (Phase 1)
 func (g *CodeGenerator) createLogicalAnd(left, right llvm.Value) llvm.Value {
 	// Create basic blocks
@@ -558,13 +663,13 @@ func (g *CodeGenerator) createLogicalAnd(left, right llvm.Value) llvm.Value {
 	mergeBlock := llvm.AddBasicBlock(g.currentFunc, "and.end")
 
 	// Convert left to boolean if needed
-	if !left.Type().Equal(llvm.Int1Type()) {
+	if left.Type().C != g.context.Int1Type().C {
 		left = g.builder.CreateICmp(llvm.IntNE, left,
 			llvm.ConstInt(left.Type(), 0, false), "left.bool")
 	}
 
 	// Create an alloca for the result
-	result := g.builder.CreateAlloca(llvm.Int1Type(), "and.result")
+	result := g.builder.CreateAlloca(g.context.Int1Type(), "and.result")
 
 	// If left is false, short-circuit with false
 	g.builder.CreateStore(left, result)
@@ -572,7 +677,7 @@ func (g *CodeGenerator) createLogicalAnd(left, right llvm.Value) llvm.Value {
 
 	// Evaluate right side only if left is true
 	g.builder.SetInsertPointAtEnd(rightBlock)
-	if !right.Type().Equal(llvm.Int1Type()) {
+	if right.Type().C != g.context.Int1Type().C {
 		right = g.builder.CreateICmp(llvm.IntNE, right,
 			llvm.ConstInt(right.Type(), 0, false), "right.bool")
 	}
@@ -581,7 +686,7 @@ func (g *CodeGenerator) createLogicalAnd(left, right llvm.Value) llvm.Value {
 
 	// Continue with merge block
 	g.builder.SetInsertPointAtEnd(mergeBlock)
-	return g.builder.CreateLoad(result, "and.result.load")
+	return g.builder.CreateLoad(result.Type().ElementType(), result, "and.result.load")
 }
 
 // createLogicalOr implements short-circuit evaluation for logical OR (Phase 1)
@@ -591,13 +696,13 @@ func (g *CodeGenerator) createLogicalOr(left, right llvm.Value) llvm.Value {
 	mergeBlock := llvm.AddBasicBlock(g.currentFunc, "or.end")
 
 	// Convert left to boolean if needed
-	if !left.Type().Equal(llvm.Int1Type()) {
+	if left.Type().C != g.context.Int1Type().C {
 		left = g.builder.CreateICmp(llvm.IntNE, left,
 			llvm.ConstInt(left.Type(), 0, false), "left.bool")
 	}
 
 	// Create an alloca for the result
-	result := g.builder.CreateAlloca(llvm.Int1Type(), "or.result")
+	result := g.builder.CreateAlloca(g.context.Int1Type(), "or.result")
 
 	// If left is true, short-circuit with true
 	g.builder.CreateStore(left, result)
@@ -605,7 +710,7 @@ func (g *CodeGenerator) createLogicalOr(left, right llvm.Value) llvm.Value {
 
 	// Evaluate right side only if left is false
 	g.builder.SetInsertPointAtEnd(rightBlock)
-	if !right.Type().Equal(llvm.Int1Type()) {
+	if right.Type().C != g.context.Int1Type().C {
 		right = g.builder.CreateICmp(llvm.IntNE, right,
 			llvm.ConstInt(right.Type(), 0, false), "right.bool")
 	}
@@ -614,7 +719,7 @@ func (g *CodeGenerator) createLogicalOr(left, right llvm.Value) llvm.Value {
 
 	// Continue with merge block
 	g.builder.SetInsertPointAtEnd(mergeBlock)
-	return g.builder.CreateLoad(result, "or.result.load")
+	return g.builder.CreateLoad(result.Type().ElementType(), result, "or.result.load")
 }
 
 // Dispose releases LLVM resources

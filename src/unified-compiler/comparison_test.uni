@@ -1,0 +1,13 @@
+fn compare(a: i32, b: i32) -> i32 {
+    if a == b {
+        return 0;
+    }
+    if a < b {
+        return -1;
+    }
+    return 1;
+}
+
+fn main() -> i32 {
+    return compare(5, 10);
+}
