@@ -271,14 +271,31 @@ vm.ip = int(inst.Operand)
 vm.ip++
 }
 
-case bytecode.OpCall:
-// For Phase 1, simplified function call
-// inst.Operand is the function entry point
-vm.callStack = append(vm.callStack, CallFrame{
-returnIP: vm.ip + 1,
-locals:   make([]bytecode.Value, 100),
-})
-vm.ip = int(inst.Operand)
+	case bytecode.OpCall:
+		// Function call with arguments
+		// inst.Operand is the function entry point
+		// inst.ArgCount is the number of arguments
+		// Arguments are on the stack (in order)
+		
+		// Pop arguments from stack (in reverse order since stack is LIFO)
+		args := make([]bytecode.Value, inst.ArgCount)
+		for i := inst.ArgCount - 1; i >= 0; i-- {
+			args[i] = vm.stack.Pop()
+		}
+		
+		// Create new call frame
+		frame := CallFrame{
+			returnIP: vm.ip + 1,
+			locals:   make([]bytecode.Value, 100),
+		}
+		
+		// Set arguments as local variables
+		for i, arg := range args {
+			frame.locals[i] = arg
+		}
+		
+		vm.callStack = append(vm.callStack, frame)
+		vm.ip = int(inst.Operand)
 
 case bytecode.OpReturn:
 // Return without value

@@ -363,7 +363,7 @@ return fmt.Errorf("undefined function: %s", funcIdent.Name)
 }
 
 // Generate call with argument count
-g.bytecode.AddInstruction(OpCall, int64(funcIdx))
+g.bytecode.AddInstructionWithArgCount(OpCall, int64(funcIdx), len(expr.Arguments))
 
 return nil
 }

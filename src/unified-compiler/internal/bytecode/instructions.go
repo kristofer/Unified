@@ -58,6 +58,7 @@ OpNop                   // No operation
 type Instruction struct {
 Op      OpCode
 Operand int64 // Generic operand (index, offset, constant, etc.)
+	ArgCount int  // For function calls: number of arguments
 }
 
 // String returns a human-readable representation of the instruction
@@ -254,4 +255,9 @@ return false
 default:
 return false
 }
+}
+
+// AddInstructionWithArgCount adds an instruction with argument count
+func (b *Bytecode) AddInstructionWithArgCount(op OpCode, operand int64, argCount int) {
+b.Instructions = append(b.Instructions, Instruction{Op: op, Operand: operand, ArgCount: argCount})
 }
