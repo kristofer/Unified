@@ -1,8 +1,27 @@
-# Unified
-Claude and I designed a language!
-I'd love to design a programming language! This is a fascinating thought experiment.
+# Unified Programming Language
 
-If I were to create a new programming language that unifies concepts across imperative languages while maintaining their strengths, here's what I'd envision:
+[![Status](https://img.shields.io/badge/status-in%20development-yellow)](docs/PROJECT_STATUS.md)
+[![Phase](https://img.shields.io/badge/phase-0%20planning-blue)](docs/planning/PHASED_ROADMAP.md)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+A modern systems programming language that combines memory safety, performance, and developer ergonomics.
+
+## 📋 Quick Links
+
+- **[Project Status](docs/PROJECT_STATUS.md)** - Current implementation status
+- **[Phased Roadmap](docs/planning/PHASED_ROADMAP.md)** - Complete implementation plan
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
+- **[Copilot Guide](docs/COPILOT_GUIDE.md)** - For AI-assisted development
+- **[Architecture](docs/design/ARCHITECTURE.md)** - Compiler architecture
+- **[Language Spec](spec/UnifiedSpecifiation.md)** - Complete language specification
+
+## 🎯 Current Status
+
+**Phase 0: Project Foundation and Planning** - 90% Complete
+
+The project has comprehensive documentation and planning in place. Phase 1 (Minimal Compiler Pipeline) will begin once Phase 0 is complete. See [PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for details.
+
+## 🚀 Overview
 
 # Unified
 
@@ -112,6 +131,60 @@ Unified is a modern systems programming language that combines memory safety, pe
 The language emphasizes memory safety without garbage collection overhead, expressive but pragmatic syntax, and powerful concurrency primitives, aiming to be suitable for systems programming while maintaining developer productivity.
 
 This summary captures the key aspects of Unified we've designed, including its syntax, semantics, memory model, type system, concurrency features, and compilation strategy.
+
+## 🏗️ Development
+
+### Getting Started
+
+**Prerequisites:**
+- Go 1.21+
+- ANTLR4
+- Make
+
+**Build the compiler:**
+```bash
+cd src/unified-compiler
+make all  # Generate parser and build compiler
+make test # Run tests
+```
+
+**Current capabilities:**
+- ✅ Parser infrastructure (ANTLR4 grammar)
+- ✅ Basic AST structures
+- ✅ Project organization and build system
+- ❌ Code generation (blocked by LLVM bindings)
+- ❌ Executable programs (Phase 1 goal)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development instructions.
+
+### Phased Development
+
+Unified is being built in 15 carefully planned phases:
+
+- **Phase 0** (Current): Project foundation and planning
+- **Phase 1**: Minimal compiler pipeline
+- **Phase 2**: Basic expressions and arithmetic
+- **Phase 3**: Control flow
+- **Phases 4-15**: Functions, types, memory management, concurrency, tooling, and more
+
+Each phase has specific goals, test requirements, and success criteria. See [PHASED_ROADMAP.md](docs/planning/PHASED_ROADMAP.md) for the complete plan.
+
+### For AI Agents
+
+This project is optimized for development with GitHub Copilot and other AI coding assistants:
+
+- Read [COPILOT_GUIDE.md](docs/COPILOT_GUIDE.md) for guidance
+- Follow the phased roadmap strictly
+- Write tests before implementation
+- Document as you code
+
+### Reference Project
+
+This project follows best practices from [kristofer/smog](https://github.com/kristofer/smog), an excellent example of:
+- Well-structured documentation
+- Phased implementation
+- Comprehensive testing
+- Clear architecture
 
 # Implementation Notes
 
