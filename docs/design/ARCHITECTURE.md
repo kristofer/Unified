@@ -203,7 +203,7 @@ type BinaryExpr struct {
 
 **Files**:
 - `generator.go` - Main code generator
-- `genrator_test.go` - Code generation tests
+- `generator_test.go` - Code generation tests
 
 **Current Status**:
 - LLVM bindings need to be fixed/replaced
@@ -279,7 +279,7 @@ src/unified-compiler/
 │   │   └── debug_listener.go   # Debug utilities
 │   ├── codegen/
 │   │   ├── generator.go        # Code generator
-│   │   └── genrator_test.go    # Tests
+│   │   └── generator_test.go    # Tests
 │   └── semantic/                # Future: semantic analysis
 ├── test/                        # Test programs (.uni files)
 │   ├── fib.uni
