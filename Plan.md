@@ -8,89 +8,71 @@
 3. **AST Building**: Visitor pattern converts parse trees to AST structures
 4. **Project Structure**: Well-organized Go modules and build system
 
-### ❌ **Major Blockers**
+### 🔄 **Architecture Change**
 
-#### 1. **LLVM Integration Broken** 
-- The LLVM Go bindings (`github.com/llvm/bindings/go/llvm`) don't exist
-- Code generation is completely non-functional
-- Need to find working LLVM bindings or alternative backends
+**Decision**: Switch from LLVM-based code generation to a custom Go-based Virtual Machine (VM)
 
-#### 2. **Grammar Incomplete**
+**Rationale**:
+- **Portability**: VM works anywhere Go runs (no LLVM dependency)
+- **Simplicity**: Easier to implement and maintain than LLVM bindings
+- **Faster Development**: No need to deal with LLVM binding issues
+- **Better for Iteration**: Simpler debugging and testing
+- **Still Good Performance**: VM performance is competitive with interpreted languages
+
+### ❌ **Previous Blockers (Now Addressed)**
+
+#### 1. **LLVM Integration Issues** (RESOLVED)
+- ~~The LLVM Go bindings don't exist or are poorly maintained~~
+- **Solution**: Use custom VM instead of LLVM
+- No external dependencies needed
+
+## 🎯 **Roadmap to Working System**
+
+### **Phase 1: VM-Based Minimal Compiler (2-3 weeks)**
+1. **Design VM Architecture**
+   - Define bytecode instruction set
+   - Design stack-based VM structure
+   - Plan runtime data structures
+
+2. **Implement Bytecode Generator**
+   - Convert AST to bytecode instructions
+   - Handle basic expressions and statements
+   - Support function definitions and calls
+
+3. **Implement Virtual Machine**
+   - Create stack-based execution engine
+   - Implement instruction execution
+   - Add runtime support (I/O, etc.)
+
+4. **Test and Validate**
+   - Ensure minimal programs work
+   - Test arithmetic and control flow
+   - Validate against test suite
+
+#### 2. **Grammar Needs Completion**
 - Missing many essential language features from the `.uni` test files
 - Type syntax issues (`Int` vs `i32`)
 - Range operators (`..=`) not fully implemented
 - Method call syntax incomplete
-- For loop syntax issues
+- For loop syntax needs work
 
-#### 3. **AST Visitor Incomplete**
-- Many expression types cause panics 
-- Binary/unary operator handling incomplete
-- Complex expressions not properly parsed
-
-#### 4. **No Runtime System**
-- No way to execute compiled code
-- Missing print functions, basic I/O
-- No standard library bindings
-
-## 🎯 **Roadmap to Working System**
-
-### **Phase 1: Fix Core Parser (1-2 weeks)**
-1. **Fix LLVM Bindings**
-   - Replace with `tinygo-org/go-llvm` or similar working bindings
-   - Or implement a simpler C-based backend initially
-
-2. **Complete Essential Grammar**
-   - Add missing operators and expressions 
-   - Fix type syntax consistency
-   - Add basic for/while loop support
-   - Add simple method calls
-
-3. **Fix AST Visitor**
-   - Add null checks and error handling
-   - Complete binary/unary expression parsing
-   - Add missing statement types
-
-### **Phase 2: Minimal Code Generation (1-2 weeks)**  
-1. **Basic LLVM Integration**
-   - Generate simple functions
-   - Handle basic arithmetic
-   - Support return statements
-   - Add variable declarations/assignments
-
-2. **Minimal Runtime**
-   - Link with C runtime for basic I/O
-   - Add simple print function
-   - Handle program entry point
-
-### **Phase 3: Essential Features (2-3 weeks)**
-1. **Control Flow**
-   - If/else statements
-   - Basic loops (for, while)
-   - Function calls
-
-2. **Data Types**
-   - Integers, floats, booleans
-   - Basic strings
-   - Simple arrays/lists
-
-### **Phase 4: Target Programs (1 week)**
-1. **Make Test Programs Work**
-   - Fix fibonacci program
-   - Fix fizzbuzz program
-   - Add any missing language features they need
+#### 3. **AST Visitor Needs Improvement**
+- Some expression types cause issues
+- Binary/unary operator handling needs completion
+- Complex expressions need proper parsing
 
 ## 🚧 **Immediate Next Steps**
 
 To get started right away:
 
-1. **Fix LLVM bindings** - Replace with `github.com/llir/llvm` or `tinygo-org/go-llvm`
-2. **Create minimal test programs** that work with current grammar
-3. **Get basic code generation working** for simple arithmetic
-4. **Add runtime integration** so programs can actually run
+1. **Design VM bytecode instruction set** - Define simple, stack-based instructions
+2. **Implement bytecode generator** - Convert AST to bytecode
+3. **Create virtual machine** - Stack-based execution engine
+4. **Test with minimal program** - Get `fn main() -> i32 { return 42 }` working
 
-The project has a solid foundation but needs significant work on the code generation and missing language features. The good news is that the parser architecture is sound, so it's mainly about filling in the gaps systematically.
+The project has a solid foundation with the parser working. Now we need to implement the VM backend to make programs executable. The VM approach is much simpler than LLVM and will let us iterate quickly.
 
-**Estimated timeline to working system: 4-6 weeks** with focused development effort.
+**Estimated timeline to working system: 2-3 weeks** with focused development effort on the VM.
 
 ## Test Programs to Target
 

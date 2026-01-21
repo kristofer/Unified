@@ -1,10 +1,10 @@
 # Unified Compiler Architecture
 
-Version 1.0.0
+Version 2.0.0
 
 ## Overview
 
-This document describes the architecture of the Unified Programming Language compiler. The compiler is built in Go and uses ANTLR4 for parsing, with LLVM (or WebAssembly) as the code generation backend.
+This document describes the architecture of the Unified Programming Language compiler. The compiler is built in Go and uses ANTLR4 for parsing, with a custom virtual machine (VM) written in Go as the execution backend. This VM-based approach provides excellent portability while maintaining good performance.
 
 ## Architecture Diagram
 
@@ -40,19 +40,20 @@ This document describes the architecture of the Unified Programming Language com
          │ validated AST
          ▼
 ┌─────────────────┐
-│     Code        │
+│   Bytecode      │
 │   Generator     │
 └────────┬────────┘
-         │ LLVM IR / WASM
+         │ bytecode
          ▼
 ┌─────────────────┐
-│   Backend       │
-│  (LLVM/WASM)    │
+│  Virtual        │
+│  Machine (VM)   │
 └────────┬────────┘
-         │ executable
+         │ execution
          ▼
 ┌─────────────────┐
-│   Executable    │
+│  Program        │
+│  Output         │
 └─────────────────┘
 ```
 
@@ -180,57 +181,73 @@ type BinaryExpr struct {
 4. **Borrow Checking**: Validate ownership and borrowing rules
 5. **Control Flow Analysis**: Validate control flow (returns, loops, etc.)
 
-### 5. Code Generator
+### 5. Bytecode Generator
 
-**Location**: `src/unified-compiler/internal/codegen/`
+**Location**: `src/unified-compiler/internal/bytecode/`
 
-**Purpose**: Generate LLVM IR (or WebAssembly) from AST
+**Purpose**: Generate bytecode instructions from AST
 
 **Input**: Validated AST
 
-**Output**: LLVM IR (.ll file) or WebAssembly (.wasm file)
+**Output**: Bytecode instruction stream
 
-**Technology**: LLVM bindings or WASM generation library
+**Technology**: Custom Go implementation
 
 **Key Responsibilities**:
-- Generate LLVM IR for all AST nodes
-- Manage LLVM context, module, and builder
-- Generate function definitions
-- Generate variable allocations
-- Generate control flow (branches, loops)
-- Handle type conversions
-- Optimize code (delegated to LLVM)
+- Translate AST nodes to bytecode instructions
+- Manage bytecode instruction stream
+- Handle constant pool for literals
+- Generate stack-based operations
+- Emit function definitions and calls
+- Handle control flow (branches, loops)
 
 **Files**:
-- `generator.go` - Main code generator
+- `generator.go` - Main bytecode generator
+- `instructions.go` - Bytecode instruction definitions
 - `generator_test.go` - Code generation tests
 
-**Current Status**:
-- LLVM bindings need to be fixed/replaced
-- Basic structure in place
-- Needs implementation for most language features
+**Bytecode Features**:
+- Stack-based virtual machine architecture
+- Simple instruction set for Phase 1
+- Support for basic arithmetic and control flow
+- Function call/return mechanisms
 
-### 6. Backend (LLVM or WASM)
+### 6. Virtual Machine (VM)
 
-**Purpose**: Compile LLVM IR to native code or execute WASM
+**Location**: `src/unified-compiler/internal/vm/`
 
-**Options**:
+**Purpose**: Execute bytecode instructions
 
-#### Option A: LLVM Backend
-- **Pros**: Native performance, mature toolchain, wide platform support
-- **Cons**: Complex LLVM bindings, harder to integrate
-- **Output**: Native executable for target platform
+**Input**: Bytecode instruction stream
 
-#### Option B: WebAssembly Backend
-- **Pros**: Simpler, better Go support, portable
-- **Cons**: May need runtime, newer ecosystem
-- **Output**: .wasm file for WASM runtime
+**Output**: Program execution and output
 
-**Decision**: To be made in Phase 1 (see PHASED_ROADMAP.md)
+**Technology**: Custom Go-based stack VM
+
+**Key Responsibilities**:
+- Execute bytecode instructions
+- Manage execution stack
+- Handle function calls and returns
+- Manage local variables
+- Provide runtime library functions
+- Handle program I/O
+
+**Files**:
+- `vm.go` - Virtual machine implementation
+- `stack.go` - Execution stack management
+- `runtime.go` - Runtime library functions
+- `vm_test.go` - VM execution tests
+
+**VM Architecture**:
+- Stack-based execution model
+- Register-less design for simplicity
+- Built-in runtime functions (print, etc.)
+- Garbage collection (Go's GC)
+- Portable across all Go-supported platforms
 
 ## Data Flow
 
-### Compilation Pipeline
+### Compilation and Execution Pipeline
 
 ```
 1. Read source file
@@ -238,8 +255,8 @@ type BinaryExpr struct {
 3. Parser: tokens → parse tree
 4. AST Builder: parse tree → AST
 5. Semantic Analysis: AST → validated AST
-6. Code Generator: validated AST → LLVM IR / WASM
-7. Backend: LLVM IR → executable OR WASM → runtime
+6. Bytecode Generator: validated AST → bytecode
+7. Virtual Machine: bytecode → execution and output
 ```
 
 ### Error Handling
@@ -249,8 +266,8 @@ Errors can occur at each stage:
 1. **Lexer Errors**: Invalid characters, malformed literals
 2. **Parser Errors**: Syntax errors, unexpected tokens
 3. **Semantic Errors**: Type errors, undefined variables, borrow check failures
-4. **Code Generation Errors**: Invalid IR generation
-5. **Backend Errors**: LLVM compilation errors
+4. **Bytecode Generation Errors**: Invalid instruction generation
+5. **VM Runtime Errors**: Division by zero, stack overflow, type errors
 
 Each error should include:
 - File name
@@ -277,17 +294,23 @@ src/unified-compiler/
 │   │   ├── unifiedparser_*.go  # Generated parser (from ANTLR)
 │   │   ├── debug_visitor.go    # Debug utilities
 │   │   └── debug_listener.go   # Debug utilities
-│   ├── codegen/
-│   │   ├── generator.go        # Code generator
-│   │   └── generator_test.go    # Tests
-│   └── semantic/                # Future: semantic analysis
-├── test/                        # Test programs (.uni files)
+│   ├── bytecode/
+│   │   ├── generator.go        # Bytecode generator
+│   │   ├── instructions.go     # Instruction definitions
+│   │   └── generator_test.go   # Tests
+│   ├── vm/
+│   │   ├── vm.go              # Virtual machine
+│   │   ├── stack.go           # Execution stack
+│   │   ├── runtime.go         # Runtime library
+│   │   └── vm_test.go         # Tests
+│   └── semantic/               # Future: semantic analysis
+├── test/                       # Test programs (.uni files)
 │   ├── fib.uni
 │   └── fizz.uni
 ├── scripts/
 │   └── generate.sh             # Parser generation script
-├── Makefile                     # Build automation
-└── go.mod                       # Go module definition
+├── Makefile                    # Build automation
+└── go.mod                      # Go module definition
 ```
 
 ## Design Decisions
@@ -316,12 +339,30 @@ src/unified-compiler/
 - Simple, readable syntax
 - Great standard library
 - Cross-platform support
+- No need for external toolchains
+- Easy to embed a VM
 
 **Cons**:
 - Less mature compiler ecosystem than C++
-- LLVM bindings are less maintained
 
-**Decision**: Use Go for development velocity and simplicity
+**Decision**: Use Go for development velocity, simplicity, and VM portability
+
+### Why a Virtual Machine?
+
+**Pros**:
+- Highly portable - works anywhere Go runs
+- Simpler implementation than native code generation
+- Easier debugging and testing
+- No external dependencies (like LLVM)
+- Faster compilation (no LLVM optimization passes)
+- Better for iterative development
+- Can add JIT compilation later if needed
+
+**Cons**:
+- Slower execution than native code (but still quite fast)
+- Additional runtime overhead
+
+**Decision**: Use a custom Go-based VM for portability and simplicity
 
 ### AST vs Parse Tree
 
@@ -347,8 +388,9 @@ To add a new language feature:
 2. **AST**: Add new node types to ast.go
 3. **Visitor**: Update visitor.go to build new nodes
 4. **Semantic**: Add semantic checks (when implemented)
-5. **Code Gen**: Add code generation for new nodes
-6. **Tests**: Add tests for all stages
+5. **Bytecode Gen**: Add bytecode generation for new nodes
+6. **VM**: Add VM support for new bytecode instructions
+7. **Tests**: Add tests for all stages
 
 ### Plugin Architecture (Future)
 
@@ -372,13 +414,14 @@ Optimizations:
 
 ### Runtime Performance
 
-Target: Within 2x of optimized C for compute-intensive tasks
+Target: Competitive with interpreted languages like Python
 
 Strategies:
-- Leverage LLVM optimizations
-- Efficient memory layout
-- Zero-cost abstractions
-- Inline optimization hints
+- Efficient bytecode design
+- Stack-based VM for simplicity
+- Minimal instruction overhead
+- Future: Add JIT compilation for hot paths
+- Future: Inline caching for method calls
 
 ## Testing Strategy
 
@@ -388,7 +431,8 @@ Test each component in isolation:
 - Lexer tests: Token recognition
 - Parser tests: Parse tree construction
 - AST tests: AST node creation
-- Code gen tests: LLVM IR generation
+- Bytecode gen tests: Bytecode generation
+- VM tests: Instruction execution
 
 ### Integration Tests
 
@@ -407,9 +451,9 @@ Performance benchmarks:
 ## Future Enhancements
 
 ### Phase 1
-- Fix/replace LLVM bindings
-- Implement basic code generation
-- Create minimal working compiler
+- Implement basic bytecode generator
+- Create stack-based virtual machine
+- Support minimal working compiler
 
 ### Phase 2-5
 - Complete language features
@@ -419,7 +463,7 @@ Performance benchmarks:
 
 ### Phase 6+
 - Advanced features (generics, traits, etc.)
-- Optimization passes
+- JIT compilation for performance
 - Developer tooling (REPL, debugger)
 - Standard library
 
@@ -428,11 +472,11 @@ See `docs/planning/PHASED_ROADMAP.md` for complete plan.
 ## References
 
 - [ANTLR4 Documentation](https://github.com/antlr/antlr4/blob/master/doc/index.md)
-- [LLVM Documentation](https://llvm.org/docs/)
-- [Go LLVM Bindings](https://pkg.go.dev/github.com/llir/llvm)
+- [Virtual Machine Design](https://craftinginterpreters.com/a-virtual-machine.html)
 - [Unified Specification](../../spec/UnifiedSpecifiation.md)
 - [Phased Roadmap](../planning/PHASED_ROADMAP.md)
 
 ## Version History
 
-- **v1.0** (January 2026): Initial architecture document
+- **v2.0** (January 2026): Changed to VM-based architecture
+- **v1.0** (January 2026): Initial architecture document (LLVM-based)

@@ -1,12 +1,12 @@
 # Unified Programming Language Specification
 
-Version 1.0.0
+Version 2.0.0
 
 ## 1. Introduction
 
 Unified is a modern systems programming language designed to combine memory safety, performance, and developer ergonomics. It draws inspiration from languages like Rust, Go, Swift, and Elixir while establishing its own unique approach to solving common programming challenges.
 
-This specification is intended for compiler developers implementing the Unified language with LLVM as a backend.
+This specification is intended for compiler developers implementing the Unified language with a custom virtual machine (VM) backend written in Go. The VM-based approach provides excellent portability while maintaining good performance.
 
 ## 2. Design Goals
 
