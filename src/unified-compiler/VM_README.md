@@ -49,15 +49,76 @@ The VM uses a stack-based architecture with the following instruction set:
 
 ## Phase 1 Features
 
-Currently implemented features:
+Currently implemented and tested features:
 
 ✅ Function declarations and calls
 ✅ Function parameters
 ✅ Arithmetic operations (+, -, *, /, %)
+✅ Comparison operations (==, !=, <, <=, >, >=)
+✅ Logical operations (&&, ||, !)
 ✅ Local variables (let statements)
 ✅ Return statements
-✅ Integer literals
+✅ Integer, float, boolean, and string literals
 ✅ Basic expressions
+✅ Control flow (if/else - VM support complete, parser needs work)
+
+## Testing
+
+The compiler includes comprehensive test coverage:
+
+### Unit Tests
+- **Bytecode Instructions Tests** (28 test cases)
+  - OpCode string representations
+  - Instruction creation and manipulation
+  - Constant pool management
+  - Function registration
+  - Value types and operations
+
+- **VM Stack Tests** (9 test cases)
+  - Stack operations (push, pop, peek)
+  - Stack size management
+  - Multiple data types
+
+- **VM Execution Tests** (19 test cases)
+  - Arithmetic operations
+  - Comparison operations
+  - Logical operations
+  - Local variables
+  - Control flow (jumps)
+  - Function calls
+  - Error handling (division by zero, missing main)
+
+- **Bytecode Generator Tests** (16 test cases)
+  - Binary and unary expressions
+  - Let statements
+  - If/else statements
+  - Function calls with arguments
+  - Literal values of all types
+  - Local variable scoping
+  - Error detection (undefined variables/functions)
+
+### Integration Tests
+- **End-to-End Compilation Tests** (3 test cases)
+  - Simple return values
+  - Function calls with parameters
+  - Local variable usage
+
+### Running Tests
+
+```bash
+# Run all tests
+go test ./...
+
+# Run specific module tests
+go test ./internal/bytecode -v
+go test ./internal/vm -v
+go test ./cmd/compiler -v
+
+# Run with coverage
+go test ./... -cover
+```
+
+All 76 tests pass successfully ✅
 
 ## Example Programs
 

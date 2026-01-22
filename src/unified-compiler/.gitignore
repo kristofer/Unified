@@ -1,0 +1,37 @@
+# Binaries
+bin/
+*.exe
+*.out
+
+# Test binaries
+*_test
+unified-test
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+
+# Go build cache
+go.sum
+
+# Parser generated files
+internal/parser/Unified*.go
+internal/parser/*.interp
+internal/parser/*.tokens
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage
+*.out
+coverage.html
