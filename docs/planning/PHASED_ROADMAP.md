@@ -90,13 +90,13 @@ Establish project structure, documentation, and development environment for AI-a
 
 ## Phase 1: Minimal Compiler Pipeline
 
-**Status**: Not Started  
+**Status**: In Progress  
 **Estimated Effort**: 2-3 weeks  
 **Target Completion**: Q1 2026
 
 ### Goals
 
-Create a minimal but complete compiler pipeline that can compile the simplest possible Unified program and execute it.
+Create a minimal but complete compiler pipeline that can compile the simplest possible Unified program and execute it using a custom virtual machine.
 
 ### Prerequisites
 
@@ -107,8 +107,8 @@ Create a minimal but complete compiler pipeline that can compile the simplest po
 1. **Working Compiler Pipeline**
    - Lexer: Source code → Tokens
    - Parser: Tokens → AST
-   - Code Generator: AST → Executable output
-   - Runtime: Execute the program
+   - Bytecode Generator: AST → Bytecode instructions
+   - Virtual Machine: Execute bytecode and produce output
 
 2. **Target Program**
    ```unified
@@ -117,15 +117,16 @@ Create a minimal but complete compiler pipeline that can compile the simplest po
    }
    ```
 
-3. **Backend Decision**
-   - Evaluate LLVM vs WebAssembly as compilation target
-   - Fix LLVM bindings OR implement WASM backend
-   - Document backend choice and rationale
+3. **VM Architecture**
+   - Stack-based virtual machine
+   - Simple bytecode instruction set
+   - Runtime support for basic operations
+   - Portable across all Go-supported platforms
 
 4. **Basic Test Infrastructure**
    - Unit test framework for compiler components
    - Integration tests for end-to-end compilation
-   - Test harness for running compiled programs
+   - Test harness for running bytecode programs
 
 ### Test Requirements
 
@@ -148,15 +149,22 @@ Create a minimal but complete compiler pipeline that can compile the simplest po
 - [ ] Report syntax errors with locations
 
 #### Code Generation Tests
-- [ ] Generate code for function definition
-- [ ] Generate code for return statement
-- [ ] Generate code for integer literals
-- [ ] Produce valid output (LLVM IR or WASM)
-- [ ] Output can be compiled/assembled
+- [ ] Generate bytecode for function definition
+- [ ] Generate bytecode for return statement
+- [ ] Generate bytecode for integer literals
+- [ ] Produce valid bytecode output
+- [ ] Bytecode can be executed by VM
+
+#### VM Execution Tests
+- [ ] VM can load bytecode
+- [ ] VM can execute basic instructions
+- [ ] VM correctly handles function calls
+- [ ] VM correctly handles return values
+- [ ] VM maintains execution stack properly
 
 #### Integration Tests
 - [ ] Compile minimal program end-to-end
-- [ ] Execute compiled program
+- [ ] Execute compiled program in VM
 - [ ] Program returns correct exit code (42)
 - [ ] Compilation produces no errors
 - [ ] Compilation produces no warnings
@@ -168,19 +176,18 @@ Create a minimal but complete compiler pipeline that can compile the simplest po
 - ✅ All unit tests pass
 - ✅ All integration tests pass
 - ✅ Build is automated and repeatable
-- ✅ Backend choice is documented
+- ✅ VM architecture is documented
 - ✅ Code is well-commented
 
 ### Implementation Tasks
 
-1. Review and fix/replace LLVM bindings
-2. Implement basic lexer for minimal syntax
-3. Implement basic parser for function declarations
-4. Implement AST nodes for minimal program
-5. Implement code generator for minimal features
-6. Create runtime/execution harness
-7. Write comprehensive tests
-8. Document the compiler pipeline
+1. Design bytecode instruction set
+2. Implement bytecode generator (AST → bytecode)
+3. Implement stack-based virtual machine
+4. Implement VM instruction execution
+5. Add runtime support (exit codes, basic I/O)
+6. Write comprehensive tests
+7. Document the VM architecture and bytecode format
 
 ---
 
