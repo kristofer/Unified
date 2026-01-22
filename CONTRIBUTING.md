@@ -93,16 +93,56 @@ Follow these principles:
 
 ### 4. Test Your Changes
 
+Always test your changes before submitting a pull request.
+
+#### Run All Tests
 ```bash
-# Run all tests
+cd src/unified-compiler
 make test
-
-# Test specific package
-go test -v ./internal/ast
-
-# Run integration tests
-./bin/unified-compiler --input test/phase1/minimal.uni --output minimal.ll
 ```
+
+#### Run Tests for Specific Components
+```bash
+# Test a specific package
+go test ./internal/vm -v
+go test ./internal/bytecode -v
+go test ./cmd/compiler -v
+
+# Test all packages with verbose output
+go test -v ./...
+```
+
+#### Run Specific Tests
+```bash
+# Run a single test function
+go test ./internal/vm -run TestVMSimpleArithmetic -v
+
+# Run tests matching a pattern
+go test ./internal/vm -run TestVM.* -v
+```
+
+#### Check Test Coverage
+```bash
+# View coverage summary
+go test ./... -cover
+
+# Generate detailed HTML coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
+```
+
+#### Run Integration Tests
+```bash
+# Build the compiler first
+make build
+
+# Run example programs
+./bin/unified --input test/integration/simple_return.uni
+./bin/unified --input test/integration/function_call.uni
+./bin/unified --input test/integration/local_variables.uni
+```
+
+**Important:** All tests must pass before submitting a PR. The CI system will also run these tests.
 
 ### 5. Submit Pull Request
 
@@ -210,6 +250,38 @@ fn factorial(n: i32) -> i32 {
 ```
 
 ## Testing
+
+### Running Tests Locally
+
+Before writing new tests, familiarize yourself with the existing test suite:
+
+```bash
+# Navigate to the compiler directory
+cd src/unified-compiler
+
+# Run all tests
+make test
+
+# Run tests with verbose output to see individual test results
+go test -v ./...
+
+# Run tests for a specific package
+go test ./internal/vm -v
+go test ./internal/bytecode -v
+go test ./cmd/compiler -v
+
+# Run a specific test function
+go test ./internal/vm -run TestVMSimpleArithmetic -v
+
+# Check test coverage
+go test ./... -cover
+
+# Generate coverage report (opens in browser)
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
+```
+
+See the [Testing Guide](src/unified-compiler/TESTING.md) for comprehensive testing documentation.
 
 ### Test Organization
 

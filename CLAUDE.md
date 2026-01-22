@@ -45,7 +45,7 @@ make build   # Build the compiler binary
 ### Testing
 ```bash
 make test    # Run Go tests
-./bin/unified-compiler --input test/fib.uni --output fib.ll  # Compile test file
+./bin/unified --input test/fib.uni  # Compile and run test file
 ```
 
 ### Clean Build

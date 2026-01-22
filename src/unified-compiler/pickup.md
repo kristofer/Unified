@@ -16,7 +16,7 @@ This is the implementation of the **Unified Programming Language** - a modern sy
 ## Build System
 - Uses `Makefile` with targets: `parser`, `build`, `test`, `clean`
 - `make parser` - Regenerates parser from grammar files using ANTLR4
-- `make build` - Compiles the Go binary to `bin/unified-compiler`
+- `make build` - Compiles the Go binary to `bin/unified`
 - Uses Go modules with `go.mod`
 
 ## Current Dependencies
@@ -84,7 +84,7 @@ entry:
 - `test/fizz.uni` - FizzBuzz example (FAILS)
 
 ## Compilation Process
-1. `./bin/unified-compiler --input file.uni --output file.ll`
+1. `./bin/unified --input file.uni`
 2. Parses .uni file using ANTLR4 parser
 3. Builds AST using visitor pattern
 4. Generates LLVM IR using codegen
@@ -119,4 +119,4 @@ Current active todos (before session end):
 
 ## Build Commands Used
 - `make parser && make build` - Full rebuild
-- `./bin/unified-compiler --input test.uni --output test.ll` - Compile test
+- `./bin/unified --input test.uni` - Compile and run test

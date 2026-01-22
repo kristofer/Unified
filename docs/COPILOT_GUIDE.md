@@ -333,11 +333,8 @@ make test
 # Run specific test
 go test -v ./internal/ast -run TestFunction
 
-# Compile a .uni file
-./bin/unified-compiler --input test/fib.uni --output fib.ll
-
-# Run the compiled program (after LLVM compilation)
-lli fib.ll
+# Compile and run a .uni file
+./bin/unified --input test/fib.uni
 ```
 
 ## Common Pitfalls

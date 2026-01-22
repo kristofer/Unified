@@ -2,6 +2,38 @@
 
 This guide explains how to write and run tests for the Unified compiler.
 
+## Quick Reference for Running Tests Locally
+
+For developers who want to quickly run tests:
+
+```bash
+# Navigate to the compiler directory
+cd src/unified-compiler
+
+# Run all tests (recommended)
+make test
+
+# Run tests with verbose output
+go test -v ./...
+
+# Run tests for specific components
+go test ./internal/vm -v        # Virtual machine tests
+go test ./internal/bytecode -v  # Bytecode generator tests
+go test ./cmd/compiler -v       # Integration tests
+
+# Run a specific test
+go test ./internal/vm -run TestVMSimpleArithmetic -v
+
+# Check test coverage
+go test ./... -cover
+
+# Generate HTML coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
+```
+
+**All tests should pass before submitting code!** Currently: **76 tests passing**
+
 ## Test Structure
 
 The Unified compiler has a comprehensive test suite organized into several categories:
@@ -180,7 +212,36 @@ Current test coverage by module:
 
 ## Continuous Integration
 
-Tests are automatically run on every commit and pull request. All tests must pass before merging.
+Tests are automatically run on every commit and pull request via GitHub Actions.
+
+### What Gets Tested in CI
+
+The CI pipeline runs:
+- `make test` - All unit and integration tests
+- Coverage reporting
+- Build verification across multiple platforms
+
+### Local Testing Before Pushing
+
+To ensure your PR passes CI, run these commands locally:
+
+```bash
+cd src/unified-compiler
+
+# Run the same tests as CI
+make test
+
+# Verify the build works
+make build
+
+# Optional: check coverage
+go test ./... -cover
+```
+
+**Important:** All tests must pass locally before pushing. If tests fail in CI but pass locally:
+- Ensure you've pushed all changes
+- Check if you have uncommitted files
+- Verify Go version matches CI (Go 1.21+)
 
 ## Adding New Tests
 
@@ -232,6 +293,71 @@ func TestExample(t *testing.T) {
 8. **Keep tests fast** - unit tests should run in milliseconds
 9. **Test edge cases** (empty inputs, null values, boundaries)
 10. **Document complex test scenarios**
+
+## Troubleshooting Tests
+
+### Common Issues and Solutions
+
+#### Issue: `go test` says "no Go files in current directory"
+**Solution:** Make sure you're in the `src/unified-compiler` directory:
+```bash
+cd src/unified-compiler
+go test ./...
+```
+
+#### Issue: Tests fail with "package not found" errors
+**Solution:** Download dependencies:
+```bash
+cd src/unified-compiler
+go mod download
+go mod tidy
+```
+
+#### Issue: All tests are cached
+**Solution:** Clear the test cache:
+```bash
+go clean -testcache
+go test ./...
+```
+
+#### Issue: Tests timeout
+**Solution:** Increase the test timeout:
+```bash
+go test -timeout 5m ./...
+```
+
+#### Issue: Want to see test output even when passing
+**Solution:** Use the verbose flag:
+```bash
+go test -v ./...
+```
+
+#### Issue: Binary not found when running integration tests
+**Solution:** Build the compiler first:
+```bash
+make build
+# Then run the integration tests
+./bin/unified --input test/integration/simple_return.uni
+```
+
+#### Issue: "ANTLR not found" error
+**Solution:** ANTLR is only needed if modifying grammar files. For regular development:
+- Pre-generated parser files are included in the repository
+- Just run `make build` without `make parser`
+- If you do need ANTLR, install it from https://www.antlr.org/download.html
+
+#### Issue: Coverage report shows 0% for some packages
+**Explanation:** Some packages like `internal/ast` and `internal/parser` are data structures or generated code:
+- `internal/ast` - AST node definitions (no logic to test)
+- `internal/parser` - ANTLR-generated code (tested through integration tests)
+- Focus coverage efforts on `internal/vm` and `internal/bytecode`
+
+### Getting Help
+
+If you encounter issues not covered here:
+1. Check existing tests for examples: `grep -r "func Test" .`
+2. Review the [Contributing Guide](../../CONTRIBUTING.md)
+3. Open an issue on GitHub with details about the problem
 
 ## Common Patterns
 

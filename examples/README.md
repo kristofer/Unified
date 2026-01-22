@@ -59,7 +59,7 @@ Examples should be tested as part of the integration test suite:
 
 ```bash
 cd src/unified-compiler
-./bin/unified-compiler --input ../../examples/basic/hello_world.uni --output hello.ll
+./bin/unified --input ../../examples/basic/hello_world.uni
 ```
 
 ## Documentation
