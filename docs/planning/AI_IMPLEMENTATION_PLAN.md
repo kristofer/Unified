@@ -204,10 +204,11 @@ Complete the parser grammar to support control flow statements and prepare the f
 1. Add grammar for range expressions:
    ```antlr
    rangeExpression
-       : expression DOTDOT expression          // exclusive
-       | expression DOTDOT_EQ expression       // inclusive
+       : expression DOTDOT expression          // exclusive (1..5 = 1,2,3,4)
+       | expression DOTDOT_EQ expression       // inclusive (1..=5 = 1,2,3,4,5)
        ;
    ```
+   Note: `..` is exclusive (doesn't include end), `..=` is inclusive (includes end)
 2. Add for loop grammar:
    ```antlr
    forStatement
@@ -215,7 +216,7 @@ Complete the parser grammar to support control flow statements and prepare the f
        ;
    ```
 3. Implement range as iterator:
-   - Create range object with start, end, current
+   - Create range object with start, end, current, and inclusive flag
    - Implement next() method concept
    - Generate bytecode for iteration
 4. Update VM to support iteration:
