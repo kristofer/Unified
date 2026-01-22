@@ -2,6 +2,38 @@
 
 This guide explains how to write and run tests for the Unified compiler.
 
+## Quick Reference for Running Tests Locally
+
+For developers who want to quickly run tests:
+
+```bash
+# Navigate to the compiler directory
+cd src/unified-compiler
+
+# Run all tests (recommended)
+make test
+
+# Run tests with verbose output
+go test -v ./...
+
+# Run tests for specific components
+go test ./internal/vm -v        # Virtual machine tests
+go test ./internal/bytecode -v  # Bytecode generator tests
+go test ./cmd/compiler -v       # Integration tests
+
+# Run a specific test
+go test ./internal/vm -run TestVMSimpleArithmetic -v
+
+# Check test coverage
+go test ./... -cover
+
+# Generate HTML coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
+```
+
+**All tests should pass before submitting code!** Currently: **76 tests passing**
+
 ## Test Structure
 
 The Unified compiler has a comprehensive test suite organized into several categories:

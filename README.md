@@ -190,40 +190,143 @@ fn main() -> Int {
 
 See the [complete phase plan](docs/planning/AI_IMPLEMENTATION_PLAN.md) for all upcoming features.
 
-### Build and Test
+## 🚀 Quick Start for Developers
 
-**Prerequisites:**
-- Go 1.21+
-- ANTLR4 (for grammar changes)
-- Make
+### Prerequisites
 
-**Quick Start:**
+Before you begin, ensure you have the following installed:
+
+- **Go 1.21+** - [Download Go](https://golang.org/dl/)
+- **Make** - Usually pre-installed on Linux/macOS, or install via package manager
+- **ANTLR4** (optional, only needed if modifying grammar files) - [Install ANTLR4](https://www.antlr.org/download.html)
+
+### Setup Development Environment
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/kristofer/Unified.git
+   cd Unified
+   ```
+
+2. **Navigate to the compiler directory**
+   ```bash
+   cd src/unified-compiler
+   ```
+
+3. **Build the compiler**
+   ```bash
+   make build
+   # Or build with parser generation (if grammar was modified)
+   make all
+   ```
+
+4. **Verify the build**
+   ```bash
+   ./bin/unified --help
+   ```
+
+### Running Tests Locally
+
+The Unified compiler has a comprehensive test suite with 76+ tests covering all components.
+
+#### Run All Tests
 ```bash
 cd src/unified-compiler
-
-# Build everything
-make all        # Generate parser and build compiler
-
-# Run all tests (76 tests, all passing)
 make test
+```
 
-# Test specific component
+This runs all unit tests and integration tests across the entire codebase.
+
+#### Run Tests for Specific Components
+```bash
+# Test the virtual machine
 go test ./internal/vm -v
 
-# Build just the compiler
+# Test the bytecode generator
+go test ./internal/bytecode -v
+
+# Test integration (end-to-end compilation)
+go test ./cmd/compiler -v
+
+# Test all packages verbosely
+go test -v ./...
+```
+
+#### Run Specific Test Functions
+```bash
+# Run a specific test by name
+go test ./internal/vm -run TestVMSimpleArithmetic -v
+
+# Run tests matching a pattern
+go test ./internal/vm -run TestVM.* -v
+```
+
+#### Test Coverage
+```bash
+# View coverage summary
+go test ./... -cover
+
+# Generate detailed coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out  # Opens in browser
+```
+
+#### Watch Mode for Development
+```bash
+# Run tests on file changes (requires entr or similar tool)
+find . -name "*.go" | entr -c go test ./...
+```
+
+### Run Example Programs
+
+The compiler comes with example Unified programs you can compile and run:
+
+```bash
+# Compile and run a simple program
+./bin/unified --input test/integration/simple_return.uni
+
+# Compile a function call example
+./bin/unified --input test/integration/function_call.uni
+
+# Compile local variables example
+./bin/unified --input test/integration/local_variables.uni
+```
+
+### Common Development Tasks
+
+```bash
+# Build the compiler
 make build
 
-# Regenerate parser (after grammar changes)
+# Run all tests
+make test
+
+# Clean build artifacts
+make clean
+
+# Regenerate parser (only after grammar changes)
 make parser
+
+# Build and run a specific test program
+make build && ./bin/unified --input test/integration/simple_return.uni
 ```
 
-**Run Example Programs:**
-```bash
-./bin/unified-compiler --input test/fib.uni --output output.bc
-# VM executes bytecode automatically
-```
+### Troubleshooting
 
-See [Testing Guide](src/unified-compiler/TESTING.md) for comprehensive testing information.
+**Issue: Tests fail to run**
+- Ensure you're in the `src/unified-compiler` directory
+- Run `go mod download` to fetch dependencies
+- Verify Go version with `go version` (must be 1.21+)
+
+**Issue: Build fails**
+- Check that you have Go installed: `go version`
+- Run `make clean` then `make build`
+
+**Issue: Parser generation fails**
+- ANTLR4 is only needed if you're modifying grammar files
+- For normal development, pre-generated parser files are included
+
+For more detailed testing information, see [Testing Guide](src/unified-compiler/TESTING.md).
 
 ### For AI Agents
 
