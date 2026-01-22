@@ -1,25 +1,46 @@
 # Unified Programming Language
 
-[![Status](https://img.shields.io/badge/status-in%20development-yellow)](docs/PROJECT_STATUS.md)
-[![Phase](https://img.shields.io/badge/phase-0%20planning-blue)](docs/planning/PHASED_ROADMAP.md)
+[![Status](https://img.shields.io/badge/status-phase%201%20complete-green)](docs/PROJECT_STATUS.md)
+[![Phase](https://img.shields.io/badge/current-phase%202%20ready-blue)](docs/planning/AI_IMPLEMENTATION_PLAN.md)
+[![Tests](https://img.shields.io/badge/tests-76%20passing-brightgreen)](src/unified-compiler/TESTING.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A modern systems programming language that combines memory safety, performance, and developer ergonomics.
 
 ## 📋 Quick Links
 
-- **[Project Status](docs/PROJECT_STATUS.md)** - Current implementation status
-- **[Phased Roadmap](docs/planning/PHASED_ROADMAP.md)** - Complete implementation plan
-- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
-- **[Copilot Guide](docs/COPILOT_GUIDE.md)** - For AI-assisted development
-- **[Architecture](docs/design/ARCHITECTURE.md)** - Compiler architecture
-- **[Language Spec](spec/UnifiedSpecifiation.md)** - Complete language specification
+### For AI Agents & Developers
+- **[🤖 AI Implementation Plan](docs/planning/AI_IMPLEMENTATION_PLAN.md)** - **START HERE** for implementation
+- **[📊 Project Status](docs/PROJECT_STATUS.md)** - Current status and next steps
+- **[📖 Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)** - How to use the documentation
+- **[🧪 Testing Guide](src/unified-compiler/TESTING.md)** - How to write and run tests
+
+### Language Documentation
+- **[📐 Language Spec](spec/UnifiedSpecifiation.md)** - Complete language specification
+- **[🗺️ Phased Roadmap](docs/planning/PHASED_ROADMAP.md)** - High-level implementation plan
+- **[🏛️ Architecture](docs/design/ARCHITECTURE.md)** - Compiler architecture
+- **[⚡ VM Guide](src/unified-compiler/VM_README.md)** - Virtual machine documentation
+
+### Getting Started
+- **[🤝 Contributing](CONTRIBUTING.md)** - How to contribute
+- **[🎓 Learn Unified](LearnUnifiedinYMinutes.md)** - Quick language tour
 
 ## 🎯 Current Status
 
-**Phase 0: Project Foundation and Planning** - 90% Complete
+**Phase 1: VM-Based Minimal Compiler** - ✅ COMPLETE
 
-The project has comprehensive documentation and planning in place. Phase 1 (Minimal Compiler Pipeline) will begin once Phase 0 is complete. See [PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for details.
+The Unified compiler now has a fully functional foundation:
+- ✅ Stack-based virtual machine with 30+ instructions
+- ✅ Bytecode generator (AST → VM bytecode)
+- ✅ Function declarations and calls with parameters
+- ✅ Arithmetic, comparison, and logical operations
+- ✅ Local variables and return statements
+- ✅ 76 comprehensive tests (100% passing)
+- ✅ Complete documentation
+
+**Next Up: Phase 2 - Control Flow** (Ready to start)
+
+See [Project Status](docs/PROJECT_STATUS.md) for details or jump to the [AI Implementation Plan](docs/planning/AI_IMPLEMENTATION_PLAN.md) to start Phase 2.
 
 ## 🚀 Overview
 
@@ -134,49 +155,123 @@ This summary captures the key aspects of Unified we've designed, including its s
 
 ## 🏗️ Development
 
-### Getting Started
+### Current Capabilities
+
+**Working Features** (Phase 1 Complete):
+```unified
+fn factorial(n: Int) -> Int {
+    let result = 1
+    let i = n
+    // Note: loops coming in Phase 2!
+    return result * i
+}
+
+fn main() -> Int {
+    return factorial(5)
+}
+```
+
+**What Works Now**:
+- ✅ Function declarations with typed parameters
+- ✅ Function calls with arguments
+- ✅ Local variables (`let` statements)
+- ✅ Return values
+- ✅ All arithmetic operations (+, -, *, /, %, unary -)
+- ✅ All comparison operations (==, !=, <, <=, >, >=)
+- ✅ All logical operations (&&, ||, !)
+- ✅ Integer, float, boolean, string, and null literals
+- ✅ Complex nested expressions
+
+**Coming in Phase 2**:
+- 🔄 If/else statements
+- 🔄 While loops
+- 🔄 For loops with ranges
+- 🔄 Break/continue statements
+
+See the [complete phase plan](docs/planning/AI_IMPLEMENTATION_PLAN.md) for all upcoming features.
+
+### Build and Test
 
 **Prerequisites:**
 - Go 1.21+
-- ANTLR4
+- ANTLR4 (for grammar changes)
 - Make
 
-**Build the compiler:**
+**Quick Start:**
 ```bash
 cd src/unified-compiler
-make all  # Generate parser and build compiler
-make test # Run tests
+
+# Build everything
+make all        # Generate parser and build compiler
+
+# Run all tests (76 tests, all passing)
+make test
+
+# Test specific component
+go test ./internal/vm -v
+
+# Build just the compiler
+make build
+
+# Regenerate parser (after grammar changes)
+make parser
 ```
 
-**Current capabilities:**
-- ✅ Parser infrastructure (ANTLR4 grammar)
-- ✅ Basic AST structures
-- ✅ Project organization and build system
-- ❌ Code generation (blocked by LLVM bindings)
-- ❌ Executable programs (Phase 1 goal)
+**Run Example Programs:**
+```bash
+./bin/unified-compiler --input test/fib.uni --output output.bc
+# VM executes bytecode automatically
+```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development instructions.
-
-### Phased Development
-
-Unified is being built in 15 carefully planned phases:
-
-- **Phase 0** (Current): Project foundation and planning
-- **Phase 1**: Minimal compiler pipeline
-- **Phase 2**: Basic expressions and arithmetic
-- **Phase 3**: Control flow
-- **Phases 4-15**: Functions, types, memory management, concurrency, tooling, and more
-
-Each phase has specific goals, test requirements, and success criteria. See [PHASED_ROADMAP.md](docs/planning/PHASED_ROADMAP.md) for the complete plan.
+See [Testing Guide](src/unified-compiler/TESTING.md) for comprehensive testing information.
 
 ### For AI Agents
 
 This project is optimized for development with GitHub Copilot and other AI coding assistants:
 
-- Read [COPILOT_GUIDE.md](docs/COPILOT_GUIDE.md) for guidance
-- Follow the phased roadmap strictly
-- Write tests before implementation
-- Document as you code
+1. **Start here**: [AI Implementation Plan](docs/planning/AI_IMPLEMENTATION_PLAN.md)
+2. **Current task**: Implement Phase 2 (Control Flow)
+3. **Follow the guide**: Each phase has detailed tasks, tests, and examples
+4. **Test continuously**: Write tests as you implement features
+5. **Document as you go**: Update documentation with each phase
+
+See [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md) for detailed workflow.
+
+### Phased Development
+
+Unified is being built in 15 carefully planned phases:
+
+- **✅ Phase 1**: VM-Based Minimal Compiler (COMPLETE - 76 tests passing)
+- **🎯 Phase 2**: Control Flow (NEXT - if/else, loops, break/continue)
+- **Phase 3**: Variables & Mutability (mutable vars, assignments, type inference)
+- **Phase 4**: Functions & Expressions (lambdas, blocks as expressions)
+- **Phase 5**: Structs (user-defined types, methods)
+- **Phase 6**: Enums & Pattern Matching (algebraic data types, match expressions)
+- **Phase 7**: Error Handling (? operator, Result type)
+- **Phase 8**: Arrays & Slices (collections with iteration)
+- **Phase 9**: String Operations (interpolation, methods)
+- **Phase 10**: Generics (type parameters, monomorphization)
+- **Phase 11**: Modules (import/export, visibility)
+- **Phase 12**: Ownership (move semantics, borrow checking)
+- **Phase 13**: Standard Library (collections, I/O, utilities)
+- **Phase 14**: Concurrency (async/await, actors, channels)
+- **Phase 15**: Tooling (REPL, debugger, package manager)
+
+Each phase has specific goals, test requirements, and success criteria. See [AI Implementation Plan](docs/planning/AI_IMPLEMENTATION_PLAN.md) for complete details on each phase.
+
+### For AI Agents - Quick Start
+
+**Ready to implement?** Here's your workflow:
+
+1. Read [AI Implementation Plan](docs/planning/AI_IMPLEMENTATION_PLAN.md)
+2. Check [Project Status](docs/PROJECT_STATUS.md) (currently: Phase 2 ready)
+3. Follow Phase 2 tasks sequentially
+4. Write tests for each feature (aim for 85%+ coverage)
+5. Use `report_progress` tool to commit changes
+6. Update documentation as you complete features
+7. Run `make test` continuously - keep all 76+ tests passing
+
+See [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md) for detailed development workflow.
 
 ### Reference Project
 
