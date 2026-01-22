@@ -33,7 +33,7 @@ make test       # Run tests
 make clean      # Clean up
 
 # Test compilation
-./bin/unified-compiler --input test/simple.uni --output simple.ll
+./bin/unified --input test/simple.uni
 ```
 
 ## 📋 Common Tasks
@@ -171,8 +171,8 @@ make clean
 # Full rebuild
 make clean all
 
-# Compile a .uni file
-./bin/unified-compiler --input file.uni --output file.ll
+# Compile and run a .uni file
+./bin/unified --input file.uni
 
 # Run compiled program (future)
 lli file.ll

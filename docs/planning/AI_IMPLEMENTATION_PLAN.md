@@ -1525,7 +1525,7 @@ go test -v ./internal/vm     # Test specific module
 go test -cover ./...         # With coverage
 
 # Run
-./bin/unified-compiler --input test/fib.uni --output output.bc
+./bin/unified --input test/fib.uni
 
 # Clean
 make clean     # Remove generated files
