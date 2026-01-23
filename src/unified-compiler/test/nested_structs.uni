@@ -1,0 +1,19 @@
+// Nested struct test
+
+struct Address {
+    street: Int
+    zipcode: Int
+}
+
+struct Person {
+    name: Int
+    age: Int
+    addr: Address
+}
+
+fn main() -> Int {
+    let address = Address { street: 123, zipcode: 12345 };
+    let person = Person { name: 100, age: 30, addr: address };
+    let zip = person.addr.zipcode;
+    return zip;
+}

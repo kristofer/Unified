@@ -36,6 +36,9 @@ func TestOpCodeString(t *testing.T) {
 		{"CALL", OpCall, "CALL"},
 		{"RETURN", OpReturn, "RETURN"},
 		{"RETURN_VALUE", OpReturnValue, "RETURN_VALUE"},
+		{"ALLOC_STRUCT", OpAllocStruct, "ALLOC_STRUCT"},
+		{"LOAD_FIELD", OpLoadField, "LOAD_FIELD"},
+		{"STORE_FIELD", OpStoreField, "STORE_FIELD"},
 		{"HALT", OpHalt, "HALT"},
 		{"NOP", OpNop, "NOP"},
 	}
@@ -325,4 +328,45 @@ func TestAddInstructionWithArgCount(t *testing.T) {
 	if inst.ArgCount != 3 {
 		t.Errorf("Expected ArgCount 3, got %d", inst.ArgCount)
 	}
+}
+
+func TestNewStructValue(t *testing.T) {
+fields := map[string]Value{
+"x": NewIntValue(10),
+"y": NewIntValue(20),
+}
+
+sv := NewStructValue("Point", fields)
+
+if sv.Type != ValueTypeStruct {
+t.Errorf("Expected ValueTypeStruct, got %v", sv.Type)
+}
+
+if sv.Struct == nil {
+t.Fatal("Struct field is nil")
+}
+
+if sv.Struct.TypeName != "Point" {
+t.Errorf("Expected type name 'Point', got '%s'", sv.Struct.TypeName)
+}
+
+if len(sv.Struct.Fields) != 2 {
+t.Errorf("Expected 2 fields, got %d", len(sv.Struct.Fields))
+}
+
+xVal, ok := sv.Struct.Fields["x"]
+if !ok {
+t.Error("Field 'x' not found")
+}
+if xVal.Int != 10 {
+t.Errorf("Expected field x to be 10, got %d", xVal.Int)
+}
+
+yVal, ok := sv.Struct.Fields["y"]
+if !ok {
+t.Error("Field 'y' not found")
+}
+if yVal.Int != 20 {
+t.Errorf("Expected field y to be 20, got %d", yVal.Int)
+}
 }

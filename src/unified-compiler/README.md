@@ -99,6 +99,23 @@ See [TESTING.md](TESTING.md) for the complete testing guide.
 - ✅ Semantic analysis (mutability, undefined variables, type checking)
 - ✅ Clear error messages for violations
 
+### Phase 4 - Advanced Expressions ✅
+- ✅ Bitwise operations (&, |, ^, ~, <<, >>)
+- ✅ Operator precedence (correct evaluation order)
+- ✅ Block expressions (blocks as values)
+- ⏳ Tuple support (infrastructure ready)
+- ⏳ Lambda expressions (infrastructure ready)
+- ⏳ Default parameters (not started)
+
+### Phase 5 - Structs and Basic Types 🚧
+- ✅ Struct declarations with fields
+- ✅ Struct instantiation
+- ✅ Field access (dot notation)
+- ✅ Nested structs
+- ❌ Methods on structs (blocked: parser regeneration needed)
+- ❌ Associated functions (blocked: parser regeneration needed)
+- ⏳ Mutable field assignment (OpStoreField exists, syntax needed)
+
 ## Documentation
 
 - [VM_README.md](VM_README.md) - Virtual machine architecture and bytecode instruction set

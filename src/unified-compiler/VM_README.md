@@ -51,6 +51,16 @@ The VM uses a stack-based architecture with the following instruction set:
 - `RETURN` - Return from function
 - `RETURN_VALUE` - Return value from function
 
+### Struct Operations (Phase 5)
+- `ALLOC_STRUCT` - Allocate struct instance
+  - Operand: field count
+  - Stack: [field_name_0, field_value_0, ..., field_name_N, field_value_N, type_name]
+  - Pops field name/value pairs and type name, creates struct
+- `LOAD_FIELD` - Load field from struct
+  - Stack: [struct, field_name] → [field_value]
+- `STORE_FIELD` - Store field to struct
+  - Stack: [struct, field_name, value] → [struct]
+
 ### Special
 - `HALT` - Stop execution
 - `NOP` - No operation
@@ -92,6 +102,14 @@ Currently implemented and tested features:
 ⏳ Tuples (planned)
 ⏳ Lambda expressions (planned)
 ⏳ Default parameters (planned)
+
+### Phase 5 (Partial - 60%)
+✅ Struct declarations with fields
+✅ Struct instantiation
+✅ Field access (dot notation)
+✅ Nested structs
+❌ Methods on structs (blocked: parser regeneration)
+❌ Associated functions (blocked: parser regeneration)
 
 ## Testing
 
