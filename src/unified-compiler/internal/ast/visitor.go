@@ -659,6 +659,13 @@ func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
 			Position: v.getPosition(ctx),
 		}
 	}
+	if blockCtx := ctx.Block(); blockCtx != nil {
+		return v.VisitBlock(blockCtx.(*parser.BlockContext))
+	}
+	if ctx.LPAREN() != nil && ctx.RPAREN() != nil && ctx.Expr() != nil {
+		// Grouping expression: (expr)
+		return v.VisitExpr(ctx.Expr().(*parser.ExprContext))
+	}
 	// Handle other primary expressions...
 
 	return nil

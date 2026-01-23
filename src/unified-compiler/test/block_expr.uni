@@ -1,0 +1,32 @@
+// Block expression tests
+// Blocks can return values from their last expression
+
+fn test_block_as_value() -> Int {
+    let x = {
+        let a = 5
+        let b = 10
+        a + b
+    }
+    return x  // Should be 15
+}
+
+fn test_nested_blocks() -> Int {
+    let result = {
+        let x = {
+            let a = 3
+            let b = 4
+            a * b
+        }
+        let y = 2
+        x + y
+    }
+    return result  // Should be 14 (12 + 2)
+}
+
+fn main() -> Int {
+    let t1 = test_block_as_value()   // 15
+    let t2 = test_nested_blocks()    // 14
+    
+    // Sum should be 15 + 14 = 29
+    return t1 + t2
+}
