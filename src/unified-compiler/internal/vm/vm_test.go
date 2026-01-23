@@ -511,3 +511,116 @@ func TestVMNoMainFunction(t *testing.T) {
 		t.Error("Expected error for missing main function")
 	}
 }
+
+func TestVMBitwiseOperations(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(*bytecode.Bytecode)
+		expected int64
+	}{
+		{
+			name: "Bitwise AND",
+			setup: func(bc *bytecode.Bytecode) {
+				bc.AddFunction("main", 0)
+				idx1 := bc.AddConstant(bytecode.NewIntValue(12)) // 1100
+				idx2 := bc.AddConstant(bytecode.NewIntValue(10)) // 1010
+				bc.AddInstruction(bytecode.OpPush, int64(idx1))
+				bc.AddInstruction(bytecode.OpPush, int64(idx2))
+				bc.AddInstruction(bytecode.OpBitAnd, 0) // 1000 = 8
+				bc.AddInstruction(bytecode.OpReturnValue, 0)
+				bc.AddInstruction(bytecode.OpHalt, 0)
+			},
+			expected: 8,
+		},
+		{
+			name: "Bitwise OR",
+			setup: func(bc *bytecode.Bytecode) {
+				bc.AddFunction("main", 0)
+				idx1 := bc.AddConstant(bytecode.NewIntValue(12)) // 1100
+				idx2 := bc.AddConstant(bytecode.NewIntValue(10)) // 1010
+				bc.AddInstruction(bytecode.OpPush, int64(idx1))
+				bc.AddInstruction(bytecode.OpPush, int64(idx2))
+				bc.AddInstruction(bytecode.OpBitOr, 0) // 1110 = 14
+				bc.AddInstruction(bytecode.OpReturnValue, 0)
+				bc.AddInstruction(bytecode.OpHalt, 0)
+			},
+			expected: 14,
+		},
+		{
+			name: "Bitwise XOR",
+			setup: func(bc *bytecode.Bytecode) {
+				bc.AddFunction("main", 0)
+				idx1 := bc.AddConstant(bytecode.NewIntValue(12)) // 1100
+				idx2 := bc.AddConstant(bytecode.NewIntValue(10)) // 1010
+				bc.AddInstruction(bytecode.OpPush, int64(idx1))
+				bc.AddInstruction(bytecode.OpPush, int64(idx2))
+				bc.AddInstruction(bytecode.OpBitXor, 0) // 0110 = 6
+				bc.AddInstruction(bytecode.OpReturnValue, 0)
+				bc.AddInstruction(bytecode.OpHalt, 0)
+			},
+			expected: 6,
+		},
+		{
+			name: "Bitwise NOT",
+			setup: func(bc *bytecode.Bytecode) {
+				bc.AddFunction("main", 0)
+				idx := bc.AddConstant(bytecode.NewIntValue(5)) // 0101
+				bc.AddInstruction(bytecode.OpPush, int64(idx))
+				bc.AddInstruction(bytecode.OpBitNot, 0) // ...1010 = -6
+				bc.AddInstruction(bytecode.OpReturnValue, 0)
+				bc.AddInstruction(bytecode.OpHalt, 0)
+			},
+			expected: -6,
+		},
+		{
+			name: "Left Shift",
+			setup: func(bc *bytecode.Bytecode) {
+				bc.AddFunction("main", 0)
+				idx1 := bc.AddConstant(bytecode.NewIntValue(3))  // 11
+				idx2 := bc.AddConstant(bytecode.NewIntValue(2))  // shift by 2
+				bc.AddInstruction(bytecode.OpPush, int64(idx1))
+				bc.AddInstruction(bytecode.OpPush, int64(idx2))
+				bc.AddInstruction(bytecode.OpLShift, 0) // 1100 = 12
+				bc.AddInstruction(bytecode.OpReturnValue, 0)
+				bc.AddInstruction(bytecode.OpHalt, 0)
+			},
+			expected: 12,
+		},
+		{
+			name: "Right Shift",
+			setup: func(bc *bytecode.Bytecode) {
+				bc.AddFunction("main", 0)
+				idx1 := bc.AddConstant(bytecode.NewIntValue(12)) // 1100
+				idx2 := bc.AddConstant(bytecode.NewIntValue(2))  // shift by 2
+				bc.AddInstruction(bytecode.OpPush, int64(idx1))
+				bc.AddInstruction(bytecode.OpPush, int64(idx2))
+				bc.AddInstruction(bytecode.OpRShift, 0) // 11 = 3
+				bc.AddInstruction(bytecode.OpReturnValue, 0)
+				bc.AddInstruction(bytecode.OpHalt, 0)
+			},
+			expected: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bc := bytecode.NewBytecode()
+			tt.setup(bc)
+			
+			vm := NewVM(bc)
+			result, err := vm.Run()
+			
+			if err != nil {
+				t.Fatalf("VM execution failed: %v", err)
+			}
+			
+			if result.Type != bytecode.ValueTypeInt {
+				t.Fatalf("Expected int result, got %v", result.Type)
+			}
+			
+			if result.Int != tt.expected {
+				t.Errorf("Expected %d, got %d", tt.expected, result.Int)
+			}
+		})
+	}
+}

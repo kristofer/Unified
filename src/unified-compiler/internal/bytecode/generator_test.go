@@ -65,6 +65,11 @@ func TestGenerateBinaryExpression(t *testing.T) {
 		{"Ge", ast.OperatorGe, OpGe},
 		{"And", ast.OperatorAnd, OpAnd},
 		{"Or", ast.OperatorOr, OpOr},
+		{"BitAnd", ast.OperatorBitAnd, OpBitAnd},
+		{"BitOr", ast.OperatorBitOr, OpBitOr},
+		{"BitXor", ast.OperatorBitXor, OpBitXor},
+		{"LShift", ast.OperatorLShift, OpLShift},
+		{"RShift", ast.OperatorRShift, OpRShift},
 	}
 
 	for _, tt := range tests {
@@ -125,6 +130,7 @@ func TestGenerateUnaryExpression(t *testing.T) {
 	}{
 		{"Negate", ast.OperatorUnaryMinus, OpNeg},
 		{"Not", ast.OperatorNot, OpNot},
+		{"BitNot", ast.OperatorBitNot, OpBitNot},
 	}
 
 	for _, tt := range tests {

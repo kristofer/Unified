@@ -577,11 +577,46 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 				Right:    right,
 				Position: v.getPosition(ctx),
 			}
+		} else if ctx.BIT_AND() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorBitAnd,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.BIT_OR() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorBitOr,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.BIT_XOR() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorBitXor,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.LSHIFT() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorLShift,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.RSHIFT() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorRShift,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
 		}
 	}
 
 	// Unary operations
-	if len(ctx.AllExpr()) == 1 && (ctx.PLUS() != nil || ctx.MINUS() != nil || ctx.NOT() != nil) {
+	if len(ctx.AllExpr()) == 1 && (ctx.PLUS() != nil || ctx.MINUS() != nil || ctx.NOT() != nil || ctx.BIT_NOT() != nil) {
 		operand := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
 		var op OperatorType
 
@@ -591,6 +626,8 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 			op = OperatorUnaryMinus
 		} else if ctx.NOT() != nil {
 			op = OperatorNot
+		} else if ctx.BIT_NOT() != nil {
+			op = OperatorBitNot
 		}
 
 		return &UnaryExpr{
