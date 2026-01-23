@@ -599,6 +599,49 @@ type VarStatement struct {
 func (s *VarStatement) Pos() Position  { return s.Position }
 func (s *VarStatement) statementNode() {}
 
+// AssignOp represents assignment operators
+type AssignOp int
+
+const (
+	AssignNormal AssignOp = iota
+	AssignAdd
+	AssignSub
+	AssignMul
+	AssignDiv
+	AssignMod
+)
+
+// String returns the string representation of the assignment operator
+func (op AssignOp) String() string {
+	switch op {
+	case AssignNormal:
+		return "="
+	case AssignAdd:
+		return "+="
+	case AssignSub:
+		return "-="
+	case AssignMul:
+		return "*="
+	case AssignDiv:
+		return "/="
+	case AssignMod:
+		return "%="
+	default:
+		return "unknown"
+	}
+}
+
+// AssignmentStatement represents an assignment statement
+type AssignmentStatement struct {
+	Target   string
+	Operator AssignOp
+	Value    Expression
+	Position Position
+}
+
+func (s *AssignmentStatement) Pos() Position  { return s.Position }
+func (s *AssignmentStatement) statementNode() {}
+
 // RegionStatement represents a region statement
 type RegionStatement struct {
 	Name     string

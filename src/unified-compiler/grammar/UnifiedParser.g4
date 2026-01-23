@@ -169,6 +169,7 @@ typeList
 statement
     : letStatement
     | varStatement
+    | assignmentStatement
     | regionStatement
     | exprStatement
     | returnStatement
@@ -188,6 +189,15 @@ letStatement
 
 varStatement
     : VAR identifier COLON type (ASSIGN expr)? SEMI
+    ;
+
+assignmentStatement
+    : identifier assignmentOp expr SEMI
+    ;
+
+assignmentOp
+    : ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | STAR_ASSIGN 
+    | DIV_ASSIGN | MOD_ASSIGN
     ;
 
 regionStatement
