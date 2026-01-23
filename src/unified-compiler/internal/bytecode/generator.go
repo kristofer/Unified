@@ -102,6 +102,30 @@ return err
 return nil
 }
 
+// generateBlockExpression generates bytecode for a block used as an expression
+func (g *Generator) generateBlockExpression(block *ast.Block) error {
+// Generate all statements in the block
+for _, stmt := range block.Statements {
+if err := g.generateStatement(stmt); err != nil {
+return err
+}
+}
+
+// If block has a trailing expression, generate it
+// The value will remain on the stack as the block's result
+if block.Expression != nil {
+if err := g.generateExpression(block.Expression); err != nil {
+return err
+}
+} else {
+// If no expression, push null/zero as the block value
+idx := g.bytecode.AddConstant(NewIntValue(0))
+g.bytecode.AddInstruction(OpPush, int64(idx))
+}
+
+return nil
+}
+
 // generateStatement generates bytecode for a statement
 func (g *Generator) generateStatement(stmt ast.Statement) error {
 	switch stmt := stmt.(type) {
@@ -238,20 +262,22 @@ return nil
 
 // generateExpression generates bytecode for an expression
 func (g *Generator) generateExpression(expr ast.Expression) error {
-switch expr := expr.(type) {
-case *ast.Literal:
-return g.generateLiteral(expr)
-case *ast.Identifier:
-return g.generateIdentifier(expr)
-case *ast.BinaryExpr:
-return g.generateBinaryExpr(expr)
-case *ast.UnaryExpr:
-return g.generateUnaryExpr(expr)
-case *ast.CallExpr:
-return g.generateCallExpr(expr)
-default:
-return fmt.Errorf("unsupported expression type: %T", expr)
-}
+	switch expr := expr.(type) {
+	case *ast.Literal:
+		return g.generateLiteral(expr)
+	case *ast.Identifier:
+		return g.generateIdentifier(expr)
+	case *ast.BinaryExpr:
+		return g.generateBinaryExpr(expr)
+	case *ast.UnaryExpr:
+		return g.generateUnaryExpr(expr)
+	case *ast.CallExpr:
+		return g.generateCallExpr(expr)
+	case *ast.Block:
+		return g.generateBlockExpression(expr)
+	default:
+		return fmt.Errorf("unsupported expression type: %T", expr)
+	}
 }
 
 // generateLiteral generates bytecode for a literal
@@ -342,6 +368,16 @@ case ast.OperatorAnd:
 g.bytecode.AddInstruction(OpAnd, 0)
 case ast.OperatorOr:
 g.bytecode.AddInstruction(OpOr, 0)
+case ast.OperatorBitAnd:
+g.bytecode.AddInstruction(OpBitAnd, 0)
+case ast.OperatorBitOr:
+g.bytecode.AddInstruction(OpBitOr, 0)
+case ast.OperatorBitXor:
+g.bytecode.AddInstruction(OpBitXor, 0)
+case ast.OperatorLShift:
+g.bytecode.AddInstruction(OpLShift, 0)
+case ast.OperatorRShift:
+g.bytecode.AddInstruction(OpRShift, 0)
 default:
 return fmt.Errorf("unsupported binary operator: %s", expr.Operator)
 }
@@ -390,6 +426,8 @@ case ast.OperatorUnaryMinus:
 g.bytecode.AddInstruction(OpNeg, 0)
 case ast.OperatorNot:
 g.bytecode.AddInstruction(OpNot, 0)
+case ast.OperatorBitNot:
+g.bytecode.AddInstruction(OpBitNot, 0)
 case ast.OperatorUnaryPlus:
 // No-op
 default:

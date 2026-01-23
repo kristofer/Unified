@@ -1,0 +1,46 @@
+// Bitwise operations test
+
+fn test_bitwise_and() -> Int {
+    let a = 12  // 1100 in binary
+    let b = 10  // 1010 in binary
+    return a & b  // 1000 = 8
+}
+
+fn test_bitwise_or() -> Int {
+    let a = 12  // 1100 in binary
+    let b = 10  // 1010 in binary
+    return a | b  // 1110 = 14
+}
+
+fn test_bitwise_xor() -> Int {
+    let a = 12  // 1100 in binary
+    let b = 10  // 1010 in binary
+    return a ^ b  // 0110 = 6
+}
+
+fn test_bitwise_not() -> Int {
+    let a = 5  // 0101 in binary
+    return ~a  // ...1010 = -6 (two's complement)
+}
+
+fn test_left_shift() -> Int {
+    let a = 3   // 11 in binary
+    return a << 2  // 1100 = 12
+}
+
+fn test_right_shift() -> Int {
+    let a = 12  // 1100 in binary
+    return a >> 2  // 11 = 3
+}
+
+fn main() -> Int {
+    let and_result = test_bitwise_and()      // 8
+    let or_result = test_bitwise_or()        // 14
+    let xor_result = test_bitwise_xor()      // 6
+    let not_result = test_bitwise_not()      // -6
+    let lshift_result = test_left_shift()    // 12
+    let rshift_result = test_right_shift()   // 3
+    
+    // Verify: 8 + 14 = 22
+    return and_result + or_result
+}

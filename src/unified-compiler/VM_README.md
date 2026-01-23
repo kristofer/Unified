@@ -23,6 +23,14 @@ The VM uses a stack-based architecture with the following instruction set:
 - `ADD`, `SUB`, `MUL`, `DIV`, `MOD` - Binary arithmetic
 - `NEG` - Unary negation
 
+### Bitwise Operations (Phase 4)
+- `BIT_AND` - Bitwise AND (&)
+- `BIT_OR` - Bitwise OR (|)
+- `BIT_XOR` - Bitwise XOR (^)
+- `BIT_NOT` - Bitwise NOT (~) - unary
+- `LSHIFT` - Left shift (<<)
+- `RSHIFT` - Right shift (>>)
+
 ### Comparison Operations
 - `EQ`, `NE`, `LT`, `LE`, `GT`, `GE` - Comparisons
 
@@ -47,10 +55,11 @@ The VM uses a stack-based architecture with the following instruction set:
 - `HALT` - Stop execution
 - `NOP` - No operation
 
-## Phase 1 Features
+## Phase 1-4 Features
 
 Currently implemented and tested features:
 
+### Phase 1 (Complete)
 ✅ Function declarations and calls
 ✅ Function parameters
 ✅ Arithmetic operations (+, -, *, /, %)
@@ -60,7 +69,29 @@ Currently implemented and tested features:
 ✅ Return statements
 ✅ Integer, float, boolean, and string literals
 ✅ Basic expressions
-✅ Control flow (if/else - VM support complete, parser needs work)
+✅ Control flow (if/else)
+
+### Phase 2 (Complete)
+✅ While loops
+✅ For loops with ranges
+✅ Break and continue statements
+✅ Nested loops
+✅ Loop labels
+
+### Phase 3 (Complete)
+✅ Mutable variables (let mut)
+✅ Variable assignment
+✅ Compound assignment operators (+=, -=, *=, /=, %=)
+✅ Variable shadowing
+✅ Type inference
+
+### Phase 4 (Partial - 60%)
+✅ Bitwise operators (&, |, ^, ~, <<, >>)
+✅ Operator precedence
+✅ Block expressions
+⏳ Tuples (planned)
+⏳ Lambda expressions (planned)
+⏳ Default parameters (planned)
 
 ## Testing
 

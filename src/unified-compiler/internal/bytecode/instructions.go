@@ -7,51 +7,59 @@ type OpCode byte
 
 // Bytecode instruction set for the Unified VM (Phase 1)
 const (
-// Stack operations
-OpPush    OpCode = iota // Push constant onto stack
-OpPop                   // Pop value from stack
-OpDup                   // Duplicate top of stack
+	// Stack operations
+	OpPush    OpCode = iota // Push constant onto stack
+	OpPop                   // Pop value from stack
+	OpDup                   // Duplicate top of stack
 
-// Arithmetic operations
-OpAdd                   // Add two values
-OpSub                   // Subtract two values
-OpMul                   // Multiply two values
-OpDiv                   // Divide two values
-OpMod                   // Modulo operation
-OpNeg                   // Negate value
+	// Arithmetic operations
+	OpAdd // Add two values
+	OpSub // Subtract two values
+	OpMul // Multiply two values
+	OpDiv // Divide two values
+	OpMod // Modulo operation
+	OpNeg // Negate value
 
-// Comparison operations
-OpEq                    // Equal
-OpNe                    // Not equal
-OpLt                    // Less than
-OpLe                    // Less than or equal
-OpGt                    // Greater than
-OpGe                    // Greater than or equal
+	// Bitwise operations
+	OpBitAnd   // Bitwise AND
+	OpBitOr    // Bitwise OR
+	OpBitXor   // Bitwise XOR
+	OpBitNot   // Bitwise NOT (unary)
+	OpLShift   // Left shift
+	OpRShift   // Right shift
 
-// Logical operations
-OpAnd                   // Logical AND
-OpOr                    // Logical OR
-OpNot                   // Logical NOT
+	// Comparison operations
+	OpEq // Equal
+	OpNe // Not equal
+	OpLt // Less than
+	OpLe // Less than or equal
+	OpGt // Greater than
+	OpGe // Greater than or equal
 
-// Variable operations
-OpLoadLocal             // Load local variable
-OpStoreLocal            // Store local variable
-OpLoadGlobal            // Load global variable
-OpStoreGlobal           // Store global variable
+	// Logical operations
+	OpAnd // Logical AND
+	OpOr  // Logical OR
+	OpNot // Logical NOT
 
-// Control flow
-OpJump                  // Unconditional jump
-OpJumpIfFalse           // Jump if top of stack is false
-OpJumpIfTrue            // Jump if top of stack is true
+	// Variable operations
+	OpLoadLocal   // Load local variable
+	OpStoreLocal  // Store local variable
+	OpLoadGlobal  // Load global variable
+	OpStoreGlobal // Store global variable
 
-// Function operations
-OpCall                  // Call function
-OpReturn                // Return from function
-OpReturnValue           // Return value from function
+	// Control flow
+	OpJump        // Unconditional jump
+	OpJumpIfFalse // Jump if top of stack is false
+	OpJumpIfTrue  // Jump if top of stack is true
 
-// Special operations
-OpHalt                  // Halt execution
-OpNop                   // No operation
+	// Function operations
+	OpCall        // Call function
+	OpReturn      // Return from function
+	OpReturnValue // Return value from function
+
+	// Special operations
+	OpHalt // Halt execution
+	OpNop  // No operation
 )
 
 // Instruction represents a single bytecode instruction
@@ -87,6 +95,18 @@ case OpMod:
 return "MOD"
 case OpNeg:
 return "NEG"
+case OpBitAnd:
+return "BIT_AND"
+case OpBitOr:
+return "BIT_OR"
+case OpBitXor:
+return "BIT_XOR"
+case OpBitNot:
+return "BIT_NOT"
+case OpLShift:
+return "LSHIFT"
+case OpRShift:
+return "RSHIFT"
 case OpEq:
 return "EQ"
 case OpNe:

@@ -1,0 +1,6 @@
+// Simple precedence test
+
+fn main() -> Int {
+    // Should be 2 + (3 * 4) = 2 + 12 = 14
+    return 2 + 3 * 4
+}

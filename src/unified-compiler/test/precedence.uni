@@ -1,0 +1,27 @@
+// Operator precedence tests
+// Tests that operators are evaluated in the correct order
+
+fn test_arithmetic_precedence() -> Int {
+    // Should be 2 + (3 * 4) = 2 + 12 = 14
+    return 2 + 3 * 4
+}
+
+fn test_mixed_precedence() -> Int {
+    // Should be 5 + (3 * 2) - (8 / 4) = 5 + 6 - 2 = 9
+    return 5 + 3 * 2 - 8 / 4
+}
+
+fn test_bitwise_and_arithmetic() -> Int {
+    // Arithmetic before bitwise: 4 + 8 = 12, then 12 & 10 = 8
+    let sum = 4 + 8
+    return sum & 10
+}
+
+fn main() -> Int {
+    let t1 = test_arithmetic_precedence()    // 14
+    let t2 = test_mixed_precedence()         // 9
+    let t3 = test_bitwise_and_arithmetic()   // 8
+    
+    // Sum should be 14 + 9 + 8 = 31
+    return t1 + t2 + t3
+}

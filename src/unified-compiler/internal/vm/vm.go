@@ -219,6 +219,65 @@ result := bytecode.NewBoolValue(!val.IsTruthy())
 vm.stack.Push(result)
 vm.ip++
 
+case bytecode.OpBitAnd:
+right := vm.stack.Pop()
+left := vm.stack.Pop()
+if left.Type != bytecode.ValueTypeInt || right.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("bitwise AND requires integer operands")
+}
+result := bytecode.NewIntValue(left.Int & right.Int)
+vm.stack.Push(result)
+vm.ip++
+
+case bytecode.OpBitOr:
+right := vm.stack.Pop()
+left := vm.stack.Pop()
+if left.Type != bytecode.ValueTypeInt || right.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("bitwise OR requires integer operands")
+}
+result := bytecode.NewIntValue(left.Int | right.Int)
+vm.stack.Push(result)
+vm.ip++
+
+case bytecode.OpBitXor:
+right := vm.stack.Pop()
+left := vm.stack.Pop()
+if left.Type != bytecode.ValueTypeInt || right.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("bitwise XOR requires integer operands")
+}
+result := bytecode.NewIntValue(left.Int ^ right.Int)
+vm.stack.Push(result)
+vm.ip++
+
+case bytecode.OpBitNot:
+val := vm.stack.Pop()
+if val.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("bitwise NOT requires integer operand")
+}
+result := bytecode.NewIntValue(^val.Int)
+vm.stack.Push(result)
+vm.ip++
+
+case bytecode.OpLShift:
+right := vm.stack.Pop()
+left := vm.stack.Pop()
+if left.Type != bytecode.ValueTypeInt || right.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("left shift requires integer operands")
+}
+result := bytecode.NewIntValue(left.Int << uint(right.Int))
+vm.stack.Push(result)
+vm.ip++
+
+case bytecode.OpRShift:
+right := vm.stack.Pop()
+left := vm.stack.Pop()
+if left.Type != bytecode.ValueTypeInt || right.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("right shift requires integer operands")
+}
+result := bytecode.NewIntValue(left.Int >> uint(right.Int))
+vm.stack.Push(result)
+vm.ip++
+
 case bytecode.OpLoadLocal:
 // Load local variable from current frame
 if len(vm.callStack) == 0 {
