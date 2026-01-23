@@ -19,6 +19,22 @@ func TestIntegrationLocalVariables(t *testing.T) {
 	testCompileAndRun(t, "../../test/integration/local_variables.uni", 30)
 }
 
+func TestIntegrationWhileFactorial(t *testing.T) {
+	testCompileAndRun(t, "../../test/integration/while_factorial.uni", 120)
+}
+
+func TestIntegrationForSum(t *testing.T) {
+	testCompileAndRun(t, "../../test/integration/for_sum.uni", 55)
+}
+
+func TestIntegrationNestedLoops(t *testing.T) {
+	testCompileAndRun(t, "../../test/integration/nested_loops.uni", 36)
+}
+
+func TestIntegrationFizzBuzz(t *testing.T) {
+	testCompileAndRun(t, "../../test/integration/fizzbuzz_complete.uni", 15)
+}
+
 // TODO: Enable once if statement parsing is fixed
 // func TestIntegrationIfElse(t *testing.T) {
 // 	testCompileAndRun(t, "../../test/integration/if_else.uni", 1)

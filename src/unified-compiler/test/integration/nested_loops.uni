@@ -1,0 +1,16 @@
+// Nested loops example
+// Computes sum using nested for loops (should return 36)
+
+fn nested_sum() -> Int {
+    let mut total = 0;
+    for i in 1..4 {
+        for j in 1..4 {
+            total = total + i;
+        }
+    }
+    return total;
+}
+
+fn main() -> Int {
+    return nested_sum();
+}

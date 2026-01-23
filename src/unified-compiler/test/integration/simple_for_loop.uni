@@ -1,0 +1,14 @@
+// Simple for loop test
+// Just counts iterations (should return 5)
+
+fn test_for_loop() -> Int {
+    let mut count = 0;
+    for i in 0..5 {
+        count = count + 1;
+    }
+    return count;
+}
+
+fn main() -> Int {
+    return test_for_loop();
+}

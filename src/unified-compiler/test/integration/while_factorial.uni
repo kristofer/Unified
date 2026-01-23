@@ -1,0 +1,16 @@
+// Factorial using while loop
+// Computes factorial of 5 (should return 120)
+
+fn factorial(n: Int) -> Int {
+    let mut result = 1;
+    let mut i = n;
+    while i > 1 {
+        result = result * i;
+        i = i - 1;
+    }
+    return result;
+}
+
+fn main() -> Int {
+    return factorial(5);
+}

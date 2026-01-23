@@ -1,0 +1,14 @@
+// Sum using for loop with range
+// Computes sum of 1 to 10 (should return 55)
+
+fn sum_range(start: Int, end: Int) -> Int {
+    let mut total = 0;
+    for i in start..end {
+        total = total + i;
+    }
+    return total;
+}
+
+fn main() -> Int {
+    return sum_range(1, 11);
+}

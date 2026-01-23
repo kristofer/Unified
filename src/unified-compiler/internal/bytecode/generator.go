@@ -5,11 +5,20 @@ import (
 "unified-compiler/internal/ast"
 )
 
+// LoopContext tracks loop information for break/continue
+type LoopContext struct {
+startPos      int    // Position to jump to for continue
+breakJumps    []int  // Positions of break jumps to patch
+continueJumps []int  // Positions of continue jumps to patch
+label         string // Optional loop label
+}
+
 // Generator converts AST to bytecode
 type Generator struct {
 bytecode      *Bytecode
 localVars     map[string]int // Variable name -> stack index
 localVarCount int            // Number of local variables
+loopStack     []LoopContext  // Stack of nested loop contexts
 }
 
 // NewGenerator creates a new bytecode generator
@@ -111,6 +120,16 @@ g.bytecode.AddInstruction(OpPop, 0)
 return nil
 case *ast.IfStatement:
 return g.generateIfStatement(stmt)
+case *ast.WhileStatement:
+return g.generateWhileStatement(stmt)
+case *ast.ForStatement:
+return g.generateForStatement(stmt)
+case *ast.LoopStatement:
+return g.generateLoopStatement(stmt)
+case *ast.BreakStatement:
+return g.generateBreakStatement(stmt)
+case *ast.ContinueStatement:
+return g.generateContinueStatement(stmt)
 default:
 return fmt.Errorf("unsupported statement type: %T", stmt)
 }
@@ -274,6 +293,16 @@ return fmt.Errorf("undefined variable: %s", ident.Name)
 
 // generateBinaryExpr generates bytecode for a binary expression
 func (g *Generator) generateBinaryExpr(expr *ast.BinaryExpr) error {
+// Handle assignment specially
+if expr.Operator == ast.OperatorAssign {
+return g.generateAssignment(expr)
+}
+
+// Range expressions are only valid in for loops, not as standalone expressions
+if expr.Operator == ast.OperatorRange || expr.Operator == ast.OperatorRangeIncl {
+return fmt.Errorf("range expressions can only be used in for loops")
+}
+
 // Generate left operand
 if err := g.generateExpression(expr.Left); err != nil {
 return err
@@ -315,6 +344,34 @@ g.bytecode.AddInstruction(OpOr, 0)
 default:
 return fmt.Errorf("unsupported binary operator: %s", expr.Operator)
 }
+
+return nil
+}
+
+// generateAssignment generates bytecode for variable assignment
+func (g *Generator) generateAssignment(expr *ast.BinaryExpr) error {
+// Left side must be an identifier
+ident, ok := expr.Left.(*ast.Identifier)
+if !ok {
+return fmt.Errorf("assignment target must be a variable")
+}
+
+// Generate the value being assigned
+if err := g.generateExpression(expr.Right); err != nil {
+return err
+}
+
+// Look up variable
+varIdx, ok := g.localVars[ident.Name]
+if !ok {
+return fmt.Errorf("undefined variable: %s", ident.Name)
+}
+
+// Duplicate the value on the stack (assignment is an expression that returns the assigned value)
+g.bytecode.AddInstruction(OpDup, 0)
+
+// Store to variable
+g.bytecode.AddInstruction(OpStoreLocal, int64(varIdx))
 
 return nil
 }
@@ -364,6 +421,270 @@ return fmt.Errorf("undefined function: %s", funcIdent.Name)
 
 // Generate call with argument count
 g.bytecode.AddInstructionWithArgCount(OpCall, int64(funcIdx), len(expr.Arguments))
+
+return nil
+}
+
+// generateWhileStatement generates bytecode for while loop
+func (g *Generator) generateWhileStatement(stmt *ast.WhileStatement) error {
+// Mark loop start
+loopStart := g.bytecode.CurrentPosition()
+
+// Create loop context
+loopCtx := LoopContext{
+startPos:      loopStart,
+breakJumps:    []int{},
+continueJumps: []int{},
+label:         stmt.Label,
+}
+g.loopStack = append(g.loopStack, loopCtx)
+
+// Generate condition
+if err := g.generateExpression(stmt.Condition); err != nil {
+return err
+}
+
+// Jump to end if condition is false
+jumpIfFalse := g.bytecode.CurrentPosition()
+g.bytecode.AddInstruction(OpJumpIfFalse, 0) // Placeholder
+
+// Generate loop body
+if err := g.generateBlock(stmt.Body); err != nil {
+return err
+}
+
+// Jump back to loop start
+g.bytecode.AddInstruction(OpJump, int64(loopStart))
+
+// Patch break jumps to point here (after loop)
+afterLoop := g.bytecode.CurrentPosition()
+g.bytecode.PatchJump(jumpIfFalse, afterLoop)
+
+// Pop loop context and patch break/continue jumps
+loopCtx = g.loopStack[len(g.loopStack)-1]
+g.loopStack = g.loopStack[:len(g.loopStack)-1]
+
+for _, breakPos := range loopCtx.breakJumps {
+g.bytecode.PatchJump(breakPos, afterLoop)
+}
+for _, continuePos := range loopCtx.continueJumps {
+g.bytecode.PatchJump(continuePos, loopStart)
+}
+
+return nil
+}
+
+// generateForStatement generates bytecode for for loop
+func (g *Generator) generateForStatement(stmt *ast.ForStatement) error {
+// For Phase 2, we'll support range expressions
+// Expect iterable to be a binary expression with RANGE or RANGE_INCL operator
+
+// Check if iterable is a binary expression with RANGE or RANGE_INCL operator
+var rangeStart, rangeEnd ast.Expression
+var isInclusive bool
+
+if binaryExpr, ok := stmt.Iterable.(*ast.BinaryExpr); ok {
+// Check for range operators
+if binaryExpr.Operator == ast.OperatorRange {
+rangeStart = binaryExpr.Left
+rangeEnd = binaryExpr.Right
+isInclusive = false
+} else if binaryExpr.Operator == ast.OperatorRangeIncl {
+rangeStart = binaryExpr.Left
+rangeEnd = binaryExpr.Right
+isInclusive = true
+} else {
+return fmt.Errorf("for loop iterable must be a range expression (.. or ..=)")
+}
+} else {
+return fmt.Errorf("for loops currently only support range expressions")
+}
+
+// Allocate iterator variable
+iterIdx := g.localVarCount
+g.localVars[stmt.Variable] = iterIdx
+g.localVarCount++
+
+// Initialize iterator with range start
+if err := g.generateExpression(rangeStart); err != nil {
+return err
+}
+g.bytecode.AddInstruction(OpStoreLocal, int64(iterIdx))
+
+// Store range end in a temporary variable
+endIdx := g.localVarCount
+g.localVarCount++
+if err := g.generateExpression(rangeEnd); err != nil {
+return err
+}
+g.bytecode.AddInstruction(OpStoreLocal, int64(endIdx))
+
+// Loop start
+loopStart := g.bytecode.CurrentPosition()
+
+// Create loop context
+loopCtx := LoopContext{
+startPos:      loopStart,
+breakJumps:    []int{},
+continueJumps: []int{},
+label:         stmt.Label,
+}
+g.loopStack = append(g.loopStack, loopCtx)
+
+// Check condition: iterator < end (or <= for inclusive)
+g.bytecode.AddInstruction(OpLoadLocal, int64(iterIdx))
+g.bytecode.AddInstruction(OpLoadLocal, int64(endIdx))
+if isInclusive {
+g.bytecode.AddInstruction(OpLe, 0) // iterator <= end
+} else {
+g.bytecode.AddInstruction(OpLt, 0) // iterator < end
+}
+
+// Jump to end if condition is false
+jumpIfFalse := g.bytecode.CurrentPosition()
+g.bytecode.AddInstruction(OpJumpIfFalse, 0) // Placeholder
+
+// Generate loop body
+if err := g.generateBlock(stmt.Body); err != nil {
+return err
+}
+
+// Increment iterator
+incrementPos := g.bytecode.CurrentPosition()
+g.bytecode.AddInstruction(OpLoadLocal, int64(iterIdx))
+idx1 := g.bytecode.AddConstant(NewIntValue(1))
+g.bytecode.AddInstruction(OpPush, int64(idx1))
+g.bytecode.AddInstruction(OpAdd, 0)
+g.bytecode.AddInstruction(OpStoreLocal, int64(iterIdx))
+
+// Jump back to loop start
+g.bytecode.AddInstruction(OpJump, int64(loopStart))
+
+// Patch jumps
+afterLoop := g.bytecode.CurrentPosition()
+g.bytecode.PatchJump(jumpIfFalse, afterLoop)
+
+// Pop loop context and patch break/continue jumps
+loopCtx = g.loopStack[len(g.loopStack)-1]
+g.loopStack = g.loopStack[:len(g.loopStack)-1]
+
+for _, breakPos := range loopCtx.breakJumps {
+g.bytecode.PatchJump(breakPos, afterLoop)
+}
+for _, continuePos := range loopCtx.continueJumps {
+g.bytecode.PatchJump(continuePos, incrementPos)
+}
+
+return nil
+}
+
+// generateLoopStatement generates bytecode for infinite loop
+func (g *Generator) generateLoopStatement(stmt *ast.LoopStatement) error {
+// Mark loop start
+loopStart := g.bytecode.CurrentPosition()
+
+// Create loop context
+loopCtx := LoopContext{
+startPos:      loopStart,
+breakJumps:    []int{},
+continueJumps: []int{},
+label:         stmt.Label,
+}
+g.loopStack = append(g.loopStack, loopCtx)
+
+// Generate loop body
+if err := g.generateBlock(stmt.Body); err != nil {
+return err
+}
+
+// Jump back to loop start
+g.bytecode.AddInstruction(OpJump, int64(loopStart))
+
+// After loop (only reachable via break)
+afterLoop := g.bytecode.CurrentPosition()
+
+// Pop loop context and patch break/continue jumps
+loopCtx = g.loopStack[len(g.loopStack)-1]
+g.loopStack = g.loopStack[:len(g.loopStack)-1]
+
+for _, breakPos := range loopCtx.breakJumps {
+g.bytecode.PatchJump(breakPos, afterLoop)
+}
+for _, continuePos := range loopCtx.continueJumps {
+g.bytecode.PatchJump(continuePos, loopStart)
+}
+
+return nil
+}
+
+// generateBreakStatement generates bytecode for break statement
+func (g *Generator) generateBreakStatement(stmt *ast.BreakStatement) error {
+if len(g.loopStack) == 0 {
+return fmt.Errorf("break statement outside of loop")
+}
+
+// Find the target loop context
+var targetIdx int
+if stmt.Label != "" {
+// Find labeled loop
+found := false
+for i := len(g.loopStack) - 1; i >= 0; i-- {
+if g.loopStack[i].label == stmt.Label {
+targetIdx = i
+found = true
+break
+}
+}
+if !found {
+return fmt.Errorf("break label not found: %s", stmt.Label)
+}
+} else {
+// Break from innermost loop
+targetIdx = len(g.loopStack) - 1
+}
+
+// Add a jump instruction (will be patched later)
+jumpPos := g.bytecode.CurrentPosition()
+g.bytecode.AddInstruction(OpJump, 0) // Placeholder
+
+// Record this jump position in the loop context
+g.loopStack[targetIdx].breakJumps = append(g.loopStack[targetIdx].breakJumps, jumpPos)
+
+return nil
+}
+
+// generateContinueStatement generates bytecode for continue statement
+func (g *Generator) generateContinueStatement(stmt *ast.ContinueStatement) error {
+if len(g.loopStack) == 0 {
+return fmt.Errorf("continue statement outside of loop")
+}
+
+// Find the target loop context
+var targetIdx int
+if stmt.Label != "" {
+// Find labeled loop
+found := false
+for i := len(g.loopStack) - 1; i >= 0; i-- {
+if g.loopStack[i].label == stmt.Label {
+targetIdx = i
+found = true
+break
+}
+}
+if !found {
+return fmt.Errorf("continue label not found: %s", stmt.Label)
+}
+} else {
+// Continue to innermost loop
+targetIdx = len(g.loopStack) - 1
+}
+
+// Add a jump instruction (will be patched later)
+jumpPos := g.bytecode.CurrentPosition()
+g.bytecode.AddInstruction(OpJump, 0) // Placeholder
+
+// Record this jump position in the loop context
+g.loopStack[targetIdx].continueJumps = append(g.loopStack[targetIdx].continueJumps, jumpPos)
 
 return nil
 }

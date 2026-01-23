@@ -556,6 +556,27 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 				Right:    right,
 				Position: v.getPosition(ctx),
 			}
+		} else if ctx.RANGE() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorRange,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.RANGE_INCL() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorRangeIncl,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.ASSIGN() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorAssign,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
 		}
 	}
 
@@ -739,10 +760,17 @@ func (v *ASTBuilder) VisitReturnStatement(ctx *parser.ReturnStatementContext) in
 
 // VisitExprStatement builds an expression statement node
 func (v *ASTBuilder) VisitExprStatement(ctx *parser.ExprStatementContext) interface{} {
-	expr := v.VisitExpr(ctx.Expr().(*parser.ExprContext)).(Expression)
+	if ctx.Expr() == nil {
+		return nil
+	}
+	
+	expr := v.VisitExpr(ctx.Expr().(*parser.ExprContext))
+	if expr == nil {
+		return nil
+	}
 
 	return &ExprStatement{
-		Expression: expr,
+		Expression: expr.(Expression),
 		Position:   v.getPosition(ctx),
 	}
 }
@@ -874,13 +902,21 @@ func (v *ASTBuilder) VisitForStatement(ctx *parser.ForStatementContext) interfac
 		iterVar = ctx.Identifier(0).GetText()
 	}
 
-	iterable := v.VisitExpr(ctx.Expr().(*parser.ExprContext)).(Expression)
+	if ctx.Expr() == nil {
+		return nil
+	}
+	
+	iterable := v.VisitExpr(ctx.Expr().(*parser.ExprContext))
+	if iterable == nil {
+		return nil
+	}
+	
 	body := v.VisitBlock(ctx.Block().(*parser.BlockContext)).(*Block)
 
 	return &ForStatement{
 		Label:    label,
 		Variable: iterVar,
-		Iterable: iterable,
+		Iterable: iterable.(Expression),
 		Body:     body,
 		Position: v.getPosition(ctx),
 	}
