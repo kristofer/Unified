@@ -1,0 +1,24 @@
+// FizzBuzz implementation (simplified without print)
+// Returns n if successful
+
+fn fizzbuzz(n: Int) -> Int {
+    for i in 1..=n {
+        let divisible_by_3 = i % 3 == 0;
+        let divisible_by_5 = i % 5 == 0;
+        
+        if divisible_by_3 && divisible_by_5 {
+            let x = 15;
+        } else if divisible_by_3 {
+            let x = 3;
+        } else if divisible_by_5 {
+            let x = 5;
+        } else {
+            let x = i;
+        }
+    }
+    return n;
+}
+
+fn main() -> Int {
+    return fizzbuzz(15);
+}

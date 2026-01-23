@@ -293,6 +293,16 @@ return fmt.Errorf("undefined variable: %s", ident.Name)
 
 // generateBinaryExpr generates bytecode for a binary expression
 func (g *Generator) generateBinaryExpr(expr *ast.BinaryExpr) error {
+// Handle assignment specially
+if expr.Operator == ast.OperatorAssign {
+return g.generateAssignment(expr)
+}
+
+// Range expressions are only valid in for loops, not as standalone expressions
+if expr.Operator == ast.OperatorRange || expr.Operator == ast.OperatorRangeIncl {
+return fmt.Errorf("range expressions can only be used in for loops")
+}
+
 // Generate left operand
 if err := g.generateExpression(expr.Left); err != nil {
 return err
@@ -334,6 +344,34 @@ g.bytecode.AddInstruction(OpOr, 0)
 default:
 return fmt.Errorf("unsupported binary operator: %s", expr.Operator)
 }
+
+return nil
+}
+
+// generateAssignment generates bytecode for variable assignment
+func (g *Generator) generateAssignment(expr *ast.BinaryExpr) error {
+// Left side must be an identifier
+ident, ok := expr.Left.(*ast.Identifier)
+if !ok {
+return fmt.Errorf("assignment target must be a variable")
+}
+
+// Generate the value being assigned
+if err := g.generateExpression(expr.Right); err != nil {
+return err
+}
+
+// Look up variable
+varIdx, ok := g.localVars[ident.Name]
+if !ok {
+return fmt.Errorf("undefined variable: %s", ident.Name)
+}
+
+// Duplicate the value on the stack (assignment is an expression that returns the assigned value)
+g.bytecode.AddInstruction(OpDup, 0)
+
+// Store to variable
+g.bytecode.AddInstruction(OpStoreLocal, int64(varIdx))
 
 return nil
 }
