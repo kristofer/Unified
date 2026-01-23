@@ -1,0 +1,12 @@
+// Simple Point struct test - without methods for now
+
+struct Point {
+    x: Int
+    y: Int
+}
+
+fn main() -> Int {
+    let p = Point { x: 10, y: 20 };
+    let x_val = p.x;
+    return x_val;
+}

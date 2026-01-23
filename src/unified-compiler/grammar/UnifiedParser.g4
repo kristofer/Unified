@@ -315,6 +315,7 @@ caseExpr
 
 primary
     : identifier                                     // Variable reference
+    | SELF                                           // Self reference
     | literal                                        // Literal
     | LPAREN expr RPAREN                             // Grouping
     | block                                          // Block expression

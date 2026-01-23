@@ -19,24 +19,48 @@ bytecode      *Bytecode
 localVars     map[string]int // Variable name -> stack index
 localVarCount int            // Number of local variables
 loopStack     []LoopContext  // Stack of nested loop contexts
+structTypes   map[string]*StructTypeInfo // Struct type information
+}
+
+// StructTypeInfo holds metadata about a struct type
+type StructTypeInfo struct {
+Name    string
+Fields  map[string]int // Field name -> index
+Methods map[string]*ast.FunctionDecl
 }
 
 // NewGenerator creates a new bytecode generator
 func NewGenerator() *Generator {
 return &Generator{
-bytecode:  NewBytecode(),
-localVars: make(map[string]int),
+bytecode:    NewBytecode(),
+localVars:   make(map[string]int),
+structTypes: make(map[string]*StructTypeInfo),
 }
 }
 
 // Generate converts a program AST to bytecode
 func (g *Generator) Generate(program *ast.Program) (*Bytecode, error) {
-// Generate code for all top-level items
+// First pass: Register struct types
+for _, item := range program.Items {
+switch item := item.(type) {
+case *ast.StructDecl:
+if err := g.registerStructType(item); err != nil {
+return nil, fmt.Errorf("error registering struct %s: %w", item.Name, err)
+}
+}
+}
+
+// Second pass: Generate code for all top-level items
 for _, item := range program.Items {
 switch item := item.(type) {
 case *ast.FunctionDecl:
 if err := g.generateFunction(item); err != nil {
 return nil, fmt.Errorf("error generating function %s: %w", item.Name, err)
+}
+case *ast.StructDecl:
+// Struct methods are handled separately
+if err := g.generateStructMethods(item); err != nil {
+return nil, fmt.Errorf("error generating methods for struct %s: %w", item.Name, err)
 }
 case *ast.ConstantDecl:
 // Constants are handled at compile time
@@ -273,6 +297,12 @@ func (g *Generator) generateExpression(expr ast.Expression) error {
 		return g.generateUnaryExpr(expr)
 	case *ast.CallExpr:
 		return g.generateCallExpr(expr)
+	case *ast.StructExpr:
+		return g.generateStructExpr(expr)
+	case *ast.FieldAccessExpr:
+		return g.generateFieldAccessExpr(expr)
+	case *ast.MethodCallExpr:
+		return g.generateMethodCallExpr(expr)
 	case *ast.Block:
 		return g.generateBlockExpression(expr)
 	default:
@@ -724,6 +754,158 @@ g.bytecode.AddInstruction(OpJump, 0) // Placeholder
 
 // Record this jump position in the loop context
 g.loopStack[targetIdx].continueJumps = append(g.loopStack[targetIdx].continueJumps, jumpPos)
+
+return nil
+}
+
+// registerStructType registers a struct type's metadata
+func (g *Generator) registerStructType(structDecl *ast.StructDecl) error {
+info := &StructTypeInfo{
+Name:    structDecl.Name,
+Fields:  make(map[string]int),
+Methods: make(map[string]*ast.FunctionDecl),
+}
+
+// Register fields with their indices
+fieldIndex := 0
+for _, member := range structDecl.Members {
+if !member.IsMethod {
+info.Fields[member.Name] = fieldIndex
+fieldIndex++
+} else {
+// Register method
+info.Methods[member.Method.Name] = member.Method
+}
+}
+
+g.structTypes[structDecl.Name] = info
+return nil
+}
+
+// generateStructMethods generates bytecode for struct methods
+func (g *Generator) generateStructMethods(structDecl *ast.StructDecl) error {
+for _, member := range structDecl.Members {
+if member.IsMethod {
+// Generate method with struct type prefix
+methodName := structDecl.Name + "::" + member.Method.Name
+method := member.Method
+method.Name = methodName
+if err := g.generateFunction(method); err != nil {
+return fmt.Errorf("error generating method %s: %w", methodName, err)
+}
+}
+}
+return nil
+}
+
+// generateStructExpr generates bytecode for struct instantiation
+func (g *Generator) generateStructExpr(expr *ast.StructExpr) error {
+// Get struct type info
+structInfo, ok := g.structTypes[expr.Name]
+if !ok {
+return fmt.Errorf("undefined struct type: %s", expr.Name)
+}
+
+// Create a map to track which fields are initialized
+initializedFields := make(map[string]bool)
+
+// Build ordered list of field names and values
+type fieldPair struct {
+name  string
+value ast.Expression
+index int
+}
+fieldPairs := make([]fieldPair, len(structInfo.Fields))
+
+for _, fieldInit := range expr.FieldInits {
+fieldIndex, ok := structInfo.Fields[fieldInit.Name]
+if !ok {
+return fmt.Errorf("unknown field %s in struct %s", fieldInit.Name, expr.Name)
+}
+fieldPairs[fieldIndex] = fieldPair{
+name:  fieldInit.Name,
+value: fieldInit.Value,
+index: fieldIndex,
+}
+initializedFields[fieldInit.Name] = true
+}
+
+// Check that all fields are initialized
+for fieldName := range structInfo.Fields {
+if !initializedFields[fieldName] {
+return fmt.Errorf("missing field initialization: %s", fieldName)
+}
+}
+
+// Push field name and value pairs onto stack
+for _, pair := range fieldPairs {
+// Push field name
+fieldNameIdx := g.bytecode.AddConstant(NewStringValue(pair.name))
+g.bytecode.AddInstruction(OpPush, int64(fieldNameIdx))
+
+// Push field value
+if err := g.generateExpression(pair.value); err != nil {
+return err
+}
+}
+
+// Push struct type name as a constant
+typeNameIdx := g.bytecode.AddConstant(NewStringValue(expr.Name))
+g.bytecode.AddInstruction(OpPush, int64(typeNameIdx))
+
+// Allocate struct with field count
+g.bytecode.AddInstruction(OpAllocStruct, int64(len(structInfo.Fields)))
+
+return nil
+}
+
+// generateFieldAccessExpr generates bytecode for field access
+func (g *Generator) generateFieldAccessExpr(expr *ast.FieldAccessExpr) error {
+// Generate the object expression
+if err := g.generateExpression(expr.Object); err != nil {
+return err
+}
+
+// For now, we'll use a simple approach: push field name and use OpLoadField
+// In a more sophisticated implementation, we'd resolve the field index at compile time
+fieldNameIdx := g.bytecode.AddConstant(NewStringValue(expr.Field))
+g.bytecode.AddInstruction(OpPush, int64(fieldNameIdx))
+g.bytecode.AddInstruction(OpLoadField, 0)
+
+return nil
+}
+
+// generateMethodCallExpr generates bytecode for method calls
+func (g *Generator) generateMethodCallExpr(expr *ast.MethodCallExpr) error {
+// Generate arguments first
+for _, arg := range expr.Arguments {
+if err := g.generateExpression(arg); err != nil {
+return err
+}
+}
+
+// Generate the object (self) last so it's on top of the arguments
+if err := g.generateExpression(expr.Object); err != nil {
+return err
+}
+
+// For methods, we need to determine the struct type to resolve the method
+// For now, we'll use a simplified approach with runtime resolution
+// In a real implementation, we'd do type inference here
+
+// Push the method name onto the stack
+methodNameIdx := g.bytecode.AddConstant(NewStringValue(expr.Method))
+g.bytecode.AddInstruction(OpPush, int64(methodNameIdx))
+
+// Call the method (will be resolved at runtime)
+// The operand is the number of arguments + 1 (for self)
+argCount := len(expr.Arguments) + 1
+inst := Instruction{
+Op:       OpCall,
+Operand:  int64(methodNameIdx), // This will need to be resolved to function index
+ArgCount: argCount,
+}
+g.bytecode.Instructions = append(g.bytecode.Instructions, inst)
 
 return nil
 }

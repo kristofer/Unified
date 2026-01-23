@@ -57,6 +57,11 @@ const (
 	OpReturn      // Return from function
 	OpReturnValue // Return value from function
 
+	// Struct operations
+	OpAllocStruct // Allocate struct instance
+	OpLoadField   // Load field from struct
+	OpStoreField  // Store field to struct
+
 	// Special operations
 	OpHalt // Halt execution
 	OpNop  // No operation
@@ -145,6 +150,12 @@ case OpReturn:
 return "RETURN"
 case OpReturnValue:
 return "RETURN_VALUE"
+case OpAllocStruct:
+return "ALLOC_STRUCT"
+case OpLoadField:
+return "LOAD_FIELD"
+case OpStoreField:
+return "STORE_FIELD"
 case OpHalt:
 return "HALT"
 case OpNop:
@@ -198,11 +209,18 @@ b.Instructions[position].Operand = int64(target)
 
 // Value represents a value in the VM
 type Value struct {
-Type  ValueType
-Int   int64
-Float float64
-Bool  bool
-Str   string
+Type   ValueType
+Int    int64
+Float  float64
+Bool   bool
+Str    string
+Struct *StructValue // For struct instances
+}
+
+// StructValue represents a struct instance in the VM
+type StructValue struct {
+TypeName string
+Fields   map[string]Value
 }
 
 // ValueType represents the type of a value
@@ -214,6 +232,7 @@ ValueTypeFloat
 ValueTypeBool
 ValueTypeString
 ValueTypeNull
+ValueTypeStruct
 )
 
 // NewIntValue creates an integer value
@@ -239,6 +258,17 @@ return Value{Type: ValueTypeString, Str: s}
 // NewNullValue creates a null value
 func NewNullValue() Value {
 return Value{Type: ValueTypeNull}
+}
+
+// NewStructValue creates a struct value
+func NewStructValue(typeName string, fields map[string]Value) Value {
+return Value{
+Type: ValueTypeStruct,
+Struct: &StructValue{
+TypeName: typeName,
+Fields:   fields,
+},
+}
 }
 
 // String returns a human-readable representation of the value

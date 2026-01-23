@@ -442,8 +442,38 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 		return v.VisitPrimary(primary.(*parser.PrimaryContext))
 	}
 
+	// Handle field access: expr DOT identifier
+	if len(ctx.AllExpr()) == 1 && ctx.DOT() != nil && ctx.Identifier() != nil {
+		object := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
+		fieldName := ctx.Identifier().GetText()
+		
+		return &FieldAccessExpr{
+			Object:   object,
+			Field:    fieldName,
+			Position: v.getPosition(ctx),
+		}
+	}
+
+	// Handle method calls: expr DOT identifier LPAREN argList? RPAREN
+	if len(ctx.AllExpr()) == 1 && ctx.DOT() != nil && ctx.Identifier() != nil && ctx.LPAREN() != nil {
+		object := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
+		methodName := ctx.Identifier().GetText()
+		
+		var arguments []Expression
+		if ctx.ArgList() != nil {
+			arguments = v.processArgList(ctx.ArgList().(*parser.ArgListContext))
+		}
+		
+		return &MethodCallExpr{
+			Object:    object,
+			Method:    methodName,
+			Arguments: arguments,
+			Position:  v.getPosition(ctx),
+		}
+	}
+
 	// Handle function calls: expr LPAREN argList? RPAREN
-	if len(ctx.AllExpr()) == 1 && ctx.LPAREN() != nil && ctx.RPAREN() != nil {
+	if len(ctx.AllExpr()) == 1 && ctx.LPAREN() != nil && ctx.RPAREN() != nil && ctx.DOT() == nil {
 		function := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
 		
 		var arguments []Expression
@@ -659,6 +689,13 @@ func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
 			Position: v.getPosition(ctx),
 		}
 	}
+	// Handle 'self' keyword as an identifier
+	if ctx.GetText() == "self" || ctx.GetText() == "Self" {
+		return &Identifier{
+			Name:     "self",
+			Position: v.getPosition(ctx),
+		}
+	}
 	if blockCtx := ctx.Block(); blockCtx != nil {
 		return v.VisitBlock(blockCtx.(*parser.BlockContext))
 	}
@@ -666,8 +703,62 @@ func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
 		// Grouping expression: (expr)
 		return v.VisitExpr(ctx.Expr().(*parser.ExprContext))
 	}
+	if structExprCtx := ctx.StructExpr(); structExprCtx != nil {
+		return v.VisitStructExpr(structExprCtx.(*parser.StructExprContext))
+	}
 	// Handle other primary expressions...
 
+	return nil
+}
+
+// VisitStructExpr builds a StructExpr node
+func (v *ASTBuilder) VisitStructExpr(ctx *parser.StructExprContext) interface{} {
+	// Get struct name
+	name := ctx.Identifier().GetText()
+	
+	// Process field initializations
+	var fieldInits []*FieldInit
+	if fieldInitListCtx := ctx.FieldInitList(); fieldInitListCtx != nil {
+		fieldInits = v.processFieldInitList(fieldInitListCtx.(*parser.FieldInitListContext))
+	}
+	
+	return &StructExpr{
+		Name:       name,
+		FieldInits: fieldInits,
+		Position:   v.getPosition(ctx),
+	}
+}
+
+// processFieldInitList processes a list of field initializations
+func (v *ASTBuilder) processFieldInitList(ctx *parser.FieldInitListContext) []*FieldInit {
+	var fieldInits []*FieldInit
+	
+	for _, fieldInitCtx := range ctx.AllFieldInit() {
+		fieldInit := v.VisitFieldInit(fieldInitCtx.(*parser.FieldInitContext))
+		if fieldInit != nil {
+			fieldInits = append(fieldInits, fieldInit.(*FieldInit))
+		}
+	}
+	
+	return fieldInits
+}
+
+// VisitFieldInit builds a FieldInit node
+func (v *ASTBuilder) VisitFieldInit(ctx *parser.FieldInitContext) interface{} {
+	// Check for "identifier: expr" format
+	if ctx.Identifier() != nil && ctx.COLON() != nil && ctx.Expr() != nil {
+		name := ctx.Identifier().GetText()
+		value := v.VisitExpr(ctx.Expr().(*parser.ExprContext)).(Expression)
+		
+		return &FieldInit{
+			Name:     name,
+			Value:    value,
+			Position: v.getPosition(ctx),
+		}
+	}
+	
+	// For shorthand "identifier" format, we'd handle that here
+	// For now, just support full format
 	return nil
 }
 
