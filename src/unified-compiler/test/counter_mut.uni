@@ -1,0 +1,12 @@
+// Counter with mutable variable
+fn count_to(n: Int) -> Int {
+    let mut counter = 0
+    while counter < n {
+        counter += 1
+    }
+    return counter
+}
+
+fn main() -> Int {
+    return count_to(10)  // Returns 10
+}

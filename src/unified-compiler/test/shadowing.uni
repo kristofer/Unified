@@ -1,0 +1,14 @@
+// Variable shadowing demonstration
+fn shadowing_example() -> Int {
+    let x = 5
+    {
+        let x = 10       // Shadows outer x
+        let y = x * 2    // Uses inner x (10), y = 20
+    }
+    // x is still 5 here
+    return x
+}
+
+fn main() -> Int {
+    return shadowing_example()  // Returns 5
+}
