@@ -89,3 +89,15 @@ func TestMain(m *testing.M) {
 	
 	os.Exit(code)
 }
+
+func TestIntegrationStructPoint(t *testing.T) {
+testCompileAndRun(t, "../../test/point.uni", 10)
+}
+
+func TestIntegrationStructRectangle(t *testing.T) {
+testCompileAndRun(t, "../../test/rectangle.uni", 50)
+}
+
+func TestIntegrationStructNested(t *testing.T) {
+testCompileAndRun(t, "../../test/nested_structs.uni", 57) // 12345 % 256 = 57
+}

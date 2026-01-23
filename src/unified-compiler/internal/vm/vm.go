@@ -395,6 +395,75 @@ return nil
 case bytecode.OpNop:
 vm.ip++
 
+case bytecode.OpAllocStruct:
+// Allocate struct: expects field count as operand
+// Stack: [field_name_0, field_value_0, field_name_1, field_value_1, ...] [type_name]
+fieldCount := int(inst.Operand)
+typeName := vm.stack.Pop()
+if typeName.Type != bytecode.ValueTypeString {
+return fmt.Errorf("expected string for struct type name")
+}
+
+// Pop field name/value pairs from stack (in reverse order)
+fields := make(map[string]bytecode.Value)
+for i := 0; i < fieldCount; i++ {
+// Pop value then name (since we pushed name first, value second)
+fieldValue := vm.stack.Pop()
+fieldName := vm.stack.Pop()
+
+if fieldName.Type != bytecode.ValueTypeString {
+return fmt.Errorf("expected string for field name")
+}
+
+fields[fieldName.Str] = fieldValue
+}
+
+// Create struct value and push it
+structVal := bytecode.NewStructValue(typeName.Str, fields)
+vm.stack.Push(structVal)
+vm.ip++
+
+case bytecode.OpLoadField:
+// Load field from struct
+// Stack: [struct] [field_name]
+fieldName := vm.stack.Pop()
+structVal := vm.stack.Pop()
+
+if structVal.Type != bytecode.ValueTypeStruct {
+return fmt.Errorf("expected struct for field access")
+}
+if fieldName.Type != bytecode.ValueTypeString {
+return fmt.Errorf("expected string for field name")
+}
+
+// Get field value
+fieldValue, ok := structVal.Struct.Fields[fieldName.Str]
+if !ok {
+return fmt.Errorf("field not found: %s", fieldName.Str)
+}
+
+vm.stack.Push(fieldValue)
+vm.ip++
+
+case bytecode.OpStoreField:
+// Store field to struct
+// Stack: [struct] [field_name] [value]
+value := vm.stack.Pop()
+fieldName := vm.stack.Pop()
+structVal := vm.stack.Pop()
+
+if structVal.Type != bytecode.ValueTypeStruct {
+return fmt.Errorf("expected struct for field assignment")
+}
+if fieldName.Type != bytecode.ValueTypeString {
+return fmt.Errorf("expected string for field name")
+}
+
+// Store field value
+structVal.Struct.Fields[fieldName.Str] = value
+vm.stack.Push(structVal)
+vm.ip++
+
 default:
 return fmt.Errorf("unknown opcode: %d", inst.Op)
 }
