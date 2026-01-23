@@ -40,6 +40,8 @@ const (
 	OperatorLe         OperatorType = "Le"
 	OperatorGt         OperatorType = "Gt"
 	OperatorGe         OperatorType = "Ge"
+	OperatorRange      OperatorType = "Range"      // .. (exclusive)
+	OperatorRangeIncl  OperatorType = "RangeIncl"  // ..= (inclusive)
 )
 
 //

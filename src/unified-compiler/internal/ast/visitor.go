@@ -556,6 +556,20 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 				Right:    right,
 				Position: v.getPosition(ctx),
 			}
+		} else if ctx.RANGE() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorRange,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
+		} else if ctx.RANGE_INCL() != nil {
+			return &BinaryExpr{
+				Left:     left,
+				Operator: OperatorRangeIncl,
+				Right:    right,
+				Position: v.getPosition(ctx),
+			}
 		}
 	}
 
