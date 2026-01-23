@@ -1,0 +1,16 @@
+// Type inference examples
+fn demonstrate_inference() -> Int {
+    let x = 42          // Inferred as Int
+    let y = 3           // Inferred as Int
+    let z = true        // Inferred as Bool
+    
+    let mut counter = 0  // Inferred as Int
+    counter += x         // Type checked
+    counter += y
+    
+    return counter       // Returns 45
+}
+
+fn main() -> Int {
+    return demonstrate_inference()
+}

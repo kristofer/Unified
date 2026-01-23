@@ -104,38 +104,39 @@ return nil
 
 // generateStatement generates bytecode for a statement
 func (g *Generator) generateStatement(stmt ast.Statement) error {
-switch stmt := stmt.(type) {
-case *ast.LetStatement:
-return g.generateLetStatement(stmt)
-case *ast.VarStatement:
-return g.generateVarStatement(stmt)
-case *ast.ReturnStatement:
-return g.generateReturnStatement(stmt)
-case *ast.ExprStatement:
-// Generate expression and pop result (expression statements don't use the value)
-if err := g.generateExpression(stmt.Expression); err != nil {
-return err
-}
-g.bytecode.AddInstruction(OpPop, 0)
-return nil
-case *ast.IfStatement:
-return g.generateIfStatement(stmt)
-case *ast.WhileStatement:
-return g.generateWhileStatement(stmt)
-case *ast.ForStatement:
-return g.generateForStatement(stmt)
-case *ast.LoopStatement:
-return g.generateLoopStatement(stmt)
-case *ast.BreakStatement:
-return g.generateBreakStatement(stmt)
-case *ast.ContinueStatement:
-return g.generateContinueStatement(stmt)
-default:
-return fmt.Errorf("unsupported statement type: %T", stmt)
-}
+	switch stmt := stmt.(type) {
+	case *ast.LetStatement:
+		return g.generateLetStatement(stmt)
+	case *ast.VarStatement:
+		return g.generateVarStatement(stmt)
+	case *ast.AssignmentStatement:
+		return g.generateAssignmentStatement(stmt)
+	case *ast.ReturnStatement:
+		return g.generateReturnStatement(stmt)
+	case *ast.ExprStatement:
+		// Generate expression and pop result (expression statements don't use the value)
+		if err := g.generateExpression(stmt.Expression); err != nil {
+			return err
+		}
+		g.bytecode.AddInstruction(OpPop, 0)
+		return nil
+	case *ast.IfStatement:
+		return g.generateIfStatement(stmt)
+	case *ast.WhileStatement:
+		return g.generateWhileStatement(stmt)
+	case *ast.ForStatement:
+		return g.generateForStatement(stmt)
+	case *ast.LoopStatement:
+		return g.generateLoopStatement(stmt)
+	case *ast.BreakStatement:
+		return g.generateBreakStatement(stmt)
+	case *ast.ContinueStatement:
+		return g.generateContinueStatement(stmt)
+	default:
+		return fmt.Errorf("unsupported statement type: %T", stmt)
+	}
 }
 
-// generateLetStatement generates bytecode for let statement
 func (g *Generator) generateLetStatement(stmt *ast.LetStatement) error {
 // Generate the initializer expression
 if stmt.Value != nil {

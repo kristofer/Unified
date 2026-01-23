@@ -22,6 +22,7 @@ See [VM_README.md](VM_README.md) for details on the VM architecture.
 - `internal/parser`: ANTLR-generated parser
 - `internal/bytecode`: Bytecode generator and instruction set
 - `internal/vm`: Virtual machine execution engine
+- `internal/semantic`: Semantic analysis (symbol table, type inference, checker)
 - `scripts`: Build and utility scripts
 - `test`: Test cases and integration test files
 
@@ -47,7 +48,7 @@ echo $?
 
 ## Testing
 
-The compiler has comprehensive test coverage with 76+ test cases.
+The compiler has comprehensive test coverage with 90+ test cases across all phases.
 
 ```bash
 # Run all tests
@@ -58,13 +59,17 @@ go test ./... -v
 
 # Run with coverage
 go test ./... -cover
+
+# Run specific package tests
+go test ./internal/semantic -v
+go test ./internal/bytecode -v
 ```
 
 See [TESTING.md](TESTING.md) for the complete testing guide.
 
-## Phase 1 Features
+## Current Features
 
-Currently implemented:
+### Phase 1 - Core Language Features ✅
 - ✅ Function declarations and calls
 - ✅ Function parameters
 - ✅ Arithmetic operations (+, -, *, /, %)
@@ -74,7 +79,25 @@ Currently implemented:
 - ✅ Return statements
 - ✅ Integer, float, boolean, and string literals
 - ✅ Basic expressions
-- ✅ Control flow (if/else - VM support complete)
+
+### Phase 2 - Control Flow ✅
+- ✅ If/else statements
+- ✅ While loops
+- ✅ For loops (with ranges)
+- ✅ Loop statements (infinite loops)
+- ✅ Break and continue statements
+- ✅ Nested loops
+
+### Phase 3 - Variables, Mutability, and Assignment ✅
+- ✅ Mutable variables (`let mut`)
+- ✅ Mutability checking at compile time
+- ✅ Assignment statements (`x = value`)
+- ✅ Compound assignment (`+=`, `-=`, `*=`, `/=`, `%=`)
+- ✅ Variable shadowing
+- ✅ Type inference for literals and expressions
+- ✅ Symbol table with scope management
+- ✅ Semantic analysis (mutability, undefined variables, type checking)
+- ✅ Clear error messages for violations
 
 ## Documentation
 
