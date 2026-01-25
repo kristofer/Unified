@@ -66,6 +66,7 @@ fn fibonacci(n: Int) -> Int {
     }
     let mut a = 0
     let mut b = 1
+    let mut result = 0
     for i in 2..=n {
         result = a + b
         a = b
