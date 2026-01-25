@@ -464,6 +464,74 @@ structVal.Struct.Fields[fieldName.Str] = value
 vm.stack.Push(structVal)
 vm.ip++
 
+case bytecode.OpAllocEnum:
+// Allocate enum variant: expects data count as operand
+// Stack: [data_0, data_1, ...] [enum_name] [variant_name] [variant_tag]
+dataCount := int(inst.Operand)
+variantTag := vm.stack.Pop()
+variantName := vm.stack.Pop()
+enumName := vm.stack.Pop()
+
+if enumName.Type != bytecode.ValueTypeString {
+return fmt.Errorf("expected string for enum name")
+}
+if variantName.Type != bytecode.ValueTypeString {
+return fmt.Errorf("expected string for variant name")
+}
+if variantTag.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("expected int for variant tag")
+}
+
+// Pop variant data from stack
+data := make([]bytecode.Value, dataCount)
+for i := dataCount - 1; i >= 0; i-- {
+data[i] = vm.stack.Pop()
+}
+
+// Create enum value and push it
+enumVal := bytecode.NewEnumValue(enumName.Str, variantName.Str, int(variantTag.Int), data)
+vm.stack.Push(enumVal)
+vm.ip++
+
+case bytecode.OpMatchVariant:
+// Match enum variant
+// Stack: [enum_value] [variant_name]
+variantName := vm.stack.Pop()
+enumVal := vm.stack.Pop()
+
+if enumVal.Type != bytecode.ValueTypeEnum {
+return fmt.Errorf("expected enum for variant matching")
+}
+if variantName.Type != bytecode.ValueTypeString {
+return fmt.Errorf("expected string for variant name")
+}
+
+// Check if variant matches
+matches := enumVal.Enum.VariantName == variantName.Str
+vm.stack.Push(bytecode.NewBoolValue(matches))
+vm.ip++
+
+case bytecode.OpExtractVariant:
+// Extract data from enum variant
+// Stack: [enum_value] [index]
+index := vm.stack.Pop()
+enumVal := vm.stack.Pop()
+
+if enumVal.Type != bytecode.ValueTypeEnum {
+return fmt.Errorf("expected enum for data extraction")
+}
+if index.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("expected int for data index")
+}
+
+// Extract data at index
+if int(index.Int) >= len(enumVal.Enum.Data) {
+return fmt.Errorf("data index out of bounds: %d", index.Int)
+}
+data := enumVal.Enum.Data[int(index.Int)]
+vm.stack.Push(data)
+vm.ip++
+
 default:
 return fmt.Errorf("unknown opcode: %d", inst.Op)
 }
