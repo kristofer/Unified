@@ -1062,14 +1062,11 @@ return nil
 // It consumes the value to match and pushes a boolean (true if match, false otherwise)
 func (g *Generator) generatePatternMatch(pattern *ast.Pattern) error {
 switch pattern.Kind {
-case ast.PatternWildcard:
-// Wildcard always matches
-trueIdx := g.bytecode.AddConstant(NewBoolValue(true))
-g.bytecode.AddInstruction(OpPush, int64(trueIdx))
-
-case ast.PatternVariable:
-// Variable pattern always matches and binds the value
-// For now, we'll just match (binding not implemented yet)
+case ast.PatternWildcard, ast.PatternVariable:
+// Wildcard and variable patterns always match
+// Pop the value to match (consume it)
+g.bytecode.AddInstruction(OpPop, 0)
+// Push true for the match result
 trueIdx := g.bytecode.AddConstant(NewBoolValue(true))
 g.bytecode.AddInstruction(OpPush, int64(trueIdx))
 

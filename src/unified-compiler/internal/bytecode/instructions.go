@@ -340,6 +340,10 @@ case ValueTypeString:
 return len(v.Str) > 0
 case ValueTypeNull:
 return false
+case ValueTypeStruct:
+return true // Structs are always truthy if they exist
+case ValueTypeEnum:
+return true // Enums are always truthy if they exist
 default:
 return false
 }
