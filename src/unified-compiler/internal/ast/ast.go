@@ -602,6 +602,15 @@ type CaseExpr struct {
 
 func (c *CaseExpr) Pos() Position { return c.Position }
 
+// TryExpr represents the ? operator for error propagation
+type TryExpr struct {
+	Operand  Expression
+	Position Position
+}
+
+func (t *TryExpr) Pos() Position   { return t.Position }
+func (t *TryExpr) expressionNode() {}
+
 // Block represents a code block
 type Block struct {
 	Statements []Statement

@@ -752,6 +752,15 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 		}
 	}
 
+	// Try operator (?) for error propagation
+	if len(ctx.AllExpr()) == 1 && ctx.QUESTION() != nil && len(ctx.AllExpr()) == 1 {
+		operand := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
+		return &TryExpr{
+			Operand:  operand,
+			Position: v.getPosition(ctx),
+		}
+	}
+
 	// Add cases for method calls, field access, etc.
 
 	// And more cases...
