@@ -1,0 +1,6 @@
+// Test 6: Empty array
+fn main() -> Int {
+    let arr = []
+    // For now, just return 0 to indicate empty
+    return 0  // Should return 0
+}

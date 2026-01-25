@@ -1,0 +1,13 @@
+// Test 3: Array find maximum
+fn main() -> Int {
+    let arr = [5, 12, 3, 19, 8]
+    let mut max = arr[0]
+    let mut i = 1
+    while i < 5 {
+        if arr[i] > max {
+            max = arr[i]
+        }
+        i = i + 1
+    }
+    return max  // Should return 19
+}

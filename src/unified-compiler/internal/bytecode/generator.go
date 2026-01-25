@@ -332,6 +332,10 @@ func (g *Generator) generateExpression(expr ast.Expression) error {
 		return g.generateTryExpr(expr)
 	case *ast.Block:
 		return g.generateBlockExpression(expr)
+	case *ast.ListExpr:
+		return g.generateListExpr(expr)
+	case *ast.IndexExpr:
+		return g.generateIndexExpr(expr)
 	default:
 		return fmt.Errorf("unsupported expression type: %T", expr)
 	}
@@ -442,32 +446,54 @@ return fmt.Errorf("unsupported binary operator: %s", expr.Operator)
 return nil
 }
 
-// generateAssignment generates bytecode for variable assignment
+// generateAssignment generates bytecode for variable or array element assignment
 func (g *Generator) generateAssignment(expr *ast.BinaryExpr) error {
-// Left side must be an identifier
-ident, ok := expr.Left.(*ast.Identifier)
-if !ok {
-return fmt.Errorf("assignment target must be a variable")
-}
+	// Check if assignment target is a variable
+	if ident, ok := expr.Left.(*ast.Identifier); ok {
+		// Generate the value being assigned
+		if err := g.generateExpression(expr.Right); err != nil {
+			return err
+		}
 
-// Generate the value being assigned
-if err := g.generateExpression(expr.Right); err != nil {
-return err
-}
+		// Look up variable
+		varIdx, ok := g.localVars[ident.Name]
+		if !ok {
+			return fmt.Errorf("undefined variable: %s", ident.Name)
+		}
 
-// Look up variable
-varIdx, ok := g.localVars[ident.Name]
-if !ok {
-return fmt.Errorf("undefined variable: %s", ident.Name)
-}
+		// Duplicate the value on the stack (assignment is an expression that returns the assigned value)
+		g.bytecode.AddInstruction(OpDup, 0)
 
-// Duplicate the value on the stack (assignment is an expression that returns the assigned value)
-g.bytecode.AddInstruction(OpDup, 0)
+		// Store to variable
+		g.bytecode.AddInstruction(OpStoreLocal, int64(varIdx))
 
-// Store to variable
-g.bytecode.AddInstruction(OpStoreLocal, int64(varIdx))
+		return nil
+	}
 
-return nil
+	// Check if assignment target is an array index
+	if indexExpr, ok := expr.Left.(*ast.IndexExpr); ok {
+		// Generate the array object
+		if err := g.generateExpression(indexExpr.Object); err != nil {
+			return err
+		}
+
+		// Generate the index
+		if err := g.generateExpression(indexExpr.Index); err != nil {
+			return err
+		}
+
+		// Generate the value being assigned
+		if err := g.generateExpression(expr.Right); err != nil {
+			return err
+		}
+
+		// Store to array
+		g.bytecode.AddInstruction(OpStoreArray, 0)
+
+		return nil
+	}
+
+	return fmt.Errorf("assignment target must be a variable or array index")
 }
 
 // generateUnaryExpr generates bytecode for a unary expression
@@ -1110,5 +1136,41 @@ return err
 // This will check if the value is Ok or Err and handle accordingly
 g.bytecode.AddInstruction(OpTryPropagate, 0)
 
+return nil
+}
+
+// generateListExpr generates bytecode for a list/array literal
+func (g *Generator) generateListExpr(expr *ast.ListExpr) error {
+// For now, only support simple array literals, not comprehensions
+if expr.Comprehension != nil {
+return fmt.Errorf("list comprehensions not yet supported")
+}
+
+// Generate code for each element (push onto stack)
+for _, elem := range expr.Elements {
+if err := g.generateExpression(elem); err != nil {
+return fmt.Errorf("error generating array element: %w", err)
+}
+}
+
+// Allocate array with N elements
+g.bytecode.AddInstruction(OpAllocArray, int64(len(expr.Elements)))
+return nil
+}
+
+// generateIndexExpr generates bytecode for array indexing (arr[i])
+func (g *Generator) generateIndexExpr(expr *ast.IndexExpr) error {
+// Generate code for the array/object being indexed
+if err := g.generateExpression(expr.Object); err != nil {
+return fmt.Errorf("error generating indexed object: %w", err)
+}
+
+// Generate code for the index
+if err := g.generateExpression(expr.Index); err != nil {
+return fmt.Errorf("error generating index: %w", err)
+}
+
+// Load element from array
+g.bytecode.AddInstruction(OpLoadArray, 0)
 return nil
 }

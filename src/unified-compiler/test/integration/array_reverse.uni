@@ -1,0 +1,13 @@
+// Test 7: Array reverse
+fn main() -> Int {
+    let mut arr = [1, 2, 3, 4, 5, 6]
+    let len = 6
+    let mut i = 0
+    while i < len / 2 {
+        let temp = arr[i]
+        arr[i] = arr[len - 1 - i]
+        arr[len - 1 - i] = temp
+        i = i + 1
+    }
+    return arr[0]  // Should return 6 (first element after reverse)
+}

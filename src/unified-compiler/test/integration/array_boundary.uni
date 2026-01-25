@@ -1,0 +1,7 @@
+// Test 10: Array boundary access
+fn main() -> Int {
+    let arr = [100, 200, 300]
+    let first = arr[0]
+    let last = arr[2]
+    return first + last  // Should return 400
+}

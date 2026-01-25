@@ -1,0 +1,10 @@
+// Test 9: Array double elements
+fn main() -> Int {
+    let mut arr = [1, 2, 3, 4, 5]
+    let mut i = 0
+    while i < 5 {
+        arr[i] = arr[i] * 2
+        i = i + 1
+    }
+    return arr[0] + arr[4]  // Should return 2 + 10 = 12
+}

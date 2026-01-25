@@ -573,6 +573,18 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 		}
 	}
 
+	// Handle array indexing: expr LBRACK expr RBRACK
+	if len(ctx.AllExpr()) == 2 && ctx.LBRACK() != nil && ctx.RBRACK() != nil {
+		object := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
+		index := v.VisitExpr(ctx.Expr(1).(*parser.ExprContext)).(Expression)
+
+		return &IndexExpr{
+			Object:   object,
+			Index:    index,
+			Position: v.getPosition(ctx),
+		}
+	}
+
 	// Binary operations (handle according to child count and operator)
 	if len(ctx.AllExpr()) == 2 {
 		// Binary operations
@@ -799,6 +811,9 @@ func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
 	}
 	if structExprCtx := ctx.StructExpr(); structExprCtx != nil {
 		return v.VisitStructExpr(structExprCtx.(*parser.StructExprContext))
+	}
+	if listExprCtx := ctx.ListExpr(); listExprCtx != nil {
+		return v.VisitListExpr(listExprCtx.(*parser.ListExprContext))
 	}
 	// Handle other primary expressions...
 
@@ -1317,3 +1332,24 @@ type LetStatement struct {
 
 func (s *LetStatement) Pos() Position  { return s.Position }
 func (s *LetStatement) statementNode() {}
+
+// VisitListExpr builds a ListExpr node (for array literals)
+func (v *ASTBuilder) VisitListExpr(ctx *parser.ListExprContext) interface{} {
+var elements []Expression
+
+// Process all elements in the list
+for _, exprCtx := range ctx.AllExpr() {
+if exprCtx != nil {
+expr := v.VisitExpr(exprCtx.(*parser.ExprContext))
+if expr != nil {
+elements = append(elements, expr.(Expression))
+}
+}
+}
+
+return &ListExpr{
+Elements:      elements,
+Comprehension: nil, // Comprehensions not yet supported
+Position:      v.getPosition(ctx),
+}
+}

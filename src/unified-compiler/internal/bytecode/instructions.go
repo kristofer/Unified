@@ -70,6 +70,12 @@ const (
 	// Error handling operations
 	OpTryPropagate    // Try operator (?) for error propagation
 
+	// Array operations
+	OpAllocArray  // Allocate array with size
+	OpLoadArray   // Load element from array (with bounds checking)
+	OpStoreArray  // Store element to array (with bounds checking)
+	OpArrayLen    // Get array length
+
 	// Special operations
 	OpHalt // Halt execution
 	OpNop  // No operation
@@ -172,6 +178,14 @@ case OpExtractVariant:
 return "EXTRACT_VARIANT"
 case OpTryPropagate:
 return "TRY_PROPAGATE"
+case OpAllocArray:
+return "ALLOC_ARRAY"
+case OpLoadArray:
+return "LOAD_ARRAY"
+case OpStoreArray:
+return "STORE_ARRAY"
+case OpArrayLen:
+return "ARRAY_LEN"
 case OpHalt:
 return "HALT"
 case OpNop:
@@ -225,40 +239,48 @@ b.Instructions[position].Operand = int64(target)
 
 // Value represents a value in the VM
 type Value struct {
-Type   ValueType
-Int    int64
-Float  float64
-Bool   bool
-Str    string
-Struct *StructValue // For struct instances
-Enum   *EnumValue   // For enum instances
+	Type   ValueType
+	Int    int64
+	Float  float64
+	Bool   bool
+	Str    string
+	Struct *StructValue // For struct instances
+	Enum   *EnumValue   // For enum instances
+	Array  *ArrayValue  // For array instances
 }
 
 // StructValue represents a struct instance in the VM
 type StructValue struct {
-TypeName string
-Fields   map[string]Value
+	TypeName string
+	Fields   map[string]Value
 }
 
 // EnumValue represents an enum instance in the VM
 type EnumValue struct {
-EnumName    string
-VariantName string
-VariantTag  int
-Data        []Value // Variant data
+	EnumName    string
+	VariantName string
+	VariantTag  int
+	Data        []Value // Variant data
+}
+
+// ArrayValue represents an array instance in the VM
+type ArrayValue struct {
+	Elements []Value
+	Length   int
 }
 
 // ValueType represents the type of a value
 type ValueType byte
 
 const (
-ValueTypeInt ValueType = iota
-ValueTypeFloat
-ValueTypeBool
-ValueTypeString
-ValueTypeNull
-ValueTypeStruct
-ValueTypeEnum
+	ValueTypeInt ValueType = iota
+	ValueTypeFloat
+	ValueTypeBool
+	ValueTypeString
+	ValueTypeNull
+	ValueTypeStruct
+	ValueTypeEnum
+	ValueTypeArray
 )
 
 // NewIntValue creates an integer value
@@ -299,15 +321,26 @@ Fields:   fields,
 
 // NewEnumValue creates an enum value
 func NewEnumValue(enumName, variantName string, variantTag int, data []Value) Value {
-return Value{
-Type: ValueTypeEnum,
-Enum: &EnumValue{
-EnumName:    enumName,
-VariantName: variantName,
-VariantTag:  variantTag,
-Data:        data,
-},
+	return Value{
+		Type: ValueTypeEnum,
+		Enum: &EnumValue{
+			EnumName:    enumName,
+			VariantName: variantName,
+			VariantTag:  variantTag,
+			Data:        data,
+		},
+	}
 }
+
+// NewArrayValue creates an array value
+func NewArrayValue(elements []Value) Value {
+	return Value{
+		Type: ValueTypeArray,
+		Array: &ArrayValue{
+			Elements: elements,
+			Length:   len(elements),
+		},
+	}
 }
 
 // String returns a human-readable representation of the value
@@ -327,6 +360,8 @@ case ValueTypeStruct:
 return fmt.Sprintf("struct:%s", v.Struct.TypeName)
 case ValueTypeEnum:
 return fmt.Sprintf("enum:%s::%s", v.Enum.EnumName, v.Enum.VariantName)
+case ValueTypeArray:
+return fmt.Sprintf("array[%d]", v.Array.Length)
 default:
 return "unknown"
 }
@@ -349,6 +384,8 @@ case ValueTypeStruct:
 return true // Structs are always truthy if they exist
 case ValueTypeEnum:
 return true // Enums are always truthy if they exist
+case ValueTypeArray:
+return true // Arrays are always truthy if they exist
 default:
 return false
 }

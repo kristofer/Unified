@@ -34,35 +34,43 @@ globals:   make(map[string]bytecode.Value),
 
 // Run executes the bytecode
 func (vm *VM) Run() (bytecode.Value, error) {
-// Find main function
-mainIdx, ok := vm.bytecode.Functions["main"]
-if !ok {
-return bytecode.NewNullValue(), fmt.Errorf("no main function found")
+	// Find main function
+	mainIdx, ok := vm.bytecode.Functions["main"]
+	if !ok {
+		return bytecode.NewNullValue(), fmt.Errorf("no main function found")
+	}
+
+	// Jump to main
+	vm.ip = mainIdx
+
+	// Execute instructions
+	for vm.ip < len(vm.bytecode.Instructions) {
+		instruction := vm.bytecode.Instructions[vm.ip]
+
+		if err := vm.executeInstruction(instruction); err != nil {
+			return bytecode.NewNullValue(), fmt.Errorf("runtime error at instruction %d: %w", vm.ip, err)
+		}
+
+		// Check if we should halt
+		if instruction.Op == bytecode.OpHalt {
+			break
+		}
+	}
+
+	// Return value from stack if any
+	if vm.stack.Size() > 0 {
+		return vm.stack.Pop(), nil
+	}
+
+	return bytecode.NewIntValue(0), nil
 }
 
-// Jump to main
-vm.ip = mainIdx
-
-// Execute instructions
-for vm.ip < len(vm.bytecode.Instructions) {
-instruction := vm.bytecode.Instructions[vm.ip]
-
-if err := vm.executeInstruction(instruction); err != nil {
-return bytecode.NewNullValue(), fmt.Errorf("runtime error at instruction %d: %w", vm.ip, err)
-}
-
-// Check if we should halt
-if instruction.Op == bytecode.OpHalt {
-break
-}
-}
-
-// Return value from stack if any
-if vm.stack.Size() > 0 {
-return vm.stack.Pop(), nil
-}
-
-return bytecode.NewIntValue(0), nil
+// LastValue returns the last value on the stack (for testing)
+func (vm *VM) LastValue() bytecode.Value {
+	if vm.stack.Size() > 0 {
+		return vm.stack.Peek()
+	}
+	return bytecode.NewIntValue(0)
 }
 
 // executeInstruction executes a single bytecode instruction
@@ -559,6 +567,82 @@ vm.propagateError(resultVal)
 } else {
 return fmt.Errorf("? operator requires Result enum with 'Ok' or 'Err' variants (Rust-style), got '%s' variant", resultVal.Enum.VariantName)
 }
+
+case bytecode.OpAllocArray:
+// Allocate array with N elements
+// Stack: [elem_n-1] ... [elem_1] [elem_0]
+// Operand: array size
+size := int(inst.Operand)
+elements := make([]bytecode.Value, size)
+
+// Pop elements from stack in reverse order
+for i := size - 1; i >= 0; i-- {
+elements[i] = vm.stack.Pop()
+}
+
+array := bytecode.NewArrayValue(elements)
+vm.stack.Push(array)
+vm.ip++
+
+case bytecode.OpLoadArray:
+// Load element from array
+// Stack: [array] [index]
+index := vm.stack.Pop()
+array := vm.stack.Pop()
+
+if array.Type != bytecode.ValueTypeArray {
+return fmt.Errorf("expected array for indexing, got %v", array.Type)
+}
+if index.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("expected int for array index, got %v", index.Type)
+}
+
+// Bounds checking
+idx := int(index.Int)
+if idx < 0 || idx >= array.Array.Length {
+return fmt.Errorf("array index out of bounds: index %d, length %d", idx, array.Array.Length)
+}
+
+element := array.Array.Elements[idx]
+vm.stack.Push(element)
+vm.ip++
+
+case bytecode.OpStoreArray:
+// Store element to array
+// Stack: [array] [index] [value]
+value := vm.stack.Pop()
+index := vm.stack.Pop()
+array := vm.stack.Pop()
+
+if array.Type != bytecode.ValueTypeArray {
+return fmt.Errorf("expected array for indexing, got %v", array.Type)
+}
+if index.Type != bytecode.ValueTypeInt {
+return fmt.Errorf("expected int for array index, got %v", index.Type)
+}
+
+// Bounds checking
+idx := int(index.Int)
+if idx < 0 || idx >= array.Array.Length {
+return fmt.Errorf("array index out of bounds: index %d, length %d", idx, array.Array.Length)
+}
+
+// Store value at index
+array.Array.Elements[idx] = value
+vm.ip++
+
+case bytecode.OpArrayLen:
+// Get array length
+// Stack: [array]
+array := vm.stack.Pop()
+
+if array.Type != bytecode.ValueTypeArray {
+return fmt.Errorf("expected array for len operation, got %v", array.Type)
+}
+
+length := bytecode.NewIntValue(int64(array.Array.Length))
+vm.stack.Push(length)
+vm.ip++
 
 default:
 return fmt.Errorf("unknown opcode: %d", inst.Op)

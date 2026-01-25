@@ -1,0 +1,11 @@
+// Test 2: Array sum
+fn main() -> Int {
+    let arr = [10, 20, 30, 40, 50]
+    let mut sum = 0
+    let mut i = 0
+    while i < 5 {
+        sum = sum + arr[i]
+        i = i + 1
+    }
+    return sum  // Should return 150
+}
