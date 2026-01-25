@@ -1,0 +1,51 @@
+// Comprehensive String Operations Demo
+// Demonstrates string operations with the current language features
+
+fn process_strings() -> Int {
+    // String concatenation with + operator
+    let part1 = "Hello"
+    let part2 = " "
+    let part3 = "World"
+    let message = part1 + part2 + part3
+    
+    // String comparison
+    let greeting = "Hello"
+    if greeting == "Hello" {
+        return 1  // Success
+    }
+    
+    return 0
+}
+
+fn string_operations() -> Int {
+    // Multiple string variables
+    let str1 = "Test"
+    let str2 = "String"
+    let str3 = "Operations"
+    
+    // Chain concatenation
+    let combined = str1 + str2 + str3
+    // Result: "TestStringOperations"
+    
+    return 1  // Success
+}
+
+fn main() -> Int {
+    let result1 = process_strings()     // Returns 1
+    let result2 = string_operations()   // Returns 1
+    
+    // Test string with special characters
+    let escaped = "Tab:\tNewline:\n"
+    let quote = "Quote: \" End"
+    
+    // Multiple concatenations
+    let a = "A"
+    let b = "B"  
+    let c = "C"
+    let d = "D"
+    let alphabet = a + b + c + d
+    // Result: "ABCD"
+    
+    return result1 + result2  // Returns 2
+}
+
