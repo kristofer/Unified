@@ -753,7 +753,7 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 	}
 
 	// Try operator (?) for error propagation
-	if len(ctx.AllExpr()) == 1 && ctx.QUESTION() != nil && len(ctx.AllExpr()) == 1 {
+	if len(ctx.AllExpr()) == 1 && ctx.QUESTION() != nil {
 		operand := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
 		return &TryExpr{
 			Operand:  operand,

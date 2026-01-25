@@ -9,7 +9,6 @@ import (
 func TestTryOperatorUnwrapsOk(t *testing.T) {
 	bc := bytecode.NewBytecode()
 	bc.AddFunction("main", 0)
-	bc.AddFunction("main", 0)
 
 	// Create Result::Ok(42)
 	okValueIdx := bc.AddConstant(bytecode.NewIntValue(42))
