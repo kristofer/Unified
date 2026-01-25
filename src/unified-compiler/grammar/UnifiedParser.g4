@@ -26,8 +26,8 @@ moduleDecl
 
 // Import declarations
 importDecl
-    : IMPORT importPath (AS identifier)? SEMI
-    | IMPORT importPath LBRACE importList RBRACE SEMI
+    : IMPORT importPath (AS identifier)? SEMI?
+    | IMPORT importPath LBRACE importList RBRACE SEMI?
     ;
 
 importPath
@@ -109,11 +109,11 @@ interfaceDecl
 
 interfaceMember
     : functionSig
-    | TYPE identifier SEMI
+    | TYPE identifier SEMI?
     ;
 
 functionSig
-    : FN identifier genericParams? LPAREN paramList? RPAREN (ARROW type)? SEMI
+    : FN identifier genericParams? LPAREN paramList? RPAREN (ARROW type)? SEMI?
     | FN identifier genericParams? LPAREN paramList? RPAREN (ARROW type)? block
     ;
 
@@ -125,7 +125,7 @@ implDecl
 
 implMember
     : functionDecl
-    | TYPE identifier ASSIGN type SEMI
+    | TYPE identifier ASSIGN type SEMI?
     ;
 
 // Actor declarations
@@ -134,19 +134,19 @@ actorDecl
     ;
 
 actorMember
-    : (PUB)? VAR identifier COLON type (ASSIGN expr)? SEMI
+    : (PUB)? VAR identifier COLON type (ASSIGN expr)? SEMI?
     | functionDecl
     ;
 
 // Type aliases
 typeAlias
-    : (PUB)? TYPE identifier genericParams? ASSIGN type SEMI
-    | (PUB)? TYPE identifier genericParams? ASSIGN type REFINE BIT_OR identifier BIT_OR expr SEMI
+    : (PUB)? TYPE identifier genericParams? ASSIGN type SEMI?
+    | (PUB)? TYPE identifier genericParams? ASSIGN type REFINE BIT_OR identifier BIT_OR expr SEMI?
     ;
 
 // Constants
 constantDecl
-    : (PUB)? CONST identifier COLON type ASSIGN expr SEMI
+    : (PUB)? CONST identifier COLON type ASSIGN expr SEMI?
     ;
 
 // Types
@@ -184,15 +184,15 @@ statement
     ;
 
 letStatement
-    : LET MUT? identifier (COLON type)? ASSIGN expr SEMI
+    : LET MUT? identifier (COLON type)? ASSIGN expr SEMI?
     ;
 
 varStatement
-    : VAR identifier COLON type (ASSIGN expr)? SEMI
+    : VAR identifier COLON type (ASSIGN expr)? SEMI?
     ;
 
 assignmentStatement
-    : identifier assignmentOp expr SEMI
+    : identifier assignmentOp expr SEMI?
     ;
 
 assignmentOp
@@ -205,11 +205,11 @@ regionStatement
     ;
 
 exprStatement
-    : expr SEMI
+    : expr SEMI?
     ;
 
 returnStatement
-    : RETURN expr? SEMI
+    : RETURN expr? SEMI?
     ;
 
 ifStatement
@@ -237,11 +237,11 @@ caseClause
     ;
 
 breakStatement
-    : BREAK identifier? SEMI
+    : BREAK identifier? SEMI?
     ;
 
 continueStatement
-    : CONTINUE identifier? SEMI
+    : CONTINUE identifier? SEMI?
     ;
 
 blockStatement
