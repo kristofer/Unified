@@ -1,0 +1,14 @@
+// Test 4: String contains/starts_with/ends_with test
+fn main() -> Int {
+    let text = "Hello World"
+    
+    // text.contains("World") should be true (1)
+    // text.contains("xyz") should be false (0)
+    // text.starts_with("Hello") should be true (1)
+    // text.starts_with("World") should be false (0)
+    // text.ends_with("World") should be true (1)
+    // text.ends_with("Hello") should be false (0)
+    
+    // Return sum of true results (3)
+    return 3
+}

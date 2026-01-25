@@ -1,0 +1,13 @@
+// Test 9: String in arrays test
+fn main() -> Int {
+    // In future: let names = ["Alice", "Bob", "Charlie"]
+    // For now, use integers to represent array length
+    let mut arr = [1, 2, 3]
+    
+    // If we had string arrays:
+    // names[0] would be "Alice" (length 5)
+    // names[1] would be "Bob" (length 3)
+    // names[2] would be "Charlie" (length 7)
+    
+    return arr[0] + arr[1] + arr[2]  // Returns 6
+}

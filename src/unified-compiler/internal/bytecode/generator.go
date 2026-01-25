@@ -356,7 +356,14 @@ val = NewFloatValue(f)
 case ast.LiteralBool:
 val = NewBoolValue(lit.Value == "true")
 case ast.LiteralString:
-val = NewStringValue(lit.Value)
+// Strip quotes from string literal
+strValue := lit.Value
+if len(strValue) >= 2 && strValue[0] == '"' && strValue[len(strValue)-1] == '"' {
+strValue = strValue[1 : len(strValue)-1]
+}
+// Handle escape sequences
+strValue = g.unescapeString(strValue)
+val = NewStringValue(strValue)
 case ast.LiteralNull:
 val = NewNullValue()
 default:
@@ -1173,4 +1180,40 @@ return fmt.Errorf("error generating index: %w", err)
 // Load element from array
 g.bytecode.AddInstruction(OpLoadArray, 0)
 return nil
+}
+
+// unescapeString processes escape sequences in a string literal
+func (g *Generator) unescapeString(s string) string {
+result := make([]byte, 0, len(s))
+i := 0
+for i < len(s) {
+if s[i] == '\\' && i+1 < len(s) {
+switch s[i+1] {
+case 'n':
+result = append(result, '\n')
+case 't':
+result = append(result, '\t')
+case 'r':
+result = append(result, '\r')
+case 'b':
+result = append(result, '\b')
+case 'f':
+result = append(result, '\f')
+case '"':
+result = append(result, '"')
+case '\'':
+result = append(result, '\'')
+case '\\':
+result = append(result, '\\')
+default:
+// Unknown escape sequence, keep as is
+result = append(result, s[i], s[i+1])
+}
+i += 2
+} else {
+result = append(result, s[i])
+i++
+}
+}
+return string(result)
 }

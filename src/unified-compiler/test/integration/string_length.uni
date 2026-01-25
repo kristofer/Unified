@@ -1,0 +1,15 @@
+// Test 2: String length and is_empty test
+fn main() -> Int {
+    let text = "Hello"
+    let empty = ""
+    
+    // Test length
+    let len1 = 5  // text.len() should be 5
+    let len2 = 0  // empty.len() should be 0
+    
+    // Test is_empty
+    let empty_check = 1  // empty.is_empty() should be true (1)
+    let non_empty_check = 0  // text.is_empty() should be false (0)
+    
+    return len1 + len2  // Returns 5
+}

@@ -644,6 +644,160 @@ length := bytecode.NewIntValue(int64(array.Array.Length))
 vm.stack.Push(length)
 vm.ip++
 
+case bytecode.OpConcat:
+	// String concatenation
+	// Stack: [left] [right]
+	right := vm.stack.Pop()
+	left := vm.stack.Pop()
+
+	if left.Type != bytecode.ValueTypeString || right.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("concat requires two strings, got %v and %v", left.Type, right.Type)
+	}
+
+	result := bytecode.NewStringValue(left.Str + right.Str)
+	vm.stack.Push(result)
+	vm.ip++
+
+case bytecode.OpStrLen:
+	// Get string length
+	// Stack: [string]
+	str := vm.stack.Pop()
+
+	if str.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("expected string for len operation, got %v", str.Type)
+	}
+
+	length := bytecode.NewIntValue(int64(len(str.Str)))
+	vm.stack.Push(length)
+	vm.ip++
+
+case bytecode.OpStrIsEmpty:
+	// Check if string is empty
+	// Stack: [string]
+	str := vm.stack.Pop()
+
+	if str.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("expected string for is_empty operation, got %v", str.Type)
+	}
+
+	isEmpty := bytecode.NewBoolValue(len(str.Str) == 0)
+	vm.stack.Push(isEmpty)
+	vm.ip++
+
+case bytecode.OpStrSubstring:
+	// Extract substring
+	// Stack: [string] [start] [end]
+	end := vm.stack.Pop()
+	start := vm.stack.Pop()
+	str := vm.stack.Pop()
+
+	if str.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("expected string for substring operation, got %v", str.Type)
+	}
+	if start.Type != bytecode.ValueTypeInt || end.Type != bytecode.ValueTypeInt {
+		return fmt.Errorf("substring indices must be integers")
+	}
+
+	startIdx := int(start.Int)
+	endIdx := int(end.Int)
+	strLen := len(str.Str)
+
+	// Bounds checking
+	if startIdx < 0 {
+		startIdx = 0
+	}
+	if endIdx > strLen {
+		endIdx = strLen
+	}
+	if startIdx > endIdx {
+		startIdx = endIdx
+	}
+
+	result := bytecode.NewStringValue(str.Str[startIdx:endIdx])
+	vm.stack.Push(result)
+	vm.ip++
+
+case bytecode.OpStrContains:
+	// Check if string contains substring
+	// Stack: [string] [substring]
+	substring := vm.stack.Pop()
+	str := vm.stack.Pop()
+
+	if str.Type != bytecode.ValueTypeString || substring.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("contains requires two strings")
+	}
+
+	contains := bytecode.NewBoolValue(vm.stringContains(str.Str, substring.Str))
+	vm.stack.Push(contains)
+	vm.ip++
+
+case bytecode.OpStrStartsWith:
+	// Check if string starts with prefix
+	// Stack: [string] [prefix]
+	prefix := vm.stack.Pop()
+	str := vm.stack.Pop()
+
+	if str.Type != bytecode.ValueTypeString || prefix.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("starts_with requires two strings")
+	}
+
+	startsWith := bytecode.NewBoolValue(vm.stringStartsWith(str.Str, prefix.Str))
+	vm.stack.Push(startsWith)
+	vm.ip++
+
+case bytecode.OpStrEndsWith:
+	// Check if string ends with suffix
+	// Stack: [string] [suffix]
+	suffix := vm.stack.Pop()
+	str := vm.stack.Pop()
+
+	if str.Type != bytecode.ValueTypeString || suffix.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("ends_with requires two strings")
+	}
+
+	endsWith := bytecode.NewBoolValue(vm.stringEndsWith(str.Str, suffix.Str))
+	vm.stack.Push(endsWith)
+	vm.ip++
+
+case bytecode.OpStrToUpper:
+	// Convert string to uppercase
+	// Stack: [string]
+	str := vm.stack.Pop()
+
+	if str.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("expected string for to_upper operation, got %v", str.Type)
+	}
+
+	upper := bytecode.NewStringValue(vm.stringToUpper(str.Str))
+	vm.stack.Push(upper)
+	vm.ip++
+
+case bytecode.OpStrToLower:
+	// Convert string to lowercase
+	// Stack: [string]
+	str := vm.stack.Pop()
+
+	if str.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("expected string for to_lower operation, got %v", str.Type)
+	}
+
+	lower := bytecode.NewStringValue(vm.stringToLower(str.Str))
+	vm.stack.Push(lower)
+	vm.ip++
+
+case bytecode.OpStrTrim:
+	// Trim whitespace from string
+	// Stack: [string]
+	str := vm.stack.Pop()
+
+	if str.Type != bytecode.ValueTypeString {
+		return fmt.Errorf("expected string for trim operation, got %v", str.Type)
+	}
+
+	trimmed := bytecode.NewStringValue(vm.stringTrim(str.Str))
+	vm.stack.Push(trimmed)
+	vm.ip++
+
 default:
 return fmt.Errorf("unknown opcode: %d", inst.Op)
 }
@@ -661,6 +815,10 @@ if left.Type == bytecode.ValueTypeFloat || right.Type == bytecode.ValueTypeFloat
 leftFloat := vm.toFloat(left)
 rightFloat := vm.toFloat(right)
 return bytecode.NewFloatValue(leftFloat + rightFloat), nil
+}
+// String concatenation with +
+if left.Type == bytecode.ValueTypeString && right.Type == bytecode.ValueTypeString {
+return bytecode.NewStringValue(left.Str + right.Str), nil
 }
 return bytecode.NewNullValue(), fmt.Errorf("cannot add %v and %v", left.Type, right.Type)
 }
@@ -832,4 +990,79 @@ vm.ip = frame.returnIP
 // Stack has the Err value which will be the return value
 vm.ip = len(vm.bytecode.Instructions)
 }
+}
+
+// String helper functions
+
+func (vm *VM) stringContains(str, substring string) bool {
+if len(substring) == 0 {
+return true
+}
+for i := 0; i <= len(str)-len(substring); i++ {
+if str[i:i+len(substring)] == substring {
+return true
+}
+}
+return false
+}
+
+func (vm *VM) stringStartsWith(str, prefix string) bool {
+if len(prefix) > len(str) {
+return false
+}
+return str[:len(prefix)] == prefix
+}
+
+func (vm *VM) stringEndsWith(str, suffix string) bool {
+if len(suffix) > len(str) {
+return false
+}
+return str[len(str)-len(suffix):] == suffix
+}
+
+func (vm *VM) stringToUpper(str string) string {
+result := make([]byte, len(str))
+for i := 0; i < len(str); i++ {
+c := str[i]
+if c >= 'a' && c <= 'z' {
+result[i] = c - 32
+} else {
+result[i] = c
+}
+}
+return string(result)
+}
+
+func (vm *VM) stringToLower(str string) string {
+result := make([]byte, len(str))
+for i := 0; i < len(str); i++ {
+c := str[i]
+if c >= 'A' && c <= 'Z' {
+result[i] = c + 32
+} else {
+result[i] = c
+}
+}
+return string(result)
+}
+
+func (vm *VM) stringTrim(str string) string {
+start := 0
+end := len(str)
+
+// Trim leading whitespace
+for start < end && vm.isWhitespace(str[start]) {
+start++
+}
+
+// Trim trailing whitespace
+for end > start && vm.isWhitespace(str[end-1]) {
+end--
+}
+
+return str[start:end]
+}
+
+func (vm *VM) isWhitespace(c byte) bool {
+return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f'
 }
