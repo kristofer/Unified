@@ -37,10 +37,16 @@ run-all-tests: build
 	for test_file in test/*.uni; do \
 		echo ""; \
 		echo "Testing $$test_file..."; \
-		if ./bin/unified --input "$$test_file"; then \
-			echo "✓ $$test_file passed"; \
+		output=$$(./bin/unified --input "$$test_file" 2>&1); \
+		exit_code=$$?; \
+		echo "$$output"; \
+		if echo "$$output" | grep -q "panic:\|Error generating\|error:"; then \
+			echo "✗ $$test_file FAILED (compilation/runtime error)"; \
+			failed=$$((failed + 1)); \
+		elif echo "$$output" | grep -q "Program completed successfully"; then \
+			echo "✓ $$test_file passed (exit code: $$exit_code)"; \
 		else \
-			echo "✗ $$test_file failed (exit code: $$?)"; \
+			echo "✗ $$test_file FAILED (unexpected output)"; \
 			failed=$$((failed + 1)); \
 		fi; \
 	done; \

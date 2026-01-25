@@ -446,7 +446,7 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 	if len(ctx.AllExpr()) == 1 && ctx.DOT() != nil && ctx.Identifier() != nil {
 		object := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
 		fieldName := ctx.Identifier().GetText()
-		
+
 		return &FieldAccessExpr{
 			Object:   object,
 			Field:    fieldName,
@@ -458,12 +458,12 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 	if len(ctx.AllExpr()) == 1 && ctx.DOT() != nil && ctx.Identifier() != nil && ctx.LPAREN() != nil {
 		object := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
 		methodName := ctx.Identifier().GetText()
-		
+
 		var arguments []Expression
 		if ctx.ArgList() != nil {
 			arguments = v.processArgList(ctx.ArgList().(*parser.ArgListContext))
 		}
-		
+
 		return &MethodCallExpr{
 			Object:    object,
 			Method:    methodName,
@@ -475,12 +475,12 @@ func (v *ASTBuilder) VisitExpr(ctx *parser.ExprContext) interface{} {
 	// Handle function calls: expr LPAREN argList? RPAREN
 	if len(ctx.AllExpr()) == 1 && ctx.LPAREN() != nil && ctx.RPAREN() != nil && ctx.DOT() == nil {
 		function := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
-		
+
 		var arguments []Expression
 		if ctx.ArgList() != nil {
 			arguments = v.processArgList(ctx.ArgList().(*parser.ArgListContext))
 		}
-		
+
 		return &CallExpr{
 			Function:  function,
 			Arguments: arguments,
@@ -715,13 +715,13 @@ func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
 func (v *ASTBuilder) VisitStructExpr(ctx *parser.StructExprContext) interface{} {
 	// Get struct name
 	name := ctx.Identifier().GetText()
-	
+
 	// Process field initializations
 	var fieldInits []*FieldInit
 	if fieldInitListCtx := ctx.FieldInitList(); fieldInitListCtx != nil {
 		fieldInits = v.processFieldInitList(fieldInitListCtx.(*parser.FieldInitListContext))
 	}
-	
+
 	return &StructExpr{
 		Name:       name,
 		FieldInits: fieldInits,
@@ -732,14 +732,14 @@ func (v *ASTBuilder) VisitStructExpr(ctx *parser.StructExprContext) interface{} 
 // processFieldInitList processes a list of field initializations
 func (v *ASTBuilder) processFieldInitList(ctx *parser.FieldInitListContext) []*FieldInit {
 	var fieldInits []*FieldInit
-	
+
 	for _, fieldInitCtx := range ctx.AllFieldInit() {
 		fieldInit := v.VisitFieldInit(fieldInitCtx.(*parser.FieldInitContext))
 		if fieldInit != nil {
 			fieldInits = append(fieldInits, fieldInit.(*FieldInit))
 		}
 	}
-	
+
 	return fieldInits
 }
 
@@ -749,14 +749,14 @@ func (v *ASTBuilder) VisitFieldInit(ctx *parser.FieldInitContext) interface{} {
 	if ctx.Identifier() != nil && ctx.COLON() != nil && ctx.Expr() != nil {
 		name := ctx.Identifier().GetText()
 		value := v.VisitExpr(ctx.Expr().(*parser.ExprContext)).(Expression)
-		
+
 		return &FieldInit{
 			Name:     name,
 			Value:    value,
 			Position: v.getPosition(ctx),
 		}
 	}
-	
+
 	// For shorthand "identifier" format, we'd handle that here
 	// For now, just support full format
 	return nil
@@ -822,6 +822,9 @@ func (v *ASTBuilder) VisitStatement(ctx *parser.StatementContext) interface{} {
 	}
 	if varCtx := ctx.VarStatement(); varCtx != nil {
 		return v.VisitVarStatement(varCtx.(*parser.VarStatementContext))
+	}
+	if assignCtx := ctx.AssignmentStatement(); assignCtx != nil {
+		return v.VisitAssignmentStatement(assignCtx.(*parser.AssignmentStatementContext))
 	}
 	if regionCtx := ctx.RegionStatement(); regionCtx != nil {
 		return v.VisitRegionStatement(regionCtx.(*parser.RegionStatementContext))
@@ -898,7 +901,7 @@ func (v *ASTBuilder) VisitExprStatement(ctx *parser.ExprStatementContext) interf
 	if ctx.Expr() == nil {
 		return nil
 	}
-	
+
 	expr := v.VisitExpr(ctx.Expr().(*parser.ExprContext))
 	if expr == nil {
 		return nil
@@ -924,6 +927,37 @@ func (v *ASTBuilder) VisitVarStatement(ctx *parser.VarStatementContext) interfac
 		Name:     name,
 		Type:     varType,
 		Value:    expr,
+		Position: v.getPosition(ctx),
+	}
+}
+
+// VisitAssignmentStatement builds an assignment statement node
+func (v *ASTBuilder) VisitAssignmentStatement(ctx *parser.AssignmentStatementContext) interface{} {
+	target := ctx.Identifier().GetText()
+	value := v.VisitExpr(ctx.Expr().(*parser.ExprContext)).(Expression)
+
+	// Determine the assignment operator
+	var op AssignOp
+	if ctx.AssignmentOp().ASSIGN() != nil {
+		op = AssignNormal
+	} else if ctx.AssignmentOp().PLUS_ASSIGN() != nil {
+		op = AssignAdd
+	} else if ctx.AssignmentOp().MINUS_ASSIGN() != nil {
+		op = AssignSub
+	} else if ctx.AssignmentOp().STAR_ASSIGN() != nil {
+		op = AssignMul
+	} else if ctx.AssignmentOp().DIV_ASSIGN() != nil {
+		op = AssignDiv
+	} else if ctx.AssignmentOp().MOD_ASSIGN() != nil {
+		op = AssignMod
+	} else {
+		op = AssignNormal
+	}
+
+	return &AssignmentStatement{
+		Target:   target,
+		Operator: op,
+		Value:    value,
 		Position: v.getPosition(ctx),
 	}
 }
@@ -1040,12 +1074,12 @@ func (v *ASTBuilder) VisitForStatement(ctx *parser.ForStatementContext) interfac
 	if ctx.Expr() == nil {
 		return nil
 	}
-	
+
 	iterable := v.VisitExpr(ctx.Expr().(*parser.ExprContext))
 	if iterable == nil {
 		return nil
 	}
-	
+
 	body := v.VisitBlock(ctx.Block().(*parser.BlockContext)).(*Block)
 
 	return &ForStatement{
