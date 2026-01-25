@@ -1,0 +1,12 @@
+// Test: No semicolons with multiple statements
+fn calculate() -> Int {
+    let x = 10
+    let y = 20
+    let z = x + y
+    return z
+}
+
+fn main() -> Int {
+    let result = calculate()
+    return result
+}

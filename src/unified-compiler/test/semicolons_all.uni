@@ -1,0 +1,11 @@
+// Test: All semicolons (should still work)
+fn with_all_semis() -> Int {
+    let x = 1;
+    let y = 2;
+    let z = x + y;
+    return z;
+}
+
+fn main() -> Int {
+    return with_all_semis();
+}
