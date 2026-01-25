@@ -1,0 +1,12 @@
+// Simple enum with no data
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+fn main() -> Int {
+    // For now, we test by manually creating enum values in generator tests
+    // Full parsing support will require grammar updates
+    return 0
+}

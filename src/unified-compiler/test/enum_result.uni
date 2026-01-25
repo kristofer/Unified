@@ -1,0 +1,11 @@
+// Enum with multiple variants and data
+enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+fn main() -> Int {
+    // Result type is now declared
+    // Full usage requires constructor parsing
+    return 0
+}
