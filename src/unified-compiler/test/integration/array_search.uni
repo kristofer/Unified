@@ -1,0 +1,14 @@
+// Test 8: Array search (linear search)
+fn main() -> Int {
+    let arr = [10, 20, 30, 40, 50]
+    let target = 30
+    let mut found = -1
+    let mut i = 0
+    while i < 5 {
+        if arr[i] == target {
+            found = i
+        }
+        i = i + 1
+    }
+    return found  // Should return 2
+}

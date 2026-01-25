@@ -1,0 +1,5 @@
+// Test 1: Basic array creation and access
+fn main() -> Int {
+    let arr = [1, 2, 3, 4, 5]
+    return arr[2]  // Should return 3
+}
