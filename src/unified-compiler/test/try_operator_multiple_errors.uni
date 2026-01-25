@@ -1,0 +1,21 @@
+// Test 10: Multiple errors - first one propagates
+// Tests that the first error in a chain stops execution
+
+enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+fn first_error() -> Result {
+    return Result::Err(111)
+}
+
+fn second_error() -> Result {
+    return Result::Err(222)
+}
+
+fn main() -> Result {
+    let a = first_error()?
+    let b = second_error()?
+    return Result::Ok(a + b)
+}

@@ -1,0 +1,16 @@
+// Test 6: Try operator with string Result
+// Tests that ? works with different data types
+
+enum Result {
+    Ok(String),
+    Err(String)
+}
+
+fn get_greeting() -> Result {
+    return Result::Ok("Hello")
+}
+
+fn main() -> String {
+    let message = get_greeting()?
+    return message
+}

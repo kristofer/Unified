@@ -1,0 +1,20 @@
+// Test 9: Try operator in conditional
+// Tests using ? within an if statement
+
+enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+fn get_number() -> Result {
+    return Result::Ok(50)
+}
+
+fn main() -> Int {
+    let num = get_number()?
+    if num > 40 {
+        return 1
+    } else {
+        return 0
+    }
+}

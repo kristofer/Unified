@@ -1,0 +1,16 @@
+// Test 2: Try operator with Err variant
+// Tests that the ? operator propagates errors
+
+enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+fn get_error() -> Result {
+    return Result::Err(100)
+}
+
+fn main() -> Result {
+    let value = get_error()?
+    return Result::Ok(value)
+}

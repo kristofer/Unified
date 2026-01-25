@@ -1,0 +1,16 @@
+// Test 8: Try operator with boolean Result
+// Tests ? operator with boolean values
+
+enum Result {
+    Ok(Bool),
+    Err(Bool)
+}
+
+fn check_condition() -> Result {
+    return Result::Ok(true)
+}
+
+fn main() -> Bool {
+    let condition = check_condition()?
+    return condition
+}

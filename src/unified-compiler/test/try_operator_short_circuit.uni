@@ -1,0 +1,22 @@
+// Test 5: Try operator short-circuits on error
+// Tests that execution stops on first error
+
+enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+fn get_ok() -> Result {
+    return Result::Ok(5)
+}
+
+fn get_err() -> Result {
+    return Result::Err(99)
+}
+
+fn main() -> Result {
+    let a = get_ok()?
+    let b = get_err()?
+    // This line should never execute
+    return Result::Ok(a + b)
+}

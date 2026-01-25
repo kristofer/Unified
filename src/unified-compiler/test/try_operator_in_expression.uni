@@ -1,0 +1,16 @@
+// Test 4: Try operator in expression
+// Tests using ? operator in a larger expression
+
+enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+fn get_value() -> Result {
+    return Result::Ok(15)
+}
+
+fn main() -> Int {
+    let result = get_value()? * 2
+    return result
+}
