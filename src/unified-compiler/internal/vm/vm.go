@@ -532,6 +532,34 @@ data := enumVal.Enum.Data[int(index.Int)]
 vm.stack.Push(data)
 vm.ip++
 
+case bytecode.OpTryPropagate:
+// Try operator (?) for error propagation
+// Stack: [Result_value]
+// If Ok(value): unwrap and push value
+// If Err(error): propagate error by returning it
+// Note: The ? operator is designed to work exclusively with Result enums
+// that have Ok and Err variants (following Rust conventions)
+resultVal := vm.stack.Pop()
+
+if resultVal.Type != bytecode.ValueTypeEnum {
+return fmt.Errorf("? operator requires a Result enum (with Ok/Err variants), got %v type", resultVal.Type)
+}
+
+// Check if it's an Ok or Err variant
+if resultVal.Enum.VariantName == "Ok" {
+// Unwrap the Ok value (extract first data element)
+if len(resultVal.Enum.Data) == 0 {
+return fmt.Errorf("Ok variant has no data to unwrap")
+}
+vm.stack.Push(resultVal.Enum.Data[0])
+vm.ip++
+} else if resultVal.Enum.VariantName == "Err" {
+// Propagate error by early return
+vm.propagateError(resultVal)
+} else {
+return fmt.Errorf("? operator requires Result enum with 'Ok' or 'Err' variants (Rust-style), got '%s' variant", resultVal.Enum.VariantName)
+}
+
 default:
 return fmt.Errorf("unknown opcode: %d", inst.Op)
 }
@@ -700,4 +728,24 @@ if val.Type == bytecode.ValueTypeInt {
 return float64(val.Int)
 }
 return 0.0
+}
+
+// propagateError handles error propagation for the ? operator
+// It performs an early return with the error value
+func (vm *VM) propagateError(errValue bytecode.Value) {
+// Push the error back on the stack
+vm.stack.Push(errValue)
+
+// Return immediately from the current function
+if len(vm.callStack) > 0 {
+// Pop the call frame and return to caller
+frame := vm.callStack[len(vm.callStack)-1]
+vm.callStack = vm.callStack[:len(vm.callStack)-1]
+vm.ip = frame.returnIP
+// Stack now has the Err value on top
+} else {
+// No call frame, we're in main - set ip to end execution
+// Stack has the Err value which will be the return value
+vm.ip = len(vm.bytecode.Instructions)
+}
 }

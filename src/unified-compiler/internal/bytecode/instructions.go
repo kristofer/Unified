@@ -67,6 +67,9 @@ const (
 	OpMatchVariant    // Match enum variant by tag
 	OpExtractVariant  // Extract data from enum variant
 
+	// Error handling operations
+	OpTryPropagate    // Try operator (?) for error propagation
+
 	// Special operations
 	OpHalt // Halt execution
 	OpNop  // No operation
@@ -167,6 +170,8 @@ case OpMatchVariant:
 return "MATCH_VARIANT"
 case OpExtractVariant:
 return "EXTRACT_VARIANT"
+case OpTryPropagate:
+return "TRY_PROPAGATE"
 case OpHalt:
 return "HALT"
 case OpNop:

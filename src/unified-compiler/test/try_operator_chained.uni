@@ -1,0 +1,21 @@
+// Test 3: Chained try operators
+// Tests that multiple ? operators work in sequence
+
+enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+fn get_first() -> Result {
+    return Result::Ok(10)
+}
+
+fn get_second() -> Result {
+    return Result::Ok(20)
+}
+
+fn main() -> Int {
+    let a = get_first()?
+    let b = get_second()?
+    return a + b
+}

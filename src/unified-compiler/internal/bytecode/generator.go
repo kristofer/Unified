@@ -328,6 +328,8 @@ func (g *Generator) generateExpression(expr ast.Expression) error {
 		return g.generateEnumConstructorExpr(expr)
 	case *ast.MatchExpr:
 		return g.generateMatchExpr(expr)
+	case *ast.TryExpr:
+		return g.generateTryExpr(expr)
 	case *ast.Block:
 		return g.generateBlockExpression(expr)
 	default:
@@ -1093,3 +1095,20 @@ return fmt.Errorf("unsupported pattern kind: %v", pattern.Kind)
 return nil
 }
 
+
+// generateTryExpr generates bytecode for the ? operator
+// The ? operator works with Result<T, E> enums:
+// - If the value is Ok(value), unwraps and continues with value
+// - If the value is Err(error), propagates the error by returning early
+func (g *Generator) generateTryExpr(expr *ast.TryExpr) error {
+// Generate the operand expression (should be a Result)
+if err := g.generateExpression(expr.Operand); err != nil {
+return err
+}
+
+// Generate the OpTryPropagate instruction
+// This will check if the value is Ok or Err and handle accordingly
+g.bytecode.AddInstruction(OpTryPropagate, 0)
+
+return nil
+}

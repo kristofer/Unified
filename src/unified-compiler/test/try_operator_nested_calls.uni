@@ -1,0 +1,21 @@
+// Test 7: Nested try operators
+// Tests using ? on nested function calls
+
+enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+fn inner_function() -> Result {
+    return Result::Ok(7)
+}
+
+fn outer_function() -> Result {
+    let value = inner_function()?
+    return Result::Ok(value * 2)
+}
+
+fn main() -> Int {
+    let result = outer_function()?
+    return result
+}

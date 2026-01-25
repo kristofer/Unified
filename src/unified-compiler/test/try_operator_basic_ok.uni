@@ -1,0 +1,16 @@
+// Test 1: Basic try operator with Ok variant
+// Tests that the ? operator unwraps Ok values
+
+enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+fn get_ok_value() -> Result {
+    return Result::Ok(42)
+}
+
+fn main() -> Int {
+    let value = get_ok_value()?
+    return value
+}
