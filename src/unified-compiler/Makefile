@@ -1,4 +1,4 @@
-.PHONY: all parser build test clean run-test vm-info
+.PHONY: all parser build test clean run-test run-all-tests vm-info
 
 all: parser build
 
@@ -29,6 +29,28 @@ run-test: build
 	@echo "Running minimal test..."
 	./bin/unified --input minimal_test.uni
 	@echo "Exit code: $$?"
+
+# Run all Unified test files
+run-all-tests: build
+	@echo "Running all Unified test files..."
+	@failed=0; \
+	for test_file in test/*.uni; do \
+		echo ""; \
+		echo "Testing $$test_file..."; \
+		if ./bin/unified --input "$$test_file"; then \
+			echo "✓ $$test_file passed"; \
+		else \
+			echo "✗ $$test_file failed (exit code: $$?)"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	if [ $$failed -eq 0 ]; then \
+		echo "All tests passed!"; \
+	else \
+		echo "$$failed test(s) failed"; \
+		exit 1; \
+	fi
 
 # Display VM information
 vm-info:

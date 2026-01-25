@@ -224,6 +224,18 @@ func (s *BaseUnifiedParserListener) EnterVarStatement(ctx *VarStatementContext) 
 // ExitVarStatement is called when production varStatement is exited.
 func (s *BaseUnifiedParserListener) ExitVarStatement(ctx *VarStatementContext) {}
 
+// EnterAssignmentStatement is called when production assignmentStatement is entered.
+func (s *BaseUnifiedParserListener) EnterAssignmentStatement(ctx *AssignmentStatementContext) {}
+
+// ExitAssignmentStatement is called when production assignmentStatement is exited.
+func (s *BaseUnifiedParserListener) ExitAssignmentStatement(ctx *AssignmentStatementContext) {}
+
+// EnterAssignmentOp is called when production assignmentOp is entered.
+func (s *BaseUnifiedParserListener) EnterAssignmentOp(ctx *AssignmentOpContext) {}
+
+// ExitAssignmentOp is called when production assignmentOp is exited.
+func (s *BaseUnifiedParserListener) ExitAssignmentOp(ctx *AssignmentOpContext) {}
+
 // EnterRegionStatement is called when production regionStatement is entered.
 func (s *BaseUnifiedParserListener) EnterRegionStatement(ctx *RegionStatementContext) {}
 

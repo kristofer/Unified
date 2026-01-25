@@ -64,13 +64,12 @@ for phase_def in "${phases[@]}"; do
     echo "Creating issue for Phase $phase_num..."
     echo "  Title: $title"
     echo "  File: $filepath"
-    echo "  Labels: $labels"
+    #echo "  Labels: $labels"
     
     # Create the issue
     if gh issue create \
         --title "$title" \
         --body-file "$filepath" \
-        --label "$labels" \
         2>/dev/null; then
         echo "✅ Created issue for Phase $phase_num"
         ((created++))

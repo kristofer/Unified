@@ -109,6 +109,12 @@ type UnifiedParserListener interface {
 	// EnterVarStatement is called when entering the varStatement production.
 	EnterVarStatement(c *VarStatementContext)
 
+	// EnterAssignmentStatement is called when entering the assignmentStatement production.
+	EnterAssignmentStatement(c *AssignmentStatementContext)
+
+	// EnterAssignmentOp is called when entering the assignmentOp production.
+	EnterAssignmentOp(c *AssignmentOpContext)
+
 	// EnterRegionStatement is called when entering the regionStatement production.
 	EnterRegionStatement(c *RegionStatementContext)
 
@@ -312,6 +318,12 @@ type UnifiedParserListener interface {
 
 	// ExitVarStatement is called when exiting the varStatement production.
 	ExitVarStatement(c *VarStatementContext)
+
+	// ExitAssignmentStatement is called when exiting the assignmentStatement production.
+	ExitAssignmentStatement(c *AssignmentStatementContext)
+
+	// ExitAssignmentOp is called when exiting the assignmentOp production.
+	ExitAssignmentOp(c *AssignmentOpContext)
 
 	// ExitRegionStatement is called when exiting the regionStatement production.
 	ExitRegionStatement(c *RegionStatementContext)

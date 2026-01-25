@@ -143,6 +143,14 @@ func (v *BaseUnifiedParserVisitor) VisitVarStatement(ctx *VarStatementContext) i
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseUnifiedParserVisitor) VisitAssignmentStatement(ctx *AssignmentStatementContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
+func (v *BaseUnifiedParserVisitor) VisitAssignmentOp(ctx *AssignmentOpContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseUnifiedParserVisitor) VisitRegionStatement(ctx *RegionStatementContext) interface{} {
 	return v.VisitChildren(ctx)
 }

@@ -109,6 +109,12 @@ type UnifiedParserVisitor interface {
 	// Visit a parse tree produced by UnifiedParser#varStatement.
 	VisitVarStatement(ctx *VarStatementContext) interface{}
 
+	// Visit a parse tree produced by UnifiedParser#assignmentStatement.
+	VisitAssignmentStatement(ctx *AssignmentStatementContext) interface{}
+
+	// Visit a parse tree produced by UnifiedParser#assignmentOp.
+	VisitAssignmentOp(ctx *AssignmentOpContext) interface{}
+
 	// Visit a parse tree produced by UnifiedParser#regionStatement.
 	VisitRegionStatement(ctx *RegionStatementContext) interface{}
 
