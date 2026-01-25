@@ -159,6 +159,8 @@ type
     | type BIT_OR type                               // Union type
     | IMPL identifier                                // Interface type
     | type (DOUBLE_COLON identifier)+                // Qualified type
+    | LBRACK type SEMI IntLiteral RBRACK             // Array type: [Int; 10]
+    | LBRACK type RBRACK                             // Slice type: [Int]
     ;
 
 typeList
