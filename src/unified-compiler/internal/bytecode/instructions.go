@@ -62,6 +62,11 @@ const (
 	OpLoadField   // Load field from struct
 	OpStoreField  // Store field to struct
 
+	// Enum operations
+	OpAllocEnum       // Allocate enum variant
+	OpMatchVariant    // Match enum variant by tag
+	OpExtractVariant  // Extract data from enum variant
+
 	// Special operations
 	OpHalt // Halt execution
 	OpNop  // No operation
@@ -156,6 +161,12 @@ case OpLoadField:
 return "LOAD_FIELD"
 case OpStoreField:
 return "STORE_FIELD"
+case OpAllocEnum:
+return "ALLOC_ENUM"
+case OpMatchVariant:
+return "MATCH_VARIANT"
+case OpExtractVariant:
+return "EXTRACT_VARIANT"
 case OpHalt:
 return "HALT"
 case OpNop:
@@ -215,12 +226,21 @@ Float  float64
 Bool   bool
 Str    string
 Struct *StructValue // For struct instances
+Enum   *EnumValue   // For enum instances
 }
 
 // StructValue represents a struct instance in the VM
 type StructValue struct {
 TypeName string
 Fields   map[string]Value
+}
+
+// EnumValue represents an enum instance in the VM
+type EnumValue struct {
+EnumName    string
+VariantName string
+VariantTag  int
+Data        []Value // Variant data
 }
 
 // ValueType represents the type of a value
@@ -233,6 +253,7 @@ ValueTypeBool
 ValueTypeString
 ValueTypeNull
 ValueTypeStruct
+ValueTypeEnum
 )
 
 // NewIntValue creates an integer value
@@ -271,6 +292,19 @@ Fields:   fields,
 }
 }
 
+// NewEnumValue creates an enum value
+func NewEnumValue(enumName, variantName string, variantTag int, data []Value) Value {
+return Value{
+Type: ValueTypeEnum,
+Enum: &EnumValue{
+EnumName:    enumName,
+VariantName: variantName,
+VariantTag:  variantTag,
+Data:        data,
+},
+}
+}
+
 // String returns a human-readable representation of the value
 func (v Value) String() string {
 switch v.Type {
@@ -284,6 +318,10 @@ case ValueTypeString:
 return fmt.Sprintf("%q", v.Str)
 case ValueTypeNull:
 return "null"
+case ValueTypeStruct:
+return fmt.Sprintf("struct:%s", v.Struct.TypeName)
+case ValueTypeEnum:
+return fmt.Sprintf("enum:%s::%s", v.Enum.EnumName, v.Enum.VariantName)
 default:
 return "unknown"
 }

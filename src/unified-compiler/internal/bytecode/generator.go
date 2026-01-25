@@ -20,6 +20,7 @@ localVars     map[string]int // Variable name -> stack index
 localVarCount int            // Number of local variables
 loopStack     []LoopContext  // Stack of nested loop contexts
 structTypes   map[string]*StructTypeInfo // Struct type information
+enumTypes     map[string]*EnumTypeInfo   // Enum type information
 }
 
 // StructTypeInfo holds metadata about a struct type
@@ -29,23 +30,41 @@ Fields  map[string]int // Field name -> index
 Methods map[string]*ast.FunctionDecl
 }
 
+// EnumTypeInfo holds metadata about an enum type
+type EnumTypeInfo struct {
+Name     string
+Variants map[string]*VariantInfo // Variant name -> info
+}
+
+// VariantInfo holds metadata about an enum variant
+type VariantInfo struct {
+Name  string
+Tag   int
+Arity int // Number of data fields
+}
+
 // NewGenerator creates a new bytecode generator
 func NewGenerator() *Generator {
 return &Generator{
 bytecode:    NewBytecode(),
 localVars:   make(map[string]int),
 structTypes: make(map[string]*StructTypeInfo),
+enumTypes:   make(map[string]*EnumTypeInfo),
 }
 }
 
 // Generate converts a program AST to bytecode
 func (g *Generator) Generate(program *ast.Program) (*Bytecode, error) {
-// First pass: Register struct types
+// First pass: Register struct and enum types
 for _, item := range program.Items {
 switch item := item.(type) {
 case *ast.StructDecl:
 if err := g.registerStructType(item); err != nil {
 return nil, fmt.Errorf("error registering struct %s: %w", item.Name, err)
+}
+case *ast.EnumDecl:
+if err := g.registerEnumType(item); err != nil {
+return nil, fmt.Errorf("error registering enum %s: %w", item.Name, err)
 }
 }
 }
@@ -62,6 +81,8 @@ case *ast.StructDecl:
 if err := g.generateStructMethods(item); err != nil {
 return nil, fmt.Errorf("error generating methods for struct %s: %w", item.Name, err)
 }
+case *ast.EnumDecl:
+// Enums don't have methods (yet), so nothing to generate
 case *ast.ConstantDecl:
 // Constants are handled at compile time
 // For now, skip them in bytecode generation
@@ -779,6 +800,27 @@ info.Methods[member.Method.Name] = member.Method
 }
 
 g.structTypes[structDecl.Name] = info
+return nil
+}
+
+// registerEnumType registers an enum type and its variants
+func (g *Generator) registerEnumType(enumDecl *ast.EnumDecl) error {
+info := &EnumTypeInfo{
+Name:     enumDecl.Name,
+Variants: make(map[string]*VariantInfo),
+}
+
+// Register variants with their tags and arity
+for tag, variant := range enumDecl.Variants {
+variantInfo := &VariantInfo{
+Name:  variant.Name,
+Tag:   tag,
+Arity: len(variant.Parameters),
+}
+info.Variants[variant.Name] = variantInfo
+}
+
+g.enumTypes[enumDecl.Name] = info
 return nil
 }
 

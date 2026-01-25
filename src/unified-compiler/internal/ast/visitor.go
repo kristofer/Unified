@@ -93,6 +93,9 @@ func (v *ASTBuilder) VisitItem(ctx *parser.ItemContext) interface{} {
 	if structCtx := ctx.StructDecl(); structCtx != nil {
 		return v.VisitStructDecl(structCtx.(*parser.StructDeclContext))
 	}
+	if enumCtx := ctx.EnumDecl(); enumCtx != nil {
+		return v.VisitEnumDecl(enumCtx.(*parser.EnumDeclContext))
+	}
 	// Add more item types as needed...
 
 	return nil
@@ -269,6 +272,88 @@ func (v *ASTBuilder) VisitStructMember(ctx *parser.StructMemberContext) interfac
 	}
 
 	return nil
+}
+
+// VisitEnumDecl builds an EnumDecl node
+func (v *ASTBuilder) VisitEnumDecl(ctx *parser.EnumDeclContext) interface{} {
+	// Check if enum is public
+	isPublic := ctx.PUB() != nil
+
+	// Get enum name
+	name := ctx.Identifier().GetText()
+
+	// Process generic parameters if any
+	var genericParams []*GenericParam
+	if genericParamsCtx := ctx.GenericParams(); genericParamsCtx != nil {
+		genericParams = v.processGenericParams(genericParamsCtx.(*parser.GenericParamsContext))
+	}
+
+	// Process enum variants
+	variants := []*EnumVariant{}
+	for _, variantCtx := range ctx.AllEnumVariant() {
+		variant := v.VisitEnumVariant(variantCtx.(*parser.EnumVariantContext))
+		if variant != nil {
+			variants = append(variants, variant.(*EnumVariant))
+		}
+	}
+
+	return &EnumDecl{
+		Name:          name,
+		IsPublic:      isPublic,
+		GenericParams: genericParams,
+		Variants:      variants,
+		Position:      v.getPosition(ctx),
+	}
+}
+
+// VisitEnumVariant builds an EnumVariant node
+func (v *ASTBuilder) VisitEnumVariant(ctx *parser.EnumVariantContext) interface{} {
+	// Get variant name
+	name := ctx.Identifier().GetText()
+
+	// Process variant parameters if any
+	var parameters []*EnumVariantParam
+	if ctx.LPAREN() != nil && ctx.EnumVariantParams() != nil {
+		parameters = v.processEnumVariantParams(ctx.EnumVariantParams().(*parser.EnumVariantParamsContext))
+	}
+
+	return &EnumVariant{
+		Name:       name,
+		Parameters: parameters,
+		Position:   v.getPosition(ctx),
+	}
+}
+
+// processEnumVariantParams processes enum variant parameters
+func (v *ASTBuilder) processEnumVariantParams(ctx *parser.EnumVariantParamsContext) []*EnumVariantParam {
+	params := []*EnumVariantParam{}
+
+	for _, paramCtx := range ctx.AllEnumVariantParam() {
+		param := v.VisitEnumVariantParam(paramCtx.(*parser.EnumVariantParamContext))
+		if param != nil {
+			params = append(params, param.(*EnumVariantParam))
+		}
+	}
+
+	return params
+}
+
+// VisitEnumVariantParam builds an EnumVariantParam node
+func (v *ASTBuilder) VisitEnumVariantParam(ctx *parser.EnumVariantParamContext) interface{} {
+	// Get parameter name if specified
+	var name string
+	if ctx.Identifier() != nil {
+		name = ctx.Identifier().GetText()
+	}
+
+	// Get parameter type
+	paramType := v.VisitType_(ctx.Type_().(*parser.TypeContext)).(Type)
+
+	return &EnumVariantParam{
+		Name:     name,
+		Type:     paramType,
+		Position: v.getPosition(ctx),
+	}
 }
 
 // VisitType handles type references
