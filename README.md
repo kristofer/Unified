@@ -59,6 +59,22 @@ I'd call it "Unified" - a language that takes the most compelling features from 
 ## Key Features
 
 ```unified
+// Semicolons are optional - clean, readable syntax
+fn fibonacci(n: Int) -> Int {
+    if n <= 1 {
+        return n
+    }
+    let mut a = 0
+    let mut b = 1
+    let mut result = 0
+    for i in 2..=n {
+        result = a + b
+        a = b
+        b = result
+    }
+    return result
+}
+
 // Pattern matching and algebraic data types (from Rust/ML family)
 type Result<T, E> = Success(T) | Error(E)
 

@@ -31,6 +31,11 @@ func compile(inputFile *string) {
 	lexer := parser.NewUnifiedLexer(inputStream)
 	tokenStream := antlr.NewCommonTokenStream(lexer, 0)
 	p := parser.NewUnifiedParser(tokenStream)
+	
+	// Use custom error listener to suppress "missing ';'" errors
+	// since semicolons are optional in Unified
+	p.RemoveErrorListeners()
+	p.AddErrorListener(parser.NewCustomErrorListener())
 
 	// 2. Parse the input and build the AST
 	parseTree := p.Program()
