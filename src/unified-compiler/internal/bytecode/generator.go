@@ -20,6 +20,7 @@ localVars     map[string]int // Variable name -> stack index
 localVarCount int            // Number of local variables
 loopStack     []LoopContext  // Stack of nested loop contexts
 structTypes   map[string]*StructTypeInfo // Struct type information
+enumTypes     map[string]*EnumTypeInfo   // Enum type information
 }
 
 // StructTypeInfo holds metadata about a struct type
@@ -29,23 +30,41 @@ Fields  map[string]int // Field name -> index
 Methods map[string]*ast.FunctionDecl
 }
 
+// EnumTypeInfo holds metadata about an enum type
+type EnumTypeInfo struct {
+Name     string
+Variants map[string]*VariantInfo // Variant name -> info
+}
+
+// VariantInfo holds metadata about an enum variant
+type VariantInfo struct {
+Name  string
+Tag   int
+Arity int // Number of data fields
+}
+
 // NewGenerator creates a new bytecode generator
 func NewGenerator() *Generator {
 return &Generator{
 bytecode:    NewBytecode(),
 localVars:   make(map[string]int),
 structTypes: make(map[string]*StructTypeInfo),
+enumTypes:   make(map[string]*EnumTypeInfo),
 }
 }
 
 // Generate converts a program AST to bytecode
 func (g *Generator) Generate(program *ast.Program) (*Bytecode, error) {
-// First pass: Register struct types
+// First pass: Register struct and enum types
 for _, item := range program.Items {
 switch item := item.(type) {
 case *ast.StructDecl:
 if err := g.registerStructType(item); err != nil {
 return nil, fmt.Errorf("error registering struct %s: %w", item.Name, err)
+}
+case *ast.EnumDecl:
+if err := g.registerEnumType(item); err != nil {
+return nil, fmt.Errorf("error registering enum %s: %w", item.Name, err)
 }
 }
 }
@@ -62,6 +81,8 @@ case *ast.StructDecl:
 if err := g.generateStructMethods(item); err != nil {
 return nil, fmt.Errorf("error generating methods for struct %s: %w", item.Name, err)
 }
+case *ast.EnumDecl:
+// Enums don't have methods (yet), so nothing to generate
 case *ast.ConstantDecl:
 // Constants are handled at compile time
 // For now, skip them in bytecode generation
@@ -303,6 +324,10 @@ func (g *Generator) generateExpression(expr ast.Expression) error {
 		return g.generateFieldAccessExpr(expr)
 	case *ast.MethodCallExpr:
 		return g.generateMethodCallExpr(expr)
+	case *ast.EnumConstructorExpr:
+		return g.generateEnumConstructorExpr(expr)
+	case *ast.MatchExpr:
+		return g.generateMatchExpr(expr)
 	case *ast.Block:
 		return g.generateBlockExpression(expr)
 	default:
@@ -782,6 +807,27 @@ g.structTypes[structDecl.Name] = info
 return nil
 }
 
+// registerEnumType registers an enum type and its variants
+func (g *Generator) registerEnumType(enumDecl *ast.EnumDecl) error {
+info := &EnumTypeInfo{
+Name:     enumDecl.Name,
+Variants: make(map[string]*VariantInfo),
+}
+
+// Register variants with their tags and arity
+for tag, variant := range enumDecl.Variants {
+variantInfo := &VariantInfo{
+Name:  variant.Name,
+Tag:   tag,
+Arity: len(variant.Parameters),
+}
+info.Variants[variant.Name] = variantInfo
+}
+
+g.enumTypes[enumDecl.Name] = info
+return nil
+}
+
 // generateStructMethods generates bytecode for struct methods
 func (g *Generator) generateStructMethods(structDecl *ast.StructDecl) error {
 for _, member := range structDecl.Members {
@@ -909,3 +955,141 @@ g.bytecode.Instructions = append(g.bytecode.Instructions, inst)
 
 return nil
 }
+
+// generateEnumConstructorExpr generates bytecode for enum variant construction
+func (g *Generator) generateEnumConstructorExpr(expr *ast.EnumConstructorExpr) error {
+// Get enum type info
+enumInfo, ok := g.enumTypes[expr.EnumName]
+if !ok {
+return fmt.Errorf("undefined enum type: %s", expr.EnumName)
+}
+
+// Get variant info
+variantInfo, ok := enumInfo.Variants[expr.Variant]
+if !ok {
+return fmt.Errorf("undefined variant %s in enum %s", expr.Variant, expr.EnumName)
+}
+
+// Check argument count
+if len(expr.Arguments) != variantInfo.Arity {
+return fmt.Errorf("variant %s::%s expects %d arguments, got %d",
+expr.EnumName, expr.Variant, variantInfo.Arity, len(expr.Arguments))
+}
+
+// Push variant data (arguments) onto stack
+for _, arg := range expr.Arguments {
+if err := g.generateExpression(arg); err != nil {
+return err
+}
+}
+
+// Push enum name
+enumNameIdx := g.bytecode.AddConstant(NewStringValue(expr.EnumName))
+g.bytecode.AddInstruction(OpPush, int64(enumNameIdx))
+
+// Push variant name
+variantNameIdx := g.bytecode.AddConstant(NewStringValue(expr.Variant))
+g.bytecode.AddInstruction(OpPush, int64(variantNameIdx))
+
+// Push variant tag
+tagIdx := g.bytecode.AddConstant(NewIntValue(int64(variantInfo.Tag)))
+g.bytecode.AddInstruction(OpPush, int64(tagIdx))
+
+// Allocate enum with data count
+g.bytecode.AddInstruction(OpAllocEnum, int64(variantInfo.Arity))
+
+return nil
+}
+
+// generateMatchExpr generates bytecode for match expressions
+func (g *Generator) generateMatchExpr(expr *ast.MatchExpr) error {
+// Generate the value to match against
+if err := g.generateExpression(expr.Value); err != nil {
+return err
+}
+
+// Track jump positions for each case
+var caseEndJumps []int
+
+// Generate code for each case
+for i, caseExpr := range expr.Cases {
+// Duplicate the value on stack for pattern matching
+g.bytecode.AddInstruction(OpDup, 0)
+
+// Generate pattern matching code
+// This will consume one copy of the value and leave a boolean on stack
+if err := g.generatePatternMatch(caseExpr.Pattern); err != nil {
+return err
+}
+
+// Jump to next case if pattern doesnt match
+nextCaseJump := g.bytecode.CurrentPosition()
+g.bytecode.AddInstruction(OpJumpIfFalse, 0) // Placeholder
+
+// Pop the duplicate value since we matched
+g.bytecode.AddInstruction(OpPop, 0)
+
+// Generate the case expression
+if err := g.generateExpression(caseExpr.Expression); err != nil {
+return err
+}
+
+// Jump to end of match expression
+if i < len(expr.Cases)-1 {
+endJump := g.bytecode.CurrentPosition()
+g.bytecode.AddInstruction(OpJump, 0) // Placeholder
+caseEndJumps = append(caseEndJumps, endJump)
+}
+
+// Patch the next case jump to point here
+nextCasePos := g.bytecode.CurrentPosition()
+g.bytecode.PatchJump(nextCaseJump, nextCasePos)
+}
+
+// Pop the remaining value if no cases matched (should not happen with exhaustive matching)
+g.bytecode.AddInstruction(OpPop, 0)
+
+// Patch all end jumps to point past the match expression
+endPos := g.bytecode.CurrentPosition()
+for _, jumpPos := range caseEndJumps {
+g.bytecode.PatchJump(jumpPos, endPos)
+}
+
+return nil
+}
+
+// generatePatternMatch generates bytecode for pattern matching
+// It consumes the value to match and pushes a boolean (true if match, false otherwise)
+func (g *Generator) generatePatternMatch(pattern *ast.Pattern) error {
+switch pattern.Kind {
+case ast.PatternWildcard, ast.PatternVariable:
+// Wildcard and variable patterns always match
+// Pop the value to match (consume it)
+g.bytecode.AddInstruction(OpPop, 0)
+// Push true for the match result
+trueIdx := g.bytecode.AddConstant(NewBoolValue(true))
+g.bytecode.AddInstruction(OpPush, int64(trueIdx))
+
+case ast.PatternLiteral:
+// Match against literal value
+// Push the literal
+if err := g.generateLiteral(pattern.Literal); err != nil {
+return err
+}
+// Compare for equality
+g.bytecode.AddInstruction(OpEq, 0)
+
+case ast.PatternConstructor:
+// Match enum variant
+// For now, assume pattern.Value is "Variant" or "Enum::Variant"
+variantNameIdx := g.bytecode.AddConstant(NewStringValue(pattern.Value))
+g.bytecode.AddInstruction(OpPush, int64(variantNameIdx))
+g.bytecode.AddInstruction(OpMatchVariant, 0)
+
+default:
+return fmt.Errorf("unsupported pattern kind: %v", pattern.Kind)
+}
+
+return nil
+}
+

@@ -1,0 +1,11 @@
+// Enum with data (tuple variant)
+enum Option {
+    None,
+    Some(Int)
+}
+
+fn main() -> Int {
+    // Parsing enum constructors requires grammar updates
+    // This test verifies enum declaration works
+    return 0
+}

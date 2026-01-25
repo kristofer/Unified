@@ -506,6 +506,17 @@ type StructExpr struct {
 func (s *StructExpr) Pos() Position   { return s.Position }
 func (s *StructExpr) expressionNode() {}
 
+// EnumConstructorExpr represents an enum variant construction
+type EnumConstructorExpr struct {
+	EnumName    string
+	Variant     string
+	Arguments   []Expression
+	Position    Position
+}
+
+func (e *EnumConstructorExpr) Pos() Position   { return e.Position }
+func (e *EnumConstructorExpr) expressionNode() {}
+
 // FieldInit represents a field initialization in a struct expression
 type FieldInit struct {
 	Name     string
@@ -571,6 +582,25 @@ type TupleExpr struct {
 
 func (t *TupleExpr) Pos() Position   { return t.Position }
 func (t *TupleExpr) expressionNode() {}
+
+// MatchExpr represents a match/switch expression
+type MatchExpr struct {
+	Value    Expression
+	Cases    []*CaseExpr
+	Position Position
+}
+
+func (m *MatchExpr) Pos() Position   { return m.Position }
+func (m *MatchExpr) expressionNode() {}
+
+// CaseExpr represents a case in a match expression
+type CaseExpr struct {
+	Pattern    *Pattern
+	Expression Expression
+	Position   Position
+}
+
+func (c *CaseExpr) Pos() Position { return c.Position }
 
 // Block represents a code block
 type Block struct {
