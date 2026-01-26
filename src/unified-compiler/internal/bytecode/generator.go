@@ -30,9 +30,19 @@ localVarCount int            // Number of local variables
 loopStack     []LoopContext  // Stack of nested loop contexts
 structTypes   map[string]*StructTypeInfo // Struct type information
 enumTypes     map[string]*EnumTypeInfo   // Enum type information
-genericContext *semantic.GenericContext // Generic type parameter context
-monomorphized map[string]*MonomorphizedFunction // Track monomorphized functions
-genericFunctions map[string]*ast.FunctionDecl // Store generic function templates
+	
+// Generic programming support
+genericContext *semantic.GenericContext // Generic type parameter context for current function
+	
+// Monomorphization tracking
+// Maps mangled name -> MonomorphizedFunction. Created during Generate() when generic
+// functions are instantiated with concrete types. Used to avoid duplicate generation.
+monomorphized map[string]*MonomorphizedFunction
+	
+// Generic function templates
+// Maps function name -> FunctionDecl. Populated in first pass of Generate() to store
+// generic function templates that will be monomorphized on-demand during call generation.
+genericFunctions map[string]*ast.FunctionDecl
 }
 
 // StructTypeInfo holds metadata about a struct type
