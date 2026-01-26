@@ -99,13 +99,13 @@ Or:
 - See PHASE10_STATUS.md for details
 
 **Remaining Work**: ~40-60 hours
-- Task 10.2: Type Parameter System (6-8 hrs)
-- Task 10.3: Generic Function Implementation (8-10 hrs)
-- Task 10.4: Type Inference Engine (6-8 hrs)
-- Task 10.5: Generic Structs (6-8 hrs)
-- Task 10.6: Generic Enums (4-6 hrs)
-- Task 10.7: Monomorphization (8-10 hrs)
-- Task 10.8: Type Parameter Constraints (4-6 hrs)
+- Task 10.2: Type Parameter System (6-8 hours)
+- Task 10.3: Generic Function Implementation (8-10 hours)
+- Task 10.4: Type Inference Engine (6-8 hours)
+- Task 10.5: Generic Structs (6-8 hours)
+- Task 10.6: Generic Enums (4-6 hours)
+- Task 10.7: Monomorphization (8-10 hours)
+- Task 10.8: Type Parameter Constraints (4-6 hours)
 ```
 
 ## Recommendations
