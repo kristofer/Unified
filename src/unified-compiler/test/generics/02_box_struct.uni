@@ -1,0 +1,23 @@
+// Test 2: Generic Box struct
+// A simple container that holds a value of any type
+
+struct Box<T> {
+    value: T
+}
+
+fn main() -> Int {
+    // Create Box with Int
+    let int_box = Box<Int> { value: 42 }
+    
+    // Create Box with String
+    let str_box = Box<String> { value: "hello" }
+    
+    // Create Box with Bool
+    let bool_box = Box<Bool> { value: true }
+    
+    // Access values
+    if int_box.value == 42 {
+        return 1
+    }
+    return 0
+}

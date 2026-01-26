@@ -1,0 +1,27 @@
+// Test 3: Generic Option enum usage
+// Tests pattern matching with generic enums
+
+enum Option<T> {
+    Some(T),
+    None
+}
+
+fn unwrap_or<T>(opt: Option<T>, default_value: T) -> T {
+    switch opt {
+        case Some(value): return value
+        case None: return default_value
+    }
+}
+
+fn main() -> Int {
+    let some_int = Option<Int>::Some(42)
+    let none_int = Option<Int>::None
+    
+    let result1 = unwrap_or(some_int, 0)
+    let result2 = unwrap_or(none_int, 99)
+    
+    if result1 == 42 && result2 == 99 {
+        return 1
+    }
+    return 0
+}

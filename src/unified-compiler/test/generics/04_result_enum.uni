@@ -1,0 +1,30 @@
+// Test 4: Generic Result enum usage
+// Tests error handling with generic Result type
+
+enum Result<T, E> {
+    Success(T),
+    Error(E)
+}
+
+fn divide(a: Int, b: Int) -> Result<Int, String> {
+    if b == 0 {
+        return Result<Int, String>::Error("Division by zero")
+    }
+    return Result<Int, String>::Success(a / b)
+}
+
+fn main() -> Int {
+    let result1 = divide(10, 2)
+    let result2 = divide(10, 0)
+    
+    switch result1 {
+        case Success(value): {
+            if value == 5 {
+                return 1
+            }
+        }
+        case Error(_): return 0
+    }
+    
+    return 0
+}

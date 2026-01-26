@@ -1,0 +1,40 @@
+// Test 8: Generic container with methods
+// Tests methods on generic structs
+
+struct Container<T> {
+    value: T
+}
+
+impl<T> Container<T> {
+    fn new(value: T) -> Container<T> {
+        return Container<T> { value: value }
+    }
+    
+    fn get(&self) -> T {
+        return self.value
+    }
+    
+    fn set(&mut self, new_value: T) {
+        self.value = new_value
+    }
+    
+    fn map<U>(self, f: fn(T) -> U) -> Container<U> {
+        return Container<U> { value: f(self.value) }
+    }
+}
+
+fn double(x: Int) -> Int {
+    return x * 2
+}
+
+fn main() -> Int {
+    let mut c = Container<Int>::new(21)
+    c.set(42)
+    
+    let value = c.get()
+    
+    if value == 42 {
+        return 1
+    }
+    return 0
+}

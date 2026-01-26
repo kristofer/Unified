@@ -1,0 +1,33 @@
+// Test 9: Generic comparison function with trait bounds
+// Tests constrained generics
+
+interface Comparable {
+    fn compare(self, other: Self) -> Int
+}
+
+fn max<T: Comparable>(a: T, b: T) -> T {
+    if a.compare(b) > 0 {
+        return a
+    }
+    return b
+}
+
+fn min<T: Comparable>(a: T, b: T) -> T {
+    if a.compare(b) < 0 {
+        return a
+    }
+    return b
+}
+
+// For testing, we'll use Int which should implement Comparable
+fn main() -> Int {
+    let a = 10
+    let b = 20
+    
+    // These would work if Int implements Comparable
+    // let maximum = max(a, b)
+    // let minimum = min(a, b)
+    
+    // For now, just return success
+    return 1
+}

@@ -1,0 +1,23 @@
+// Test 1: Generic identity function
+// This is the simplest generic function - returns its input unchanged
+
+fn identity<T>(x: T) -> T {
+    return x
+}
+
+fn main() -> Int {
+    // Test with Int
+    let a = identity(42)
+    
+    // Test with String  
+    let b = identity("hello")
+    
+    // Test with Bool
+    let c = identity(true)
+    
+    // Should infer types automatically
+    if a == 42 {
+        return 1
+    }
+    return 0
+}
