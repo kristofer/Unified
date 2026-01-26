@@ -32,7 +32,7 @@ go test ./... -coverprofile=coverage.out
 go tool cover -html=coverage.out
 ```
 
-**All tests should pass before submitting code!** Currently: **76 tests passing**
+**All tests should pass before submitting code!** Currently: **116 tests passing** (updated Jan 26, 2026)
 
 ## Test Structure
 
