@@ -1,0 +1,18 @@
+// Test 17: Generic function with local variables
+// Tests that generic functions can have local variables
+
+fn process<T>(input: T) -> T {
+    let temp = input
+    let result = temp
+    return result
+}
+
+fn main() -> Int {
+    let x = process(55)
+    let y = process("world")
+    
+    if x == 55 {
+        return 1
+    }
+    return 0
+}

@@ -1,0 +1,16 @@
+// Test 18: Generic function with multiple parameters of same type
+// Tests unification when multiple parameters share a type parameter
+
+fn equals<T>(a: T, b: T) -> Bool {
+    return a == b
+}
+
+fn main() -> Int {
+    let same = equals(10, 10)
+    let diff = equals(10, 20)
+    
+    if same && !diff {
+        return 1
+    }
+    return 0
+}

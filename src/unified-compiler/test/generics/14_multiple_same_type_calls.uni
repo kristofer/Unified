@@ -1,0 +1,18 @@
+// Test 14: Generic function called multiple times with same type
+// Tests that multiple calls with the same type work correctly
+
+fn double<T>(x: T) -> T {
+    // Simplified - just return the value
+    return x
+}
+
+fn main() -> Int {
+    let a = double(10)
+    let b = double(20)
+    let c = double(30)
+    
+    if a == 10 && b == 20 && c == 30 {
+        return 1
+    }
+    return 0
+}
