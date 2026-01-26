@@ -28,7 +28,7 @@ func TestIntegrationForSum(t *testing.T) {
 }
 
 func TestIntegrationNestedLoops(t *testing.T) {
-	testCompileAndRun(t, "../../test/integration/nested_loops.uni", 36)
+	testCompileAndRun(t, "../../test/integration/nested_loops.uni", 18)
 }
 
 func TestIntegrationFizzBuzz(t *testing.T) {

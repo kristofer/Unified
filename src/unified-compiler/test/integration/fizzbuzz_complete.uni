@@ -2,7 +2,7 @@
 // Returns n if successful
 
 fn fizzbuzz(n: Int) -> Int {
-    for i in 1..=n {
+    for i in 1 ..= n {
         let divisible_by_3 = i % 3 == 0;
         let divisible_by_5 = i % 5 == 0;
         

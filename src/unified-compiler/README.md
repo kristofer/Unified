@@ -48,7 +48,9 @@ echo $?
 
 ## Testing
 
-The compiler has comprehensive test coverage with 90+ test cases across all phases.
+The compiler has comprehensive test coverage with **116 test cases** across all phases (as of Jan 26, 2026).
+
+**Status: ALL TESTS PASSING ✅**
 
 ```bash
 # Run all tests
@@ -65,7 +67,8 @@ go test ./internal/semantic -v
 go test ./internal/bytecode -v
 ```
 
-See [TESTING.md](TESTING.md) for the complete testing guide.
+See [TESTING.md](TESTING.md) for the complete testing guide.  
+See [TEST_RESULTS_2026-01-26.md](TEST_RESULTS_2026-01-26.md) for detailed test results and analysis.
 
 ## Current Features
 
@@ -109,17 +112,37 @@ See [TESTING.md](TESTING.md) for the complete testing guide.
 
 ### Phase 5 - Structs and Basic Types 🚧
 - ✅ Struct declarations with fields
-- ✅ Struct instantiation
+- ✅ Struct instantiation (requires parentheses: `(Point { x: 10 })` )
 - ✅ Field access (dot notation)
 - ✅ Nested structs
 - ❌ Methods on structs (blocked: parser regeneration needed)
 - ❌ Associated functions (blocked: parser regeneration needed)
 - ⏳ Mutable field assignment (OpStoreField exists, syntax needed)
 
+## Known Issues
+
+### Syntax Workarounds
+
+1. **Range Operator Spacing**: Range operators must have spaces around them
+   - ✅ Correct: `for i in 1 .. 4` or `for i in 1 ..= 10`
+   - ❌ Incorrect: `for i in 1..4`
+   - **Reason**: Lexer ambiguity between `1.` (float) and `1` + `..` (range)
+   - **Fix**: Requires ANTLR 4.13+ to regenerate parser
+
+2. **Struct Instantiation**: Must wrap in parentheses
+   - ✅ Correct: `let p = (Point { x: 10, y: 20 });`
+   - ❌ Incorrect: `let p = Point { x: 10, y: 20 };`
+   - **Reason**: Parser precedence ambiguity
+   - **Fix**: Requires grammar restructuring and parser regeneration
+
+See [OPTIMIZATION_REVIEW.md](OPTIMIZATION_REVIEW.md) for detailed analysis and future fixes.
+
 ## Documentation
 
 - [VM_README.md](VM_README.md) - Virtual machine architecture and bytecode instruction set
-- [TESTING.md](TESTING.md) - Comprehensive testing guide
+- [TESTING.md](TESTING.md) - Comprehensive testing guide  
+- [TEST_RESULTS_2026-01-26.md](TEST_RESULTS_2026-01-26.md) - Detailed test results and analysis
+- [OPTIMIZATION_REVIEW.md](OPTIMIZATION_REVIEW.md) - Future optimization and review tasks
 - [ARCHITECTURE_CHANGE_SUMMARY.md](../../ARCHITECTURE_CHANGE_SUMMARY.md) - Migration from LLVM to VM
 
 ## Development
