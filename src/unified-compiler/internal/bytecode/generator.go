@@ -3,6 +3,7 @@ package bytecode
 import (
 "fmt"
 "unified-compiler/internal/ast"
+"unified-compiler/internal/semantic"
 )
 
 // LoopContext tracks loop information for break/continue
@@ -13,6 +14,14 @@ continueJumps []int  // Positions of continue jumps to patch
 label         string // Optional loop label
 }
 
+// MonomorphizedFunction tracks a specialized version of a generic function
+type MonomorphizedFunction struct {
+BaseName   string
+TypeArgs   []ast.Type
+MangledName string
+Generated  bool
+}
+
 // Generator converts AST to bytecode
 type Generator struct {
 bytecode      *Bytecode
@@ -21,6 +30,9 @@ localVarCount int            // Number of local variables
 loopStack     []LoopContext  // Stack of nested loop contexts
 structTypes   map[string]*StructTypeInfo // Struct type information
 enumTypes     map[string]*EnumTypeInfo   // Enum type information
+genericContext *semantic.GenericContext // Generic type parameter context
+monomorphized map[string]*MonomorphizedFunction // Track monomorphized functions
+genericFunctions map[string]*ast.FunctionDecl // Store generic function templates
 }
 
 // StructTypeInfo holds metadata about a struct type
@@ -50,6 +62,9 @@ bytecode:    NewBytecode(),
 localVars:   make(map[string]int),
 structTypes: make(map[string]*StructTypeInfo),
 enumTypes:   make(map[string]*EnumTypeInfo),
+genericContext: semantic.NewGenericContext(),
+monomorphized: make(map[string]*MonomorphizedFunction),
+genericFunctions: make(map[string]*ast.FunctionDecl),
 }
 }
 
@@ -66,6 +81,11 @@ case *ast.EnumDecl:
 if err := g.registerEnumType(item); err != nil {
 return nil, fmt.Errorf("error registering enum %s: %w", item.Name, err)
 }
+case *ast.FunctionDecl:
+// Store generic functions for monomorphization
+if len(item.GenericParams) > 0 {
+g.genericFunctions[item.Name] = item
+}
 }
 }
 
@@ -73,6 +93,10 @@ return nil, fmt.Errorf("error registering enum %s: %w", item.Name, err)
 for _, item := range program.Items {
 switch item := item.(type) {
 case *ast.FunctionDecl:
+// Skip generic functions - they will be monomorphized on demand
+if len(item.GenericParams) > 0 {
+continue
+}
 if err := g.generateFunction(item); err != nil {
 return nil, fmt.Errorf("error generating function %s: %w", item.Name, err)
 }
@@ -533,6 +557,46 @@ func (g *Generator) generateCallExpr(expr *ast.CallExpr) error {
 funcIdent, ok := expr.Function.(*ast.Identifier)
 if !ok {
 return fmt.Errorf("only direct function calls are supported in Phase 1")
+}
+
+// Check if this is a call to a generic function
+if genericFn, ok := g.genericFunctions[funcIdent.Name]; ok {
+// This is a generic function call - we need to monomorphize it
+var typeArgs []ast.Type
+var err error
+		
+// Check if explicit type arguments are provided
+if len(expr.TypeArgs) > 0 {
+typeArgs = expr.TypeArgs
+} else {
+// Infer type arguments from call arguments
+typeArgs, err = g.inferCallTypeArguments(genericFn, expr.Arguments)
+if err != nil {
+return fmt.Errorf("type inference failed for %s: %w", funcIdent.Name, err)
+}
+}
+		
+// Monomorphize the function
+mangledName, err := g.monomorphizeFunction(funcIdent.Name, typeArgs)
+if err != nil {
+return fmt.Errorf("monomorphization failed for %s: %w", funcIdent.Name, err)
+}
+		
+// Generate arguments (pushed in order)
+for _, arg := range expr.Arguments {
+if err := g.generateExpression(arg); err != nil {
+return err
+}
+}
+		
+// Call the monomorphized version
+funcIdx, ok := g.bytecode.Functions[mangledName]
+if !ok {
+return fmt.Errorf("monomorphized function not found: %s", mangledName)
+}
+		
+g.bytecode.AddInstructionWithArgCount(OpCall, int64(funcIdx), len(expr.Arguments))
+return nil
 }
 
 // Generate arguments (pushed in order)
@@ -1216,4 +1280,173 @@ i++
 }
 }
 return string(result)
+}
+
+// monomorphizeFunction generates a specialized version of a generic function
+func (g *Generator) monomorphizeFunction(baseName string, typeArgs []ast.Type) (string, error) {
+// Create mangled name for this specialization
+mangledName := semantic.MangleName(baseName, typeArgs)
+	
+// Check if already monomorphized
+if mono, ok := g.monomorphized[mangledName]; ok && mono.Generated {
+return mangledName, nil
+}
+	
+// Get the generic function template
+template, ok := g.genericFunctions[baseName]
+if !ok {
+return "", fmt.Errorf("generic function %s not found", baseName)
+}
+	
+// Verify type argument count matches
+if len(template.GenericParams) != len(typeArgs) {
+return "", fmt.Errorf("wrong number of type arguments for %s: expected %d, got %d",
+baseName, len(template.GenericParams), len(typeArgs))
+}
+	
+// Create a child generic context for this monomorphization
+monoCtx := g.genericContext.NewChildContext()
+	
+// Add type parameter substitutions
+for i, param := range template.GenericParams {
+monoCtx.AddTypeParameter(param)
+monoCtx.Substitutions[param.Name] = typeArgs[i]
+}
+	
+// Create a specialized version of the function
+specializedFn := &ast.FunctionDecl{
+Name:       mangledName,
+IsPublic:   template.IsPublic,
+Parameters: g.substituteParameters(template.Parameters, monoCtx),
+ReturnType: monoCtx.Substitute(template.ReturnType),
+Body:       template.Body, // Body stays the same, types are handled at runtime
+Position:   template.Position,
+}
+	
+// Mark as being generated
+g.monomorphized[mangledName] = &MonomorphizedFunction{
+BaseName:   baseName,
+TypeArgs:   typeArgs,
+MangledName: mangledName,
+Generated:  false,
+}
+	
+// Save current generic context
+savedCtx := g.genericContext
+g.genericContext = monoCtx
+	
+// Generate the specialized function
+if err := g.generateFunction(specializedFn); err != nil {
+g.genericContext = savedCtx
+return "", fmt.Errorf("error monomorphizing %s: %w", baseName, err)
+}
+	
+// Restore generic context
+g.genericContext = savedCtx
+	
+// Mark as generated
+g.monomorphized[mangledName].Generated = true
+	
+return mangledName, nil
+}
+
+// substituteParameters applies type substitutions to function parameters
+func (g *Generator) substituteParameters(params []*ast.Parameter, ctx *semantic.GenericContext) []*ast.Parameter {
+result := make([]*ast.Parameter, len(params))
+for i, param := range params {
+result[i] = &ast.Parameter{
+Name:        param.Name,
+Type:        ctx.Substitute(param.Type),
+IsSelf:      param.IsSelf,
+IsReference: param.IsReference,
+IsMutable:   param.IsMutable,
+Position:    param.Position,
+}
+}
+return result
+}
+
+// inferCallTypeArguments infers type arguments for a generic function call
+func (g *Generator) inferCallTypeArguments(fn *ast.FunctionDecl, args []ast.Expression) ([]ast.Type, error) {
+// Get parameter types
+paramTypes := make([]ast.Type, len(fn.Parameters))
+for i, param := range fn.Parameters {
+paramTypes[i] = param.Type
+}
+	
+// Infer argument types
+argTypes := make([]ast.Type, len(args))
+for i, arg := range args {
+// For now, use a simple type inference based on literals
+// In a full implementation, this would use the semantic analyzer
+argType, err := g.inferExpressionType(arg)
+if err != nil {
+return nil, fmt.Errorf("cannot infer type for argument %d: %w", i, err)
+}
+argTypes[i] = argType
+}
+	
+// Use the generic context to infer type arguments
+return g.inferTypeArgsFromCall(fn.GenericParams, paramTypes, argTypes)
+}
+
+// inferExpressionType performs simple type inference on an expression
+func (g *Generator) inferExpressionType(expr ast.Expression) (ast.Type, error) {
+switch e := expr.(type) {
+case *ast.Literal:
+switch e.Kind {
+case ast.LiteralInt:
+return &ast.TypeReference{Name: "Int"}, nil
+case ast.LiteralFloat:
+return &ast.TypeReference{Name: "Float"}, nil
+case ast.LiteralBool:
+return &ast.TypeReference{Name: "Bool"}, nil
+case ast.LiteralString:
+return &ast.TypeReference{Name: "String"}, nil
+case ast.LiteralChar:
+return &ast.TypeReference{Name: "Char"}, nil
+default:
+return nil, fmt.Errorf("unknown literal kind: %v", e.Kind)
+}
+case *ast.Identifier:
+// Look up in local variables to get type
+// For now, return nil to indicate we need more context
+return nil, fmt.Errorf("cannot infer type for identifier %s", e.Name)
+default:
+return nil, fmt.Errorf("cannot infer type for expression: %T", expr)
+}
+}
+
+// inferTypeArgsFromCall infers type arguments from a function call
+func (g *Generator) inferTypeArgsFromCall(genericParams []*ast.GenericParam, paramTypes []ast.Type, argTypes []ast.Type) ([]ast.Type, error) {
+if len(paramTypes) != len(argTypes) {
+return nil, fmt.Errorf("parameter count mismatch")
+}
+	
+// Create a temporary context for inference
+inferCtx := g.genericContext.NewChildContext()
+	
+// Add type parameters
+for _, param := range genericParams {
+inferCtx.AddTypeParameter(param)
+}
+	
+// Unify each parameter with its argument
+for i := range paramTypes {
+if err := inferCtx.Unify(paramTypes[i], argTypes[i]); err != nil {
+return nil, fmt.Errorf("type inference failed for parameter %d: %w", i, err)
+}
+}
+	
+// Extract inferred types
+result := make([]ast.Type, len(genericParams))
+for i, param := range genericParams {
+if sub, ok := inferCtx.Substitutions[param.Name]; ok {
+result[i] = sub
+} else {
+return nil, fmt.Errorf("could not infer type for parameter %s", param.Name)
+}
+}
+	
+return result, nil
 }
