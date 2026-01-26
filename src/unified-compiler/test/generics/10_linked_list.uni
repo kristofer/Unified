@@ -9,7 +9,7 @@ enum List<T> {
 fn list_length<T>(list: List<T>) -> Int {
     switch list {
         case Cons(_, rest): {
-            return 1 + list_length(*rest.value)
+            return 1 + list_length(rest.value)
         }
         case Nil: return 0
     }
@@ -18,7 +18,7 @@ fn list_length<T>(list: List<T>) -> Int {
 fn list_sum(list: List<Int>) -> Int {
     switch list {
         case Cons(value, rest): {
-            return value + list_sum(*rest.value)
+            return value + list_sum(rest.value)
         }
         case Nil: return 0
     }

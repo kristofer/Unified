@@ -2,9 +2,9 @@
 // Tests in-place operations with generic types
 
 fn swap<T>(a: &mut T, b: &mut T) {
-    let temp = a
-    a = b
-    b = temp
+    let temp = *a
+    *a = *b
+    *b = temp
 }
 
 fn main() -> Int {

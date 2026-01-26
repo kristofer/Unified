@@ -103,6 +103,16 @@ func inferUnaryExprType(expr *ast.UnaryExpr) (ast.Type, error) {
 
 // TypesCompatible checks if two types are compatible for assignment
 func TypesCompatible(target, source ast.Type) bool {
+	return typesCompatibleWithDepth(target, source, 0, 100)
+}
+
+// typesCompatibleWithDepth checks type compatibility with a depth limit to prevent infinite recursion
+func typesCompatibleWithDepth(target, source ast.Type, depth, maxDepth int) bool {
+	// Prevent infinite recursion with circular type references
+	if depth > maxDepth {
+		return false
+	}
+	
 	// Simplified type compatibility check
 	// In a real implementation, this would be much more sophisticated
 	
@@ -126,7 +136,7 @@ func TypesCompatible(target, source ast.Type) bool {
 		
 		// Recursively check each type argument
 		for i := range targetRef.TypeArgs {
-			if !TypesCompatible(targetRef.TypeArgs[i], sourceRef.TypeArgs[i]) {
+			if !typesCompatibleWithDepth(targetRef.TypeArgs[i], sourceRef.TypeArgs[i], depth+1, maxDepth) {
 				return false
 			}
 		}
