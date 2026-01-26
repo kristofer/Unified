@@ -316,16 +316,16 @@ caseExpr
     ;
 
 primary
-    : identifier                                     // Variable reference
-    | SELF                                           // Self reference
-    | literal                                        // Literal
-    | LPAREN expr RPAREN                             // Grouping
-    | block                                          // Block expression
-    | structExpr                                     // Struct instantiation
+    : structExpr                                     // Struct instantiation (must be before identifier)
     | listExpr                                       // List literal
     | mapExpr                                        // Map literal
     | setExpr                                        // Set literal
     | tupleExpr                                      // Tuple expression
+    | identifier                                     // Variable reference
+    | SELF                                           // Self reference
+    | literal                                        // Literal
+    | LPAREN expr RPAREN                             // Grouping
+    | block                                          // Block expression
     ;
 
 lambdaExpr

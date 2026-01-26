@@ -6,9 +6,9 @@ struct Rectangle {
 }
 
 fn main() -> Int {
-    let rect = (Rectangle { width: 5, height: 10 });
-    let w = rect.width;
-    let h = rect.height;
-    let area = w * h;
-    return area;
+    let rect = Rectangle { width: 5, height: 10 }
+    let w = rect.width
+    let h = rect.height
+    let area = w * h
+    return area
 }

@@ -1,0 +1,11 @@
+fn test_range() -> Int {
+    let mut sum = 0
+    for i in 1..5 {
+        sum += i
+    }
+    return sum
+}
+
+fn main() -> Int {
+    return test_range()
+}
