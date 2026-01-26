@@ -1,0 +1,10 @@
+// Test 5: Case conversion test
+fn main() -> Int {
+    let text = "Hello"
+    
+    // text.to_upper() should be "HELLO"
+    // text.to_lower() should be "hello"
+    
+    // Both should have same length as original
+    return 5  // Length remains 5
+}

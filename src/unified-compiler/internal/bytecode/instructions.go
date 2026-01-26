@@ -76,6 +76,18 @@ const (
 	OpStoreArray  // Store element to array (with bounds checking)
 	OpArrayLen    // Get array length
 
+	// String operations
+	OpConcat         // String concatenation
+	OpStrLen         // Get string length
+	OpStrIsEmpty     // Check if string is empty
+	OpStrSubstring   // Extract substring
+	OpStrContains    // Check if string contains substring
+	OpStrStartsWith  // Check if string starts with prefix
+	OpStrEndsWith    // Check if string ends with suffix
+	OpStrToUpper     // Convert string to uppercase
+	OpStrToLower     // Convert string to lowercase
+	OpStrTrim        // Trim whitespace from string
+
 	// Special operations
 	OpHalt // Halt execution
 	OpNop  // No operation
@@ -186,6 +198,26 @@ case OpStoreArray:
 return "STORE_ARRAY"
 case OpArrayLen:
 return "ARRAY_LEN"
+case OpConcat:
+return "CONCAT"
+case OpStrLen:
+return "STR_LEN"
+case OpStrIsEmpty:
+return "STR_IS_EMPTY"
+case OpStrSubstring:
+return "STR_SUBSTRING"
+case OpStrContains:
+return "STR_CONTAINS"
+case OpStrStartsWith:
+return "STR_STARTS_WITH"
+case OpStrEndsWith:
+return "STR_ENDS_WITH"
+case OpStrToUpper:
+return "STR_TO_UPPER"
+case OpStrToLower:
+return "STR_TO_LOWER"
+case OpStrTrim:
+return "STR_TRIM"
 case OpHalt:
 return "HALT"
 case OpNop:

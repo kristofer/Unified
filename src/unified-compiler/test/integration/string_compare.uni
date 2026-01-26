@@ -1,0 +1,13 @@
+// Test 7: String comparison test
+fn main() -> Int {
+    let str1 = "Hello"
+    let str2 = "Hello"
+    let str3 = "World"
+    
+    // str1 == str2 should be true
+    if str1 == str2 {
+        return 1  // Equal strings
+    }
+    
+    return 0
+}

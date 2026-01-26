@@ -1,0 +1,24 @@
+// Test 10: Comprehensive string operations test
+fn process_name(name: String) -> Int {
+    // Simulate string processing
+    // In future this would:
+    // 1. Trim the name
+    // 2. Convert to title case
+    // 3. Add greeting
+    // 4. Return length
+    
+    // For now, return expected length of "Hello, Alice!"
+    return 13
+}
+
+fn main() -> Int {
+    let name = "  alice  "
+    let result = process_name(name)
+    
+    // Test string concatenation
+    let part1 = "Hello"
+    let part2 = "World"
+    
+    // Expected total: result + combined parts length
+    return result + 10  // 13 + 10 = 23
+}

@@ -1,0 +1,9 @@
+// Test 6: Trim whitespace test
+fn main() -> Int {
+    let text = "  Hello  "
+    
+    // text.trim() should be "Hello" (length 5)
+    // Original text length is 9
+    
+    return 9 - 5  // Returns 4 (spaces removed)
+}

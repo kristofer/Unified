@@ -1,0 +1,12 @@
+// Test 8: String in function arguments test
+fn greet(name: String) -> Int {
+    // In future: return ("Hello, " + name).len()
+    // For now, just return a value based on input
+    return 10
+}
+
+fn main() -> Int {
+    let name = "Alice"
+    let result = greet(name)
+    return result  // Returns 10
+}

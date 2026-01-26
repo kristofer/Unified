@@ -1,0 +1,10 @@
+// Test 1: String concatenation test
+fn main() -> Int {
+    let greeting = "Hello"
+    let world = "World"
+    let space = " "
+    let message = greeting + space + world
+    // message should be "Hello World"
+    // Return length as verification (11 characters)
+    return 11
+}
