@@ -1,0 +1,34 @@
+// Test 7: Generic array operations
+// Tests generics with array/slice types
+
+fn first_element<T>(arr: [T]) -> Option<T> {
+    if arr.len() > 0 {
+        return Option<T>::Some(arr[0])
+    }
+    return Option<T>::None
+}
+
+fn last_element<T>(arr: [T]) -> Option<T> {
+    if arr.len() > 0 {
+        return Option<T>::Some(arr[arr.len() - 1])
+    }
+    return Option<T>::None
+}
+
+fn main() -> Int {
+    let numbers = [1, 2, 3, 4, 5]
+    
+    let first = first_element(numbers)
+    let last = last_element(numbers)
+    
+    switch first {
+        case Some(value): {
+            if value == 1 {
+                return 1
+            }
+        }
+        case None: return 0
+    }
+    
+    return 0
+}

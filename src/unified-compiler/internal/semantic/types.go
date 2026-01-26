@@ -114,7 +114,24 @@ func TypesCompatible(target, source ast.Type) bool {
 	sourceRef, sourceOk := source.(*ast.TypeReference)
 	
 	if targetOk && sourceOk {
-		return targetRef.Name == sourceRef.Name
+		// Check base type name
+		if targetRef.Name != sourceRef.Name {
+			return false
+		}
+		
+		// Check type arguments if present
+		if len(targetRef.TypeArgs) != len(sourceRef.TypeArgs) {
+			return false
+		}
+		
+		// Recursively check each type argument
+		for i := range targetRef.TypeArgs {
+			if !TypesCompatible(targetRef.TypeArgs[i], sourceRef.TypeArgs[i]) {
+				return false
+			}
+		}
+		
+		return true
 	}
 	
 	// For other types, do a simple equality check

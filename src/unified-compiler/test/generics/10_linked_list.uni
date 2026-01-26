@@ -1,0 +1,43 @@
+// Test 10: Generic linked list structure
+// Tests recursive generic structures
+
+enum List<T> {
+    Cons(T, Box<List<T>>),
+    Nil
+}
+
+fn list_length<T>(list: List<T>) -> Int {
+    switch list {
+        case Cons(_, rest): {
+            return 1 + list_length(*rest.value)
+        }
+        case Nil: return 0
+    }
+}
+
+fn list_sum(list: List<Int>) -> Int {
+    switch list {
+        case Cons(value, rest): {
+            return value + list_sum(*rest.value)
+        }
+        case Nil: return 0
+    }
+}
+
+fn main() -> Int {
+    // Create a list: 1 -> 2 -> 3 -> Nil
+    let list = List<Int>::Cons(1, 
+        Box<List<Int>> { value: List<Int>::Cons(2,
+            Box<List<Int>> { value: List<Int>::Cons(3,
+                Box<List<Int>> { value: List<Int>::Nil }
+            )}
+        )}
+    )
+    
+    let len = list_length(list)
+    
+    if len == 3 {
+        return 1
+    }
+    return 0
+}
