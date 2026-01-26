@@ -110,7 +110,7 @@ NullLiteral : 'null' | 'nil';
 Identifier  : [a-zA-Z_][a-zA-Z0-9_]*;
 
 IntLiteral  : [0-9]+ | '0x' [0-9a-fA-F]+ | '0b' [01]+;
-FloatLiteral: [0-9]+ '.' [0-9]* ([eE] [+-]? [0-9]+)?;
+FloatLiteral: [0-9]+ '.' [0-9]+ ([eE] [+-]? [0-9]+)? | [0-9]+ [eE] [+-]? [0-9]+;
 StringLiteral: '"' (EscapeSequence | ~["\\\r\n])* '"';
 CharLiteral : '\'' (EscapeSequence | ~['\\\r\n]) '\'';
 
