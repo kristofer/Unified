@@ -40,11 +40,23 @@ func (vm *VM) Run() (bytecode.Value, error) {
 		return bytecode.NewNullValue(), fmt.Errorf("no main function found")
 	}
 
+	// Create a call frame for main function
+	mainFrame := CallFrame{
+		returnIP: -1, // No return for main
+		locals:   make([]bytecode.Value, 100),
+	}
+	vm.callStack = append(vm.callStack, mainFrame)
+
 	// Jump to main
 	vm.ip = mainIdx
 
 	// Execute instructions
-	for vm.ip < len(vm.bytecode.Instructions) {
+	for {
+		// Check if we're done
+		if vm.ip >= len(vm.bytecode.Instructions) {
+			break
+		}
+		
 		instruction := vm.bytecode.Instructions[vm.ip]
 
 		if err := vm.executeInstruction(instruction); err != nil {
@@ -983,7 +995,14 @@ if len(vm.callStack) > 0 {
 // Pop the call frame and return to caller
 frame := vm.callStack[len(vm.callStack)-1]
 vm.callStack = vm.callStack[:len(vm.callStack)-1]
+
+// Check if we're returning from main
+if frame.returnIP >= 0 {
 vm.ip = frame.returnIP
+} else {
+// Returning from main - end execution
+vm.ip = len(vm.bytecode.Instructions)
+}
 // Stack now has the Err value on top
 } else {
 // No call frame, we're in main - set ip to end execution
