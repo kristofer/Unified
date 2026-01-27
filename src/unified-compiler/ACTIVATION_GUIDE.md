@@ -8,13 +8,13 @@ All code has been implemented and is ready to be activated once the parser is re
 
 ### ✅ Grammar Files Updated
 - `grammar/UnifiedLexer.g4` - Added `NEW : 'new';` keyword
-- `grammar/UnifiedParser.g4` - Added `newExpr` rule
+- `grammar/UnifiedParser.g4` - Added `constructorExpr` rule
 
 ### ✅ AST Node Created
 - `internal/ast/ast.go` - `NewExpr` struct with full documentation
 
 ### ✅ Visitor Implementation (Ready to Activate)
-- `internal/ast/visitor.go` - `VisitNewExpr()` method implemented
+- `internal/ast/visitor.go` - `VisitConstructorExpr()` method implemented
 - Code is commented out but ready to be uncommented after parser regeneration
 - See lines 814 and 845-882
 
@@ -43,10 +43,10 @@ cd src/unified-compiler
 make parser
 ```
 
-This will regenerate the parser with the new `newExpr` rule and create:
-- `parser.NewExprContext` type
-- `ctx.NewExpr()` method on PrimaryContext
-- `INewExprContext` interface
+This will regenerate the parser with the new `constructorExpr` rule and create:
+- `parser.ConstructorExprContext` type
+- `ctx.ConstructorExpr()` method on PrimaryContext
+- `IConstructorExprContext` interface
 
 ### Step 2: Uncomment Visitor Code
 
@@ -55,20 +55,20 @@ In `internal/ast/visitor.go`:
 **Line ~814** - Uncomment these lines:
 ```go
 // Currently commented:
-// if newExprCtx := ctx.NewExpr(); newExprCtx != nil {
-// 	return v.VisitNewExpr(newExprCtx.(*parser.NewExprContext))
+// if constructorExprCtx := ctx.ConstructorExpr(); constructorExprCtx != nil {
+// 	return v.VisitConstructorExpr(constructorExprCtx.(*parser.ConstructorExprContext))
 // }
 
 // Uncomment to:
-if newExprCtx := ctx.NewExpr(); newExprCtx != nil {
-	return v.VisitNewExpr(newExprCtx.(*parser.NewExprContext))
+if constructorExprCtx := ctx.ConstructorExpr(); constructorExprCtx != nil {
+	return v.VisitConstructorExpr(constructorExprCtx.(*parser.ConstructorExprContext))
 }
 ```
 
-**Line ~846** - Update the VisitNewExpr function:
+**Line ~846** - Update the VisitConstructorExpr function:
 ```go
 // Currently:
-func (v *ASTBuilder) VisitNewExpr(ctx interface{}) interface{} {
+func (v *ASTBuilder) VisitConstructorExpr(ctx *parser.ConstructorExprContext) interface{} {
 	// Placeholder implementation
 
 // Change to:

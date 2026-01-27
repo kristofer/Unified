@@ -1,0 +1,94 @@
+// Test List with Int type
+// Tests basic list operations with integers
+
+fn testListInt() -> Bool {
+    let list = List<Int>.new()
+    
+    // Test empty
+    if !list.isEmpty() {
+        return false
+    }
+    
+    if list.len() != 0 {
+        return false
+    }
+    
+    // Test push
+    list.push(10)
+    list.push(20)
+    list.push(30)
+    
+    if list.len() != 3 {
+        return false
+    }
+    
+    if list.isEmpty() {
+        return false
+    }
+    
+    // Test get
+    if list.get(0) != 10 {
+        return false
+    }
+    
+    if list.get(1) != 20 {
+        return false
+    }
+    
+    if list.get(2) != 30 {
+        return false
+    }
+    
+    // Test set
+    list.set(1, 25)
+    if list.get(1) != 25 {
+        return false
+    }
+    
+    // Test pop
+    let val = list.pop()
+    if val != 30 {
+        return false
+    }
+    
+    if list.len() != 2 {
+        return false
+    }
+    
+    // Test contains
+    if !list.contains(10) {
+        return false
+    }
+    
+    if list.contains(99) {
+        return false
+    }
+    
+    // Test indexOf
+    if list.indexOf(25) != 1 {
+        return false
+    }
+    
+    if list.indexOf(99) != -1 {
+        return false
+    }
+    
+    // Test clear
+    list.clear()
+    if list.len() != 0 {
+        return false
+    }
+    
+    if !list.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testListInt() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

@@ -1,0 +1,101 @@
+// Generic Stack - LIFO (Last In First Out) data structure
+// Elements are added and removed from the top
+
+struct Stack<T> {
+    items: Array<T>,
+    top: Int,
+    capacity: Int
+}
+
+impl<T> Stack<T> {
+    // Create a new empty stack with default capacity
+    fn new() -> Stack<T> {
+        return Stack<T> {
+            items: Array<T>(10),
+            top: 0,
+            capacity: 10
+        }
+    }
+    
+    // Create a new stack with specified capacity
+    fn withCapacity(cap: Int) -> Stack<T> {
+        return Stack<T> {
+            items: Array<T>(cap),
+            top: 0,
+            capacity: cap
+        }
+    }
+    
+    // Get the number of elements in the stack
+    fn len(self) -> Int {
+        return self.top
+    }
+    
+    // Check if the stack is empty
+    fn isEmpty(self) -> Bool {
+        return self.top == 0
+    }
+    
+    // Push an element onto the stack
+    fn push(mut self, item: T) {
+        if self.top >= self.capacity {
+            self.grow()
+        }
+        self.items[self.top] = item
+        self.top = self.top + 1
+    }
+    
+    // Pop and return the top element
+    fn pop(mut self) -> T {
+        if self.top == 0 {
+            panic("Cannot pop from empty stack")
+        }
+        self.top = self.top - 1
+        return self.items[self.top]
+    }
+    
+    // Peek at the top element without removing it
+    fn peek(self) -> T {
+        if self.top == 0 {
+            panic("Cannot peek at empty stack")
+        }
+        return self.items[self.top - 1]
+    }
+    
+    // Clear all elements from the stack
+    fn clear(mut self) {
+        self.top = 0
+    }
+    
+    // Double the capacity of the stack
+    fn grow(mut self) {
+        let newCapacity = self.capacity * 2
+        let newItems = Array<T>(newCapacity)
+        
+        let i = 0
+        while i < self.top {
+            newItems[i] = self.items[i]
+            i = i + 1
+        }
+        
+        self.items = newItems
+        self.capacity = newCapacity
+    }
+    
+    // Check if the stack contains an element
+    fn contains(self, item: T) -> Bool {
+        let i = 0
+        while i < self.top {
+            if self.items[i] == item {
+                return true
+            }
+            i = i + 1
+        }
+        return false
+    }
+    
+    // Get the current capacity
+    fn getCapacity(self) -> Int {
+        return self.capacity
+    }
+}

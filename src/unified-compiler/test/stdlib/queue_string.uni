@@ -1,0 +1,76 @@
+// Test Queue with String type
+// Tests basic queue operations with strings
+
+fn testQueueString() -> Bool {
+    let queue = Queue<String>.new()
+    
+    // Test empty
+    if !queue.isEmpty() {
+        return false
+    }
+    
+    // Test enqueue
+    queue.enqueue("first")
+    queue.enqueue("second")
+    queue.enqueue("third")
+    
+    if queue.len() != 3 {
+        return false
+    }
+    
+    // Test peek
+    if queue.peek() != "first" {
+        return false
+    }
+    
+    // Test dequeue (FIFO order)
+    let val = queue.dequeue()
+    if val != "first" {
+        return false
+    }
+    
+    val = queue.dequeue()
+    if val != "second" {
+        return false
+    }
+    
+    if queue.len() != 1 {
+        return false
+    }
+    
+    // Test peek
+    if queue.peek() != "third" {
+        return false
+    }
+    
+    // Test contains
+    if !queue.contains("third") {
+        return false
+    }
+    
+    if queue.contains("missing") {
+        return false
+    }
+    
+    // Add more
+    queue.enqueue("fourth")
+    
+    if queue.len() != 2 {
+        return false
+    }
+    
+    // Test clear
+    queue.clear()
+    if !queue.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testQueueString() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

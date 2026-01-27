@@ -1,0 +1,78 @@
+// Test List with Struct type
+// Tests basic list operations with custom structs
+
+struct Point {
+    x: Int,
+    y: Int
+}
+
+fn pointEquals(p1: Point, p2: Point) -> Bool {
+    return p1.x == p2.x && p1.y == p2.y
+}
+
+fn testListStruct() -> Bool {
+    let list = List<Point>.new()
+    
+    // Test empty
+    if !list.isEmpty() {
+        return false
+    }
+    
+    // Create some points
+    let p1 = Point { x: 10, y: 20 }
+    let p2 = Point { x: 30, y: 40 }
+    let p3 = Point { x: 50, y: 60 }
+    
+    // Test push
+    list.push(p1)
+    list.push(p2)
+    list.push(p3)
+    
+    if list.len() != 3 {
+        return false
+    }
+    
+    // Test get
+    let retrieved = list.get(0)
+    if !pointEquals(retrieved, p1) {
+        return false
+    }
+    
+    retrieved = list.get(1)
+    if !pointEquals(retrieved, p2) {
+        return false
+    }
+    
+    // Test set
+    let p4 = Point { x: 70, y: 80 }
+    list.set(2, p4)
+    retrieved = list.get(2)
+    if !pointEquals(retrieved, p4) {
+        return false
+    }
+    
+    // Test pop
+    let popped = list.pop()
+    if !pointEquals(popped, p4) {
+        return false
+    }
+    
+    if list.len() != 2 {
+        return false
+    }
+    
+    // Test clear
+    list.clear()
+    if !list.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testListStruct() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

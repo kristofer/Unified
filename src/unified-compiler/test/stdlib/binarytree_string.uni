@@ -1,0 +1,66 @@
+// Test BinaryTree with String type
+// Tests basic binary tree operations with strings
+
+fn testBinaryTreeString() -> Bool {
+    let tree = BinaryTree<String>.new()
+    
+    // Test empty
+    if !tree.isEmpty() {
+        return false
+    }
+    
+    // Test insert (alphabetically)
+    tree.insert("dog")
+    tree.insert("cat")
+    tree.insert("fish")
+    tree.insert("bird")
+    tree.insert("elephant")
+    
+    if tree.len() != 5 {
+        return false
+    }
+    
+    // Test contains
+    if !tree.contains("dog") {
+        return false
+    }
+    
+    if !tree.contains("cat") {
+        return false
+    }
+    
+    if tree.contains("zebra") {
+        return false
+    }
+    
+    // Test findMin (alphabetically first)
+    if tree.findMin() != "bird" {
+        return false
+    }
+    
+    // Test findMax (alphabetically last)
+    if tree.findMax() != "fish" {
+        return false
+    }
+    
+    // Test height
+    let h = tree.height()
+    if h < 2 {
+        return false
+    }
+    
+    // Test clear
+    tree.clear()
+    if !tree.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testBinaryTreeString() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

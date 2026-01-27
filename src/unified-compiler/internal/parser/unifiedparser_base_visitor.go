@@ -235,6 +235,10 @@ func (v *BaseUnifiedParserVisitor) VisitAsyncExpr(ctx *AsyncExprContext) interfa
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseUnifiedParserVisitor) VisitConstructorExpr(ctx *ConstructorExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseUnifiedParserVisitor) VisitStructExpr(ctx *StructExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }

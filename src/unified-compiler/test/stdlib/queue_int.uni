@@ -1,0 +1,94 @@
+// Test Queue with Int type
+// Tests basic queue operations with integers
+
+fn testQueueInt() -> Bool {
+    let queue = Queue<Int>.new()
+    
+    // Test empty
+    if !queue.isEmpty() {
+        return false
+    }
+    
+    if queue.len() != 0 {
+        return false
+    }
+    
+    // Test enqueue
+    queue.enqueue(10)
+    queue.enqueue(20)
+    queue.enqueue(30)
+    
+    if queue.len() != 3 {
+        return false
+    }
+    
+    if queue.isEmpty() {
+        return false
+    }
+    
+    // Test peek
+    if queue.peek() != 10 {
+        return false
+    }
+    
+    // Peek should not remove element
+    if queue.len() != 3 {
+        return false
+    }
+    
+    // Test dequeue (FIFO order)
+    let val = queue.dequeue()
+    if val != 10 {
+        return false
+    }
+    
+    if queue.len() != 2 {
+        return false
+    }
+    
+    val = queue.dequeue()
+    if val != 20 {
+        return false
+    }
+    
+    // Test peek after dequeues
+    if queue.peek() != 30 {
+        return false
+    }
+    
+    // Test contains
+    if !queue.contains(30) {
+        return false
+    }
+    
+    if queue.contains(99) {
+        return false
+    }
+    
+    // Add more elements
+    queue.enqueue(40)
+    queue.enqueue(50)
+    
+    if queue.len() != 3 {
+        return false
+    }
+    
+    // Test clear
+    queue.clear()
+    if queue.len() != 0 {
+        return false
+    }
+    
+    if !queue.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testQueueInt() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

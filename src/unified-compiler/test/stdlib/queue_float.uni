@@ -1,0 +1,72 @@
+// Test Queue with Float type
+// Tests basic queue operations with floating point numbers
+
+fn testQueueFloat() -> Bool {
+    let queue = Queue<Float>.new()
+    
+    // Test empty
+    if !queue.isEmpty() {
+        return false
+    }
+    
+    // Test enqueue
+    queue.enqueue(3.14)
+    queue.enqueue(2.71)
+    queue.enqueue(1.41)
+    
+    if queue.len() != 3 {
+        return false
+    }
+    
+    // Test peek
+    if queue.peek() != 3.14 {
+        return false
+    }
+    
+    // Test dequeue (FIFO order)
+    let val = queue.dequeue()
+    if val != 3.14 {
+        return false
+    }
+    
+    val = queue.dequeue()
+    if val != 2.71 {
+        return false
+    }
+    
+    if queue.len() != 1 {
+        return false
+    }
+    
+    // Test peek
+    if queue.peek() != 1.41 {
+        return false
+    }
+    
+    // Test contains
+    if !queue.contains(1.41) {
+        return false
+    }
+    
+    // Add more
+    queue.enqueue(9.81)
+    
+    if queue.len() != 2 {
+        return false
+    }
+    
+    // Test clear
+    queue.clear()
+    if !queue.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testQueueFloat() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

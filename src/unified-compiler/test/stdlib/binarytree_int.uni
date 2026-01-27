@@ -1,0 +1,76 @@
+// Test BinaryTree with Int type
+// Tests basic binary tree operations with integers
+
+fn testBinaryTreeInt() -> Bool {
+    let tree = BinaryTree<Int>.new()
+    
+    // Test empty
+    if !tree.isEmpty() {
+        return false
+    }
+    
+    if tree.len() != 0 {
+        return false
+    }
+    
+    // Test insert
+    tree.insert(50)
+    tree.insert(30)
+    tree.insert(70)
+    tree.insert(20)
+    tree.insert(40)
+    tree.insert(60)
+    tree.insert(80)
+    
+    if tree.len() != 7 {
+        return false
+    }
+    
+    // Test contains
+    if !tree.contains(50) {
+        return false
+    }
+    
+    if !tree.contains(30) {
+        return false
+    }
+    
+    if !tree.contains(80) {
+        return false
+    }
+    
+    if tree.contains(99) {
+        return false
+    }
+    
+    // Test findMin
+    if tree.findMin() != 20 {
+        return false
+    }
+    
+    // Test findMax
+    if tree.findMax() != 80 {
+        return false
+    }
+    
+    // Test height
+    let h = tree.height()
+    if h < 2 || h > 4 {
+        return false
+    }
+    
+    // Test clear
+    tree.clear()
+    if !tree.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testBinaryTreeInt() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

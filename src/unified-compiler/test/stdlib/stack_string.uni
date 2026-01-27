@@ -1,0 +1,69 @@
+// Test Stack with String type
+// Tests basic stack operations with strings
+
+fn testStackString() -> Bool {
+    let stack = Stack<String>.new()
+    
+    // Test empty
+    if !stack.isEmpty() {
+        return false
+    }
+    
+    // Test push
+    stack.push("first")
+    stack.push("second")
+    stack.push("third")
+    
+    if stack.len() != 3 {
+        return false
+    }
+    
+    // Test peek
+    if stack.peek() != "third" {
+        return false
+    }
+    
+    // Test pop (LIFO order)
+    let val = stack.pop()
+    if val != "third" {
+        return false
+    }
+    
+    val = stack.pop()
+    if val != "second" {
+        return false
+    }
+    
+    if stack.len() != 1 {
+        return false
+    }
+    
+    // Test peek
+    if stack.peek() != "first" {
+        return false
+    }
+    
+    // Test contains
+    if !stack.contains("first") {
+        return false
+    }
+    
+    if stack.contains("missing") {
+        return false
+    }
+    
+    // Test clear
+    stack.clear()
+    if !stack.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testStackString() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

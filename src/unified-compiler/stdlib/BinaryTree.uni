@@ -1,0 +1,264 @@
+// Generic BinaryTree - Binary search tree
+// A binary tree that maintains sorted order
+
+struct TreeNode<T> {
+    value: T,
+    left: Int,   // Index of left child (-1 if none)
+    right: Int,  // Index of right child (-1 if none)
+    active: Bool // Whether this node is in use
+}
+
+struct BinaryTree<T> {
+    nodes: Array<TreeNode<T>>,
+    root: Int,      // Index of root (-1 if empty)
+    size: Int,
+    capacity: Int,
+    freeList: Int   // Index of first free node (-1 if none)
+}
+
+impl<T> BinaryTree<T> {
+    // Create a new empty binary tree
+    fn new() -> BinaryTree<T> {
+        let cap = 16
+        let nodes = Array<TreeNode<T>>(cap)
+        
+        let i = 0
+        while i < cap {
+            nodes[i] = TreeNode<T> {
+                value: nodes[i].value,
+                left: -1,
+                right: -1,
+                active: false
+            }
+            i = i + 1
+        }
+        
+        return BinaryTree<T> {
+            nodes: nodes,
+            root: -1,
+            size: 0,
+            capacity: cap,
+            freeList: -1
+        }
+    }
+    
+    // Create a binary tree with specified capacity
+    fn withCapacity(cap: Int) -> BinaryTree<T> {
+        let nodes = Array<TreeNode<T>>(cap)
+        
+        let i = 0
+        while i < cap {
+            nodes[i] = TreeNode<T> {
+                value: nodes[i].value,
+                left: -1,
+                right: -1,
+                active: false
+            }
+            i = i + 1
+        }
+        
+        return BinaryTree<T> {
+            nodes: nodes,
+            root: -1,
+            size: 0,
+            capacity: cap,
+            freeList: -1
+        }
+    }
+    
+    // Get the number of nodes
+    fn len(self) -> Int {
+        return self.size
+    }
+    
+    // Check if the tree is empty
+    fn isEmpty(self) -> Bool {
+        return self.size == 0
+    }
+    
+    // Allocate a new node
+    fn allocateNode(mut self) -> Int {
+        if self.size >= self.capacity {
+            self.resize()
+        }
+        
+        let i = 0
+        while i < self.capacity {
+            if !self.nodes[i].active {
+                return i
+            }
+            i = i + 1
+        }
+        
+        panic("No free nodes available")
+        return -1
+    }
+    
+    // Insert a value into the tree
+    fn insert(mut self, value: T) {
+        if self.root == -1 {
+            let nodeIndex = self.allocateNode()
+            self.nodes[nodeIndex] = TreeNode<T> {
+                value: value,
+                left: -1,
+                right: -1,
+                active: true
+            }
+            self.root = nodeIndex
+            self.size = self.size + 1
+            return
+        }
+        
+        self.insertHelper(self.root, value)
+    }
+    
+    // Helper function for insertion
+    fn insertHelper(mut self, nodeIndex: Int, value: T) {
+        if value < self.nodes[nodeIndex].value {
+            if self.nodes[nodeIndex].left == -1 {
+                let newIndex = self.allocateNode()
+                self.nodes[newIndex] = TreeNode<T> {
+                    value: value,
+                    left: -1,
+                    right: -1,
+                    active: true
+                }
+                self.nodes[nodeIndex].left = newIndex
+                self.size = self.size + 1
+            } else {
+                self.insertHelper(self.nodes[nodeIndex].left, value)
+            }
+        } else {
+            if self.nodes[nodeIndex].right == -1 {
+                let newIndex = self.allocateNode()
+                self.nodes[newIndex] = TreeNode<T> {
+                    value: value,
+                    left: -1,
+                    right: -1,
+                    active: true
+                }
+                self.nodes[nodeIndex].right = newIndex
+                self.size = self.size + 1
+            } else {
+                self.insertHelper(self.nodes[nodeIndex].right, value)
+            }
+        }
+    }
+    
+    // Check if a value exists in the tree
+    fn contains(self, value: T) -> Bool {
+        if self.root == -1 {
+            return false
+        }
+        return self.containsHelper(self.root, value)
+    }
+    
+    // Helper function for contains
+    fn containsHelper(self, nodeIndex: Int, value: T) -> Bool {
+        if nodeIndex == -1 {
+            return false
+        }
+        
+        if self.nodes[nodeIndex].value == value {
+            return true
+        }
+        
+        if value < self.nodes[nodeIndex].value {
+            return self.containsHelper(self.nodes[nodeIndex].left, value)
+        } else {
+            return self.containsHelper(self.nodes[nodeIndex].right, value)
+        }
+    }
+    
+    // Find minimum value in tree
+    fn findMin(self) -> T {
+        if self.root == -1 {
+            panic("Tree is empty")
+        }
+        return self.findMinHelper(self.root)
+    }
+    
+    // Helper to find minimum
+    fn findMinHelper(self, nodeIndex: Int) -> T {
+        if self.nodes[nodeIndex].left == -1 {
+            return self.nodes[nodeIndex].value
+        }
+        return self.findMinHelper(self.nodes[nodeIndex].left)
+    }
+    
+    // Find maximum value in tree
+    fn findMax(self) -> T {
+        if self.root == -1 {
+            panic("Tree is empty")
+        }
+        return self.findMaxHelper(self.root)
+    }
+    
+    // Helper to find maximum
+    fn findMaxHelper(self, nodeIndex: Int) -> T {
+        if self.nodes[nodeIndex].right == -1 {
+            return self.nodes[nodeIndex].value
+        }
+        return self.findMaxHelper(self.nodes[nodeIndex].right)
+    }
+    
+    // Get height of the tree
+    fn height(self) -> Int {
+        if self.root == -1 {
+            return 0
+        }
+        return self.heightHelper(self.root)
+    }
+    
+    // Helper to calculate height
+    fn heightHelper(self, nodeIndex: Int) -> Int {
+        if nodeIndex == -1 {
+            return 0
+        }
+        
+        let leftHeight = self.heightHelper(self.nodes[nodeIndex].left)
+        let rightHeight = self.heightHelper(self.nodes[nodeIndex].right)
+        
+        if leftHeight > rightHeight {
+            return leftHeight + 1
+        } else {
+            return rightHeight + 1
+        }
+    }
+    
+    // Clear all nodes
+    fn clear(mut self) {
+        let i = 0
+        while i < self.capacity {
+            self.nodes[i].active = false
+            i = i + 1
+        }
+        self.root = -1
+        self.size = 0
+    }
+    
+    // Resize the tree storage
+    fn resize(mut self) {
+        let newCapacity = self.capacity * 2
+        let newNodes = Array<TreeNode<T>>(newCapacity)
+        
+        let i = 0
+        while i < self.capacity {
+            newNodes[i] = self.nodes[i]
+            i = i + 1
+        }
+        
+        while i < newCapacity {
+            newNodes[i] = TreeNode<T> {
+                value: newNodes[i].value,
+                left: -1,
+                right: -1,
+                active: false
+            }
+            i = i + 1
+        }
+        
+        self.nodes = newNodes
+        self.capacity = newCapacity
+    }
+}

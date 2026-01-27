@@ -1,0 +1,189 @@
+// Generic Set - Unique element collection
+// A set that stores unique elements of type T
+
+struct Set<T> {
+    items: Array<T>,
+    hasValue: Array<Bool>,
+    size: Int,
+    capacity: Int
+}
+
+impl<T> Set<T> {
+    // Create a new empty set with default capacity
+    fn new() -> Set<T> {
+        let cap = 16
+        return Set<T> {
+            items: Array<T>(cap),
+            hasValue: Array<Bool>(cap),
+            size: 0,
+            capacity: cap
+        }
+    }
+    
+    // Create a new set with specified capacity
+    fn withCapacity(cap: Int) -> Set<T> {
+        return Set<T> {
+            items: Array<T>(cap),
+            hasValue: Array<Bool>(cap),
+            size: 0,
+            capacity: cap
+        }
+    }
+    
+    // Get the number of elements
+    fn len(self) -> Int {
+        return self.size
+    }
+    
+    // Check if the set is empty
+    fn isEmpty(self) -> Bool {
+        return self.size == 0
+    }
+    
+    // Simple hash function for finding slots
+    fn hash(self, item: T) -> Int {
+        // Placeholder hash - would need proper implementation
+        return 0 % self.capacity
+    }
+    
+    // Add an element to the set (returns true if added, false if already exists)
+    fn insert(mut self, item: T) -> Bool {
+        if self.contains(item) {
+            return false
+        }
+        
+        if self.size >= self.capacity * 3 / 4 {
+            self.resize()
+        }
+        
+        let index = self.findSlot(item)
+        self.items[index] = item
+        self.hasValue[index] = true
+        self.size = self.size + 1
+        return true
+    }
+    
+    // Check if the set contains an element
+    fn contains(self, item: T) -> Bool {
+        let index = self.findSlot(item)
+        return self.hasValue[index] && self.items[index] == item
+    }
+    
+    // Remove an element from the set
+    fn remove(mut self, item: T) -> Bool {
+        let index = self.findSlot(item)
+        
+        if self.hasValue[index] && self.items[index] == item {
+            self.hasValue[index] = false
+            self.size = self.size - 1
+            return true
+        }
+        
+        return false
+    }
+    
+    // Clear all elements
+    fn clear(mut self) {
+        let i = 0
+        while i < self.capacity {
+            self.hasValue[i] = false
+            i = i + 1
+        }
+        self.size = 0
+    }
+    
+    // Get all elements as an array (for iteration)
+    fn toArray(self) -> Array<T> {
+        let result = Array<T>(self.size)
+        let j = 0
+        let i = 0
+        
+        while i < self.capacity && j < self.size {
+            if self.hasValue[i] {
+                result[j] = self.items[i]
+                j = j + 1
+            }
+            i = i + 1
+        }
+        
+        return result
+    }
+    
+    // Find slot for an item (linear probing)
+    fn findSlot(self, item: T) -> Int {
+        let index = self.hash(item)
+        let start = index
+        
+        while self.hasValue[index] && self.items[index] != item {
+            index = (index + 1) % self.capacity
+            
+            if index == start {
+                panic("Set is full")
+            }
+        }
+        
+        return index
+    }
+    
+    // Resize the set (double capacity)
+    fn resize(mut self) {
+        let newCapacity = self.capacity * 2
+        let newItems = Array<T>(newCapacity)
+        let newHasValue = Array<Bool>(newCapacity)
+        
+        let oldItems = self.items
+        let oldHasValue = self.hasValue
+        let oldCapacity = self.capacity
+        
+        self.items = newItems
+        self.hasValue = newHasValue
+        self.capacity = newCapacity
+        self.size = 0
+        
+        let i = 0
+        while i < oldCapacity {
+            if oldHasValue[i] {
+                self.insert(oldItems[i])
+            }
+            i = i + 1
+        }
+    }
+    
+    // Union with another set
+    fn union(self, other: Set<T>) -> Set<T> {
+        let result = Set<T>.withCapacity(self.size + other.size)
+        
+        let i = 0
+        while i < self.capacity {
+            if self.hasValue[i] {
+                result.insert(self.items[i])
+            }
+            i = i + 1
+        }
+        
+        i = 0
+        while i < other.capacity {
+            if other.hasValue[i] {
+                result.insert(other.items[i])
+            }
+            i = i + 1
+        }
+        
+        return result
+    }
+    
+    // Intersection with another set
+    fn intersection(self, other: Set<T>) -> Set<T> {
+        let result = Set<T>.new()
+        
+        let i = 0
+        while i < self.capacity {
+            if self.hasValue[i] && other.contains(self.items[i]) {
+                result.insert(self.items[i])
+            }
+            i = i + 1
+        }
+        
+        return result
+    }
+}

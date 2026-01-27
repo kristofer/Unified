@@ -1,0 +1,118 @@
+// Generic Queue - FIFO (First In First Out) data structure
+// Elements are added at the back and removed from the front
+
+struct Queue<T> {
+    items: Array<T>,
+    front: Int,
+    back: Int,
+    size: Int,
+    capacity: Int
+}
+
+impl<T> Queue<T> {
+    // Create a new empty queue with default capacity
+    fn new() -> Queue<T> {
+        return Queue<T> {
+            items: Array<T>(10),
+            front: 0,
+            back: 0,
+            size: 0,
+            capacity: 10
+        }
+    }
+    
+    // Create a new queue with specified capacity
+    fn withCapacity(cap: Int) -> Queue<T> {
+        return Queue<T> {
+            items: Array<T>(cap),
+            front: 0,
+            back: 0,
+            size: 0,
+            capacity: cap
+        }
+    }
+    
+    // Get the number of elements in the queue
+    fn len(self) -> Int {
+        return self.size
+    }
+    
+    // Check if the queue is empty
+    fn isEmpty(self) -> Bool {
+        return self.size == 0
+    }
+    
+    // Add an element to the back of the queue
+    fn enqueue(mut self, item: T) {
+        if self.size >= self.capacity {
+            self.grow()
+        }
+        self.items[self.back] = item
+        self.back = (self.back + 1) % self.capacity
+        self.size = self.size + 1
+    }
+    
+    // Remove and return the front element
+    fn dequeue(mut self) -> T {
+        if self.size == 0 {
+            panic("Cannot dequeue from empty queue")
+        }
+        let item = self.items[self.front]
+        self.front = (self.front + 1) % self.capacity
+        self.size = self.size - 1
+        return item
+    }
+    
+    // Peek at the front element without removing it
+    fn peek(self) -> T {
+        if self.size == 0 {
+            panic("Cannot peek at empty queue")
+        }
+        return self.items[self.front]
+    }
+    
+    // Clear all elements from the queue
+    fn clear(mut self) {
+        self.front = 0
+        self.back = 0
+        self.size = 0
+    }
+    
+    // Double the capacity of the queue
+    fn grow(mut self) {
+        let newCapacity = self.capacity * 2
+        let newItems = Array<T>(newCapacity)
+        
+        let i = 0
+        let j = self.front
+        while i < self.size {
+            newItems[i] = self.items[j]
+            j = (j + 1) % self.capacity
+            i = i + 1
+        }
+        
+        self.items = newItems
+        self.front = 0
+        self.back = self.size
+        self.capacity = newCapacity
+    }
+    
+    // Check if the queue contains an element
+    fn contains(self, item: T) -> Bool {
+        let i = 0
+        let j = self.front
+        while i < self.size {
+            if self.items[j] == item {
+                return true
+            }
+            j = (j + 1) % self.capacity
+            i = i + 1
+        }
+        return false
+    }
+    
+    // Get the current capacity
+    fn getCapacity(self) -> Int {
+        return self.capacity
+    }
+}

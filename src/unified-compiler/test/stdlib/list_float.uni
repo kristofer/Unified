@@ -1,0 +1,65 @@
+// Test List with Float type
+// Tests basic list operations with floating point numbers
+
+fn testListFloat() -> Bool {
+    let list = List<Float>.new()
+    
+    // Test empty
+    if !list.isEmpty() {
+        return false
+    }
+    
+    // Test push
+    list.push(3.14)
+    list.push(2.71)
+    list.push(1.41)
+    
+    if list.len() != 3 {
+        return false
+    }
+    
+    // Test get
+    if list.get(0) != 3.14 {
+        return false
+    }
+    
+    if list.get(1) != 2.71 {
+        return false
+    }
+    
+    // Test set
+    list.set(2, 9.81)
+    if list.get(2) != 9.81 {
+        return false
+    }
+    
+    // Test pop
+    let val = list.pop()
+    if val != 9.81 {
+        return false
+    }
+    
+    if list.len() != 2 {
+        return false
+    }
+    
+    // Test contains
+    if !list.contains(3.14) {
+        return false
+    }
+    
+    // Test clear
+    list.clear()
+    if !list.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testListFloat() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

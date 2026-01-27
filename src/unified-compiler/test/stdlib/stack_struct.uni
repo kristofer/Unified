@@ -1,0 +1,76 @@
+// Test Stack with Struct type
+// Tests basic stack operations with custom structs
+
+struct Person {
+    name: String,
+    age: Int
+}
+
+fn personEquals(p1: Person, p2: Person) -> Bool {
+    return p1.name == p2.name && p1.age == p2.age
+}
+
+fn testStackStruct() -> Bool {
+    let stack = Stack<Person>.new()
+    
+    // Test empty
+    if !stack.isEmpty() {
+        return false
+    }
+    
+    // Create some persons
+    let alice = Person { name: "Alice", age: 30 }
+    let bob = Person { name: "Bob", age: 25 }
+    let charlie = Person { name: "Charlie", age: 35 }
+    
+    // Test push
+    stack.push(alice)
+    stack.push(bob)
+    stack.push(charlie)
+    
+    if stack.len() != 3 {
+        return false
+    }
+    
+    // Test peek
+    let peeked = stack.peek()
+    if !personEquals(peeked, charlie) {
+        return false
+    }
+    
+    // Test pop (LIFO order)
+    let popped = stack.pop()
+    if !personEquals(popped, charlie) {
+        return false
+    }
+    
+    popped = stack.pop()
+    if !personEquals(popped, bob) {
+        return false
+    }
+    
+    if stack.len() != 1 {
+        return false
+    }
+    
+    // Test peek
+    peeked = stack.peek()
+    if !personEquals(peeked, alice) {
+        return false
+    }
+    
+    // Test clear
+    stack.clear()
+    if !stack.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testStackStruct() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

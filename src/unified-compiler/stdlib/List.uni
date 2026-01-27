@@ -1,0 +1,116 @@
+// Generic List - Dynamic array implementation
+// A growable array that stores elements of type T
+
+struct List<T> {
+    items: Array<T>,
+    length: Int,
+    capacity: Int
+}
+
+impl<T> List<T> {
+    // Create a new empty list with default capacity
+    fn new() -> List<T> {
+        return List<T> {
+            items: Array<T>(10),
+            length: 0,
+            capacity: 10
+        }
+    }
+    
+    // Create a new list with specified capacity
+    fn withCapacity(cap: Int) -> List<T> {
+        return List<T> {
+            items: Array<T>(cap),
+            length: 0,
+            capacity: cap
+        }
+    }
+    
+    // Get the number of elements in the list
+    fn len(self) -> Int {
+        return self.length
+    }
+    
+    // Check if the list is empty
+    fn isEmpty(self) -> Bool {
+        return self.length == 0
+    }
+    
+    // Add an element to the end of the list
+    fn push(mut self, item: T) {
+        if self.length >= self.capacity {
+            self.grow()
+        }
+        self.items[self.length] = item
+        self.length = self.length + 1
+    }
+    
+    // Remove and return the last element
+    fn pop(mut self) -> T {
+        if self.length == 0 {
+            panic("Cannot pop from empty list")
+        }
+        self.length = self.length - 1
+        return self.items[self.length]
+    }
+    
+    // Get element at index (without removing)
+    fn get(self, index: Int) -> T {
+        if index < 0 || index >= self.length {
+            panic("Index out of bounds")
+        }
+        return self.items[index]
+    }
+    
+    // Set element at index
+    fn set(mut self, index: Int, item: T) {
+        if index < 0 || index >= self.length {
+            panic("Index out of bounds")
+        }
+        self.items[index] = item
+    }
+    
+    // Clear all elements from the list
+    fn clear(mut self) {
+        self.length = 0
+    }
+    
+    // Double the capacity of the list
+    fn grow(mut self) {
+        let newCapacity = self.capacity * 2
+        let newItems = Array<T>(newCapacity)
+        
+        let i = 0
+        while i < self.length {
+            newItems[i] = self.items[i]
+            i = i + 1
+        }
+        
+        self.items = newItems
+        self.capacity = newCapacity
+    }
+    
+    // Check if the list contains an element
+    fn contains(self, item: T) -> Bool {
+        let i = 0
+        while i < self.length {
+            if self.items[i] == item {
+                return true
+            }
+            i = i + 1
+        }
+        return false
+    }
+    
+    // Find the index of an element
+    fn indexOf(self, item: T) -> Int {
+        let i = 0
+        while i < self.length {
+            if self.items[i] == item {
+                return i
+            }
+            i = i + 1
+        }
+        return -1
+    }
+}

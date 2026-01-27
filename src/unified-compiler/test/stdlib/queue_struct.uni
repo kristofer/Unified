@@ -1,0 +1,84 @@
+// Test Queue with Struct type
+// Tests basic queue operations with custom structs
+
+struct Task {
+    id: Int,
+    priority: Int
+}
+
+fn taskEquals(t1: Task, t2: Task) -> Bool {
+    return t1.id == t2.id && t1.priority == t2.priority
+}
+
+fn testQueueStruct() -> Bool {
+    let queue = Queue<Task>.new()
+    
+    // Test empty
+    if !queue.isEmpty() {
+        return false
+    }
+    
+    // Create some tasks
+    let task1 = Task { id: 1, priority: 10 }
+    let task2 = Task { id: 2, priority: 20 }
+    let task3 = Task { id: 3, priority: 30 }
+    
+    // Test enqueue
+    queue.enqueue(task1)
+    queue.enqueue(task2)
+    queue.enqueue(task3)
+    
+    if queue.len() != 3 {
+        return false
+    }
+    
+    // Test peek
+    let peeked = queue.peek()
+    if !taskEquals(peeked, task1) {
+        return false
+    }
+    
+    // Test dequeue (FIFO order)
+    let dequeued = queue.dequeue()
+    if !taskEquals(dequeued, task1) {
+        return false
+    }
+    
+    dequeued = queue.dequeue()
+    if !taskEquals(dequeued, task2) {
+        return false
+    }
+    
+    if queue.len() != 1 {
+        return false
+    }
+    
+    // Test peek
+    peeked = queue.peek()
+    if !taskEquals(peeked, task3) {
+        return false
+    }
+    
+    // Add more tasks
+    let task4 = Task { id: 4, priority: 40 }
+    queue.enqueue(task4)
+    
+    if queue.len() != 2 {
+        return false
+    }
+    
+    // Test clear
+    queue.clear()
+    if !queue.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testQueueStruct() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

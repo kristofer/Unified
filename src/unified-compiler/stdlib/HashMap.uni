@@ -1,0 +1,181 @@
+// Generic HashMap - Hash table with key-value pairs
+// A hash table that maps keys of type K to values of type V
+
+struct HashMapEntry<K, V> {
+    key: K,
+    value: V,
+    hasValue: Bool
+}
+
+struct HashMap<K, V> {
+    entries: Array<HashMapEntry<K, V>>,
+    size: Int,
+    capacity: Int
+}
+
+impl<K, V> HashMap<K, V> {
+    // Create a new empty hash map with default capacity
+    fn new() -> HashMap<K, V> {
+        let cap = 16
+        let entries = Array<HashMapEntry<K, V>>(cap)
+        
+        let i = 0
+        while i < cap {
+            entries[i] = HashMapEntry<K, V> {
+                key: entries[i].key,
+                value: entries[i].value,
+                hasValue: false
+            }
+            i = i + 1
+        }
+        
+        return HashMap<K, V> {
+            entries: entries,
+            size: 0,
+            capacity: cap
+        }
+    }
+    
+    // Create a new hash map with specified capacity
+    fn withCapacity(cap: Int) -> HashMap<K, V> {
+        let entries = Array<HashMapEntry<K, V>>(cap)
+        
+        let i = 0
+        while i < cap {
+            entries[i] = HashMapEntry<K, V> {
+                key: entries[i].key,
+                value: entries[i].value,
+                hasValue: false
+            }
+            i = i + 1
+        }
+        
+        return HashMap<K, V> {
+            entries: entries,
+            size: 0,
+            capacity: cap
+        }
+    }
+    
+    // Get the number of key-value pairs
+    fn len(self) -> Int {
+        return self.size
+    }
+    
+    // Check if the map is empty
+    fn isEmpty(self) -> Bool {
+        return self.size == 0
+    }
+    
+    // Simple hash function (can be improved)
+    fn hash(self, key: K) -> Int {
+        // For now, use a simple modulo-based hash
+        // In a real implementation, this would use proper hashing
+        let h = 0
+        // This is a placeholder - in practice we'd hash the key properly
+        return h % self.capacity
+    }
+    
+    // Insert or update a key-value pair
+    fn insert(mut self, key: K, value: V) {
+        if self.size >= self.capacity * 3 / 4 {
+            self.resize()
+        }
+        
+        let index = self.findSlot(key)
+        
+        if !self.entries[index].hasValue {
+            self.size = self.size + 1
+        }
+        
+        self.entries[index] = HashMapEntry<K, V> {
+            key: key,
+            value: value,
+            hasValue: true
+        }
+    }
+    
+    // Get a value by key (panics if not found)
+    fn get(self, key: K) -> V {
+        let index = self.findSlot(key)
+        
+        if !self.entries[index].hasValue {
+            panic("Key not found in HashMap")
+        }
+        
+        return self.entries[index].value
+    }
+    
+    // Check if a key exists
+    fn containsKey(self, key: K) -> Bool {
+        let index = self.findSlot(key)
+        return self.entries[index].hasValue
+    }
+    
+    // Remove a key-value pair
+    fn remove(mut self, key: K) {
+        let index = self.findSlot(key)
+        
+        if self.entries[index].hasValue {
+            self.entries[index].hasValue = false
+            self.size = self.size - 1
+        }
+    }
+    
+    // Clear all entries
+    fn clear(mut self) {
+        let i = 0
+        while i < self.capacity {
+            self.entries[i].hasValue = false
+            i = i + 1
+        }
+        self.size = 0
+    }
+    
+    // Find slot for a key (linear probing)
+    fn findSlot(self, key: K) -> Int {
+        let index = self.hash(key)
+        let start = index
+        
+        while self.entries[index].hasValue && self.entries[index].key != key {
+            index = (index + 1) % self.capacity
+            
+            if index == start {
+                panic("HashMap is full")
+            }
+        }
+        
+        return index
+    }
+    
+    // Resize the hash map (double capacity)
+    fn resize(mut self) {
+        let newCapacity = self.capacity * 2
+        let newEntries = Array<HashMapEntry<K, V>>(newCapacity)
+        
+        let i = 0
+        while i < newCapacity {
+            newEntries[i] = HashMapEntry<K, V> {
+                key: newEntries[i].key,
+                value: newEntries[i].value,
+                hasValue: false
+            }
+            i = i + 1
+        }
+        
+        let oldEntries = self.entries
+        let oldCapacity = self.capacity
+        
+        self.entries = newEntries
+        self.capacity = newCapacity
+        self.size = 0
+        
+        i = 0
+        while i < oldCapacity {
+            if oldEntries[i].hasValue {
+                self.insert(oldEntries[i].key, oldEntries[i].value)
+            }
+            i = i + 1
+        }
+    }
+}

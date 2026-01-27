@@ -1,0 +1,86 @@
+// Test Stack with Int type
+// Tests basic stack operations with integers
+
+fn testStackInt() -> Bool {
+    let stack = Stack<Int>.new()
+    
+    // Test empty
+    if !stack.isEmpty() {
+        return false
+    }
+    
+    if stack.len() != 0 {
+        return false
+    }
+    
+    // Test push
+    stack.push(10)
+    stack.push(20)
+    stack.push(30)
+    
+    if stack.len() != 3 {
+        return false
+    }
+    
+    if stack.isEmpty() {
+        return false
+    }
+    
+    // Test peek
+    if stack.peek() != 30 {
+        return false
+    }
+    
+    // Peek should not remove element
+    if stack.len() != 3 {
+        return false
+    }
+    
+    // Test pop (LIFO order)
+    let val = stack.pop()
+    if val != 30 {
+        return false
+    }
+    
+    if stack.len() != 2 {
+        return false
+    }
+    
+    val = stack.pop()
+    if val != 20 {
+        return false
+    }
+    
+    // Test peek after pops
+    if stack.peek() != 10 {
+        return false
+    }
+    
+    // Test contains
+    if !stack.contains(10) {
+        return false
+    }
+    
+    if stack.contains(99) {
+        return false
+    }
+    
+    // Test clear
+    stack.clear()
+    if stack.len() != 0 {
+        return false
+    }
+    
+    if !stack.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testStackInt() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

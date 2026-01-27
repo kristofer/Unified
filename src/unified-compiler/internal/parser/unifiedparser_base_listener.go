@@ -362,6 +362,12 @@ func (s *BaseUnifiedParserListener) EnterAsyncExpr(ctx *AsyncExprContext) {}
 // ExitAsyncExpr is called when production asyncExpr is exited.
 func (s *BaseUnifiedParserListener) ExitAsyncExpr(ctx *AsyncExprContext) {}
 
+// EnterConstructorExpr is called when production constructorExpr is entered.
+func (s *BaseUnifiedParserListener) EnterConstructorExpr(ctx *ConstructorExprContext) {}
+
+// ExitConstructorExpr is called when production constructorExpr is exited.
+func (s *BaseUnifiedParserListener) ExitConstructorExpr(ctx *ConstructorExprContext) {}
+
 // EnterStructExpr is called when production structExpr is entered.
 func (s *BaseUnifiedParserListener) EnterStructExpr(ctx *StructExprContext) {}
 

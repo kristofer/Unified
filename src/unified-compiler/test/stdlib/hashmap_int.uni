@@ -1,0 +1,81 @@
+// Test HashMap with Int keys and Int values
+// Tests basic hash map operations
+
+fn testHashMapInt() -> Bool {
+    let map = HashMap<Int, Int>.new()
+    
+    // Test empty
+    if !map.isEmpty() {
+        return false
+    }
+    
+    if map.len() != 0 {
+        return false
+    }
+    
+    // Test insert
+    map.insert(1, 100)
+    map.insert(2, 200)
+    map.insert(3, 300)
+    
+    if map.len() != 3 {
+        return false
+    }
+    
+    // Test get
+    if map.get(1) != 100 {
+        return false
+    }
+    
+    if map.get(2) != 200 {
+        return false
+    }
+    
+    if map.get(3) != 300 {
+        return false
+    }
+    
+    // Test containsKey
+    if !map.containsKey(1) {
+        return false
+    }
+    
+    if map.containsKey(99) {
+        return false
+    }
+    
+    // Test update
+    map.insert(2, 250)
+    if map.get(2) != 250 {
+        return false
+    }
+    
+    if map.len() != 3 {
+        return false
+    }
+    
+    // Test remove
+    map.remove(1)
+    if map.len() != 2 {
+        return false
+    }
+    
+    if map.containsKey(1) {
+        return false
+    }
+    
+    // Test clear
+    map.clear()
+    if !map.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testHashMapInt() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

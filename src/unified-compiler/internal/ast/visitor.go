@@ -809,10 +809,9 @@ func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
 		// Grouping expression: (expr)
 		return v.VisitExpr(ctx.Expr().(*parser.ExprContext))
 	}
-	// TODO: Uncomment after parser regeneration with new keyword support
-	// if newExprCtx := ctx.NewExpr(); newExprCtx != nil {
-	// 	return v.VisitNewExpr(newExprCtx.(*parser.NewExprContext))
-	// }
+	if constructorExprCtx := ctx.ConstructorExpr(); constructorExprCtx != nil {
+		return v.VisitConstructorExpr(constructorExprCtx.(*parser.ConstructorExprContext))
+	}
 	if structExprCtx := ctx.StructExpr(); structExprCtx != nil {
 		return v.VisitStructExpr(structExprCtx.(*parser.StructExprContext))
 	}
@@ -842,42 +841,42 @@ func (v *ASTBuilder) VisitStructExpr(ctx *parser.StructExprContext) interface{} 
 	}
 }
 
-// VisitNewExpr builds a NewExpr node
-// TODO: Change parameter type to *parser.NewExprContext after parser regeneration
-func (v *ASTBuilder) VisitNewExpr(ctx interface{}) interface{} {
+// VisitConstructorExpr builds a NewExpr node
+// TODO: Change parameter type to *parser.ConstructorExprContext after parser regeneration
+func (v *ASTBuilder) VisitConstructorExpr(ctx *parser.ConstructorExprContext) interface{} {
 	// This implementation will work once parser is regenerated
 	// For now, we use interface{} to allow compilation
-	
+
 	// Temporarily disabled until parser regeneration
 	// After regeneration, uncomment and update type assertion
 	/*
-	newExprCtx := ctx.(*parser.NewExprContext)
-	
-	// Get type name
-	typeName := newExprCtx.Identifier().GetText()
-	
-	// Process generic type arguments if present
-	var typeArgs []Type
-	if newExprCtx.LT() != nil && newExprCtx.GT() != nil {
-		if typeListCtx := newExprCtx.TypeList(); typeListCtx != nil {
-			typeArgs = v.processTypeList(typeListCtx.(*parser.TypeListContext))
+		constructorExprCtx := ctx.(*parser.ConstructorExprContext)
+
+		// Get type name
+		typeName := constructorExprCtx.Identifier().GetText()
+
+		// Process generic type arguments if present
+		var typeArgs []Type
+		if constructorExprCtx.LT() != nil && constructorExprCtx.GT() != nil {
+			if typeListCtx := constructorExprCtx.TypeList(); typeListCtx != nil {
+				typeArgs = v.processTypeList(typeListCtx.(*parser.TypeListContext))
+			}
 		}
-	}
-	
-	// Process constructor arguments if present
-	var args []Expression
-	if argListCtx := newExprCtx.ArgList(); argListCtx != nil {
-		args = v.processArgList(argListCtx.(*parser.ArgListContext))
-	}
-	
-	return &NewExpr{
-		TypeName: typeName,
-		TypeArgs: typeArgs,
-		Args:     args,
-		Position: v.getPosition(newExprCtx),
-	}
+
+		// Process constructor arguments if present
+		var args []Expression
+		if argListCtx := constructorExprCtx.ArgList(); argListCtx != nil {
+			args = v.processArgList(argListCtx.(*parser.ArgListContext))
+		}
+
+		return &NewExpr{
+			TypeName: typeName,
+			TypeArgs: typeArgs,
+			Args:     args,
+			Position: v.getPosition(constructorExprCtx),
+		}
 	*/
-	
+
 	// Placeholder return until parser regeneration
 	return nil
 }
@@ -1379,21 +1378,21 @@ func (s *LetStatement) statementNode() {}
 
 // VisitListExpr builds a ListExpr node (for array literals)
 func (v *ASTBuilder) VisitListExpr(ctx *parser.ListExprContext) interface{} {
-var elements []Expression
+	var elements []Expression
 
-// Process all elements in the list
-for _, exprCtx := range ctx.AllExpr() {
-if exprCtx != nil {
-expr := v.VisitExpr(exprCtx.(*parser.ExprContext))
-if expr != nil {
-elements = append(elements, expr.(Expression))
-}
-}
-}
+	// Process all elements in the list
+	for _, exprCtx := range ctx.AllExpr() {
+		if exprCtx != nil {
+			expr := v.VisitExpr(exprCtx.(*parser.ExprContext))
+			if expr != nil {
+				elements = append(elements, expr.(Expression))
+			}
+		}
+	}
 
-return &ListExpr{
-Elements:      elements,
-Comprehension: nil, // Comprehensions not yet supported
-Position:      v.getPosition(ctx),
-}
+	return &ListExpr{
+		Elements:      elements,
+		Comprehension: nil, // Comprehensions not yet supported
+		Position:      v.getPosition(ctx),
+	}
 }

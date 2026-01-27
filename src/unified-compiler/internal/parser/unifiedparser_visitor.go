@@ -178,6 +178,9 @@ type UnifiedParserVisitor interface {
 	// Visit a parse tree produced by UnifiedParser#asyncExpr.
 	VisitAsyncExpr(ctx *AsyncExprContext) interface{}
 
+	// Visit a parse tree produced by UnifiedParser#constructorExpr.
+	VisitConstructorExpr(ctx *ConstructorExprContext) interface{}
+
 	// Visit a parse tree produced by UnifiedParser#structExpr.
 	VisitStructExpr(ctx *StructExprContext) interface{}
 

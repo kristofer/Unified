@@ -1,0 +1,68 @@
+// Test Set with String type
+// Tests basic set operations with strings
+
+fn testSetString() -> Bool {
+    let set = Set<String>.new()
+    
+    // Test empty
+    if !set.isEmpty() {
+        return false
+    }
+    
+    // Test insert
+    let added = set.insert("apple")
+    if !added {
+        return false
+    }
+    
+    set.insert("banana")
+    set.insert("cherry")
+    
+    if set.len() != 3 {
+        return false
+    }
+    
+    // Test duplicate insert
+    added = set.insert("apple")
+    if added {
+        return false
+    }
+    
+    if set.len() != 3 {
+        return false
+    }
+    
+    // Test contains
+    if !set.contains("banana") {
+        return false
+    }
+    
+    if set.contains("grape") {
+        return false
+    }
+    
+    // Test remove
+    let removed = set.remove("banana")
+    if !removed {
+        return false
+    }
+    
+    if set.len() != 2 {
+        return false
+    }
+    
+    // Test clear
+    set.clear()
+    if !set.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testSetString() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

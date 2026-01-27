@@ -1,0 +1,74 @@
+// Test List with String type
+// Tests basic list operations with strings
+
+fn testListString() -> Bool {
+    let list = List<String>.new()
+    
+    // Test empty
+    if !list.isEmpty() {
+        return false
+    }
+    
+    // Test push
+    list.push("hello")
+    list.push("world")
+    list.push("unified")
+    
+    if list.len() != 3 {
+        return false
+    }
+    
+    // Test get
+    if list.get(0) != "hello" {
+        return false
+    }
+    
+    if list.get(1) != "world" {
+        return false
+    }
+    
+    // Test set
+    list.set(2, "language")
+    if list.get(2) != "language" {
+        return false
+    }
+    
+    // Test pop
+    let val = list.pop()
+    if val != "language" {
+        return false
+    }
+    
+    if list.len() != 2 {
+        return false
+    }
+    
+    // Test contains
+    if !list.contains("hello") {
+        return false
+    }
+    
+    if list.contains("missing") {
+        return false
+    }
+    
+    // Test indexOf
+    if list.indexOf("world") != 1 {
+        return false
+    }
+    
+    // Test clear
+    list.clear()
+    if !list.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testListString() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}

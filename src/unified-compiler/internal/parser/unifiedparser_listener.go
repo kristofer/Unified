@@ -178,6 +178,9 @@ type UnifiedParserListener interface {
 	// EnterAsyncExpr is called when entering the asyncExpr production.
 	EnterAsyncExpr(c *AsyncExprContext)
 
+	// EnterConstructorExpr is called when entering the constructorExpr production.
+	EnterConstructorExpr(c *ConstructorExprContext)
+
 	// EnterStructExpr is called when entering the structExpr production.
 	EnterStructExpr(c *StructExprContext)
 
@@ -387,6 +390,9 @@ type UnifiedParserListener interface {
 
 	// ExitAsyncExpr is called when exiting the asyncExpr production.
 	ExitAsyncExpr(c *AsyncExprContext)
+
+	// ExitConstructorExpr is called when exiting the constructorExpr production.
+	ExitConstructorExpr(c *ConstructorExprContext)
 
 	// ExitStructExpr is called when exiting the structExpr production.
 	ExitStructExpr(c *StructExprContext)

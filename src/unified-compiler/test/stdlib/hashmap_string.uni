@@ -1,0 +1,65 @@
+// Test HashMap with String keys and String values
+// Tests hash map with string operations
+
+fn testHashMapString() -> Bool {
+    let map = HashMap<String, String>.new()
+    
+    // Test empty
+    if !map.isEmpty() {
+        return false
+    }
+    
+    // Test insert
+    map.insert("name", "Alice")
+    map.insert("city", "Boston")
+    map.insert("role", "Engineer")
+    
+    if map.len() != 3 {
+        return false
+    }
+    
+    // Test get
+    if map.get("name") != "Alice" {
+        return false
+    }
+    
+    if map.get("city") != "Boston" {
+        return false
+    }
+    
+    // Test containsKey
+    if !map.containsKey("role") {
+        return false
+    }
+    
+    if map.containsKey("missing") {
+        return false
+    }
+    
+    // Test update
+    map.insert("city", "Cambridge")
+    if map.get("city") != "Cambridge" {
+        return false
+    }
+    
+    // Test remove
+    map.remove("role")
+    if map.len() != 2 {
+        return false
+    }
+    
+    // Test clear
+    map.clear()
+    if !map.isEmpty() {
+        return false
+    }
+    
+    return true
+}
+
+fn main() -> Int {
+    if testHashMapString() {
+        return 1  // Success
+    }
+    return 0  // Failure
+}
