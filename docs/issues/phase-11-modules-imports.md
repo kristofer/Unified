@@ -368,8 +368,8 @@ use geometry::Point
 use shapes::circle::Circle
 
 fn main() -> Int {
-    let center = Point::new(0.0, 0.0)
-    let circle = Circle::new(center, 5.0)
+    let center = new Point(0.0, 0.0)
+    let circle = new Circle(center, 5.0)
     let area = circle.area()
     return 0
 }

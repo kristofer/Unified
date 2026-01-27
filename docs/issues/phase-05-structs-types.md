@@ -298,7 +298,7 @@ struct Point {
 }
 
 fn main() -> Int {
-    let mut p = Point::new(3.0, 4.0)
+    let mut p = new Point(3.0, 4.0)
     let dist_sq = p.distance_squared()  // 25.0
     p.move_by(1.0, 1.0)                  // p is now (4.0, 5.0)
     p.scale(2.0)                         // p is now (8.0, 10.0)
@@ -335,7 +335,7 @@ struct Rectangle {
 }
 
 fn main() -> Int {
-    let mut rect = Rectangle::new(5.0, 10.0)
+    let mut rect = new Rectangle(5.0, 10.0)
     let area = rect.area()           // 50.0
     let perimeter = rect.perimeter() // 30.0
     let is_sq = rect.is_square()     // false
@@ -384,7 +384,7 @@ struct Person {
 }
 
 fn main() -> Int {
-    let mut person = Person::new("Alice", 30)
+    let mut person = new Person("Alice", 30)
     person.set_address("123 Main St", "Boston", 12345)
     let city = person.get_city()  // "Boston"
     return 0
@@ -418,7 +418,7 @@ struct Counter {
 }
 
 fn main() -> Int {
-    let mut counter = Counter::new()
+    let mut counter = new Counter()
     counter.increment()
     counter.increment()
     counter.increment()
@@ -453,7 +453,7 @@ struct Builder {
 }
 
 fn main() -> Int {
-    let mut builder = Builder::new()
+    let mut builder = new Builder()
     // Method chaining
     let result = builder.add(5).multiply(2).add(10).build()
     // result = (5 * 2) + 10 = 20

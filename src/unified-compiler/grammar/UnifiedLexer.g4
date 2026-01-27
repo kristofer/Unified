@@ -102,6 +102,7 @@ AWAIT       : 'await';
 ASYNC       : 'async';
 TRY         : 'try';
 REGION      : 'region';
+NEW         : 'new';
 
 // Literals (must come before Identifier to take precedence)
 BoolLiteral : 'true' | 'false';

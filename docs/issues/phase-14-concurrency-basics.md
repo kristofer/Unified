@@ -456,7 +456,7 @@ async fn process_item(item: Int) -> Int {
 }
 
 async fn main() -> Int {
-    let tasks = List::new()
+    let tasks = new List()
     
     for i in 1..=10 {
         tasks.push(spawn(process_item(i)))
@@ -487,7 +487,7 @@ actor Counter {
 }
 
 fn main() -> Int {
-    let counter = spawn Counter::new()
+    let counter = spawn new Counter()
     
     counter.send(Counter::Increment)
     counter.send(Counter::Increment)
@@ -516,8 +516,8 @@ actor Pong {
 }
 
 fn main() -> Int {
-    let ping = spawn Ping::new()
-    let pong = spawn Pong::new()
+    let ping = spawn new Ping()
+    let pong = spawn new Pong()
     
     ping.send(Ping::Ping(pong))
     
@@ -607,7 +607,7 @@ async fn main() -> Int {
 ### Actor-Based Chat System
 ```unified
 actor ChatRoom {
-    var clients: List<ActorHandle<Client>> = List::new()
+    var clients: List<ActorHandle<Client>> = new List()
     
     fn join(&mut self, client: ActorHandle<Client>) {
         self.clients.push(client)
@@ -636,10 +636,10 @@ actor Client {
 }
 
 fn main() -> Int {
-    let room = spawn ChatRoom::new()
+    let room = spawn new ChatRoom()
     
-    let alice = spawn Client::new("Alice", room)
-    let bob = spawn Client::new("Bob", room)
+    let alice = spawn new Client("Alice", room)
+    let bob = spawn new Client("Bob", room)
     
     room.send(ChatRoom::Join(alice))
     room.send(ChatRoom::Join(bob))

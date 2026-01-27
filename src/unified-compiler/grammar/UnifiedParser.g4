@@ -316,7 +316,8 @@ caseExpr
     ;
 
 primary
-    : structExpr                                     // Struct instantiation (must be before identifier)
+    : newExpr                                        // New expression (must be before structExpr)
+    | structExpr                                     // Struct instantiation (must be before identifier)
     | listExpr                                       // List literal
     | mapExpr                                        // Map literal
     | setExpr                                        // Set literal
@@ -334,6 +335,10 @@ lambdaExpr
 
 asyncExpr
     : ASYNC block
+    ;
+
+newExpr
+    : NEW identifier (LT typeList GT)? LPAREN argList? RPAREN
     ;
 
 structExpr
