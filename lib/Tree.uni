@@ -15,7 +15,7 @@ struct Tree<T> {
     
     // Create a tree with a root value
     fn withRoot(value: T) -> Self {
-        let root = Node<T>.new(value)
+        let root = new Node<T>(value)
         return Self{
             root: Some(&mut root)
         }
@@ -38,7 +38,7 @@ struct Tree<T> {
     
     // Set the root node
     fn setRoot(self: &mut Self, value: T) {
-        let newRoot = Node<T>.new(value)
+        let newRoot = new Node<T>(value)
         self.root = Some(&mut newRoot)
     }
     
@@ -117,7 +117,7 @@ struct Tree<T> {
     
     // Map function over all nodes
     fn map<U>(self, transform: fn(&T) -> U) -> Tree<U> {
-        let result = Tree<U>.new()
+        let result = new Tree<U>()
         
         match self.root {
             Some(node) => {
@@ -131,7 +131,7 @@ struct Tree<T> {
     
     // Filter nodes based on predicate
     fn filter(self, predicate: fn(&T) -> Bool) -> Tree<T> {
-        let result = Tree<T>.new()
+        let result = new Tree<T>()
         
         match self.root {
             Some(node) => {
@@ -148,7 +148,7 @@ struct Tree<T> {
     
     // Convert to a list using depth-first traversal
     fn toList(self) -> List<T> where T: Clone {
-        let list = List<T>.new()
+        let list = new List<T>()
         
         self.depthFirstTraversal(|value| {
             list.push(value.clone())
@@ -164,7 +164,7 @@ struct Tree<T> {
     
     // Create a deep copy of the tree
     fn clone(self) -> Tree<T> where T: Clone {
-        let result = Tree<T>.new()
+        let result = new Tree<T>()
         
         match self.root {
             Some(node) => {
@@ -189,13 +189,13 @@ struct Node<T> {
     fn new(value: T) -> Self {
         return Self{
             value: value,
-            children: List<Node<T>>.new()
+            children: new List<Node<T>>()
         }
     }
     
     // Add a child node with the given value
     fn addChild(self: &mut Self, value: T) -> &mut Node<T> {
-        let child = Node<T>.new(value)
+        let child = new Node<T>(value)
         self.children.push(child)
         return self.children.getMut(self.children.len() - 1).unwrap()
     }
@@ -323,7 +323,7 @@ struct Node<T> {
     
     // Perform a breadth-first traversal starting from this node
     fn breadthFirstTraversal(self, visit: fn(&T)) {
-        let mut queue = List<&Node<T>>.new()
+        let mut queue = new List<&Node<T>>()
         queue.push(self)
         
         while !queue.isEmpty() {
@@ -338,7 +338,7 @@ struct Node<T> {
     
     // Map function over all nodes in the subtree
     fn map<U>(self, transform: fn(&T) -> U) -> Node<U> {
-        let mut result = Node<U>.new(transform(&self.value))
+        let mut result = new Node<U>(transform(&self.value))
         
         for child in self.children.iter() {
             result.addChildNode(child.map(transform))
@@ -353,7 +353,7 @@ struct Node<T> {
             return None
         }
         
-        let mut result = Node<T>.new(self.value)
+        let mut result = new Node<T>(self.value)
         
         for child in self.children.iter() {
             let filteredChild = child.filter(predicate)
@@ -367,7 +367,7 @@ struct Node<T> {
     
     // Create a deep copy of this node and its subtree
     fn clone(self) -> Node<T> where T: Clone {
-        let mut result = Node<T>.new(self.value.clone())
+        let mut result = new Node<T>(self.value.clone())
         
         for child in self.children.iter() {
             result.addChildNode(child.clone())

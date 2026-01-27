@@ -32,7 +32,7 @@ fn fibonacci(n: Int) -> Int {
 
 // Generate Fibonacci sequence
 fn fibonacci_sequence(n: Int) -> List<Int> {
-    let mut sequence = List<Int>.new()
+    let mut sequence = new List<Int>()
     
     for i in 0..n {
         sequence.push(fibonacci(i))
@@ -67,7 +67,7 @@ fn fizzbuzz(n: Int) {
 
 // Alternative implementation using string building
 fn fizzbuzz_string(n: Int) -> List<String> {
-    let mut results = List<String>.new()
+    let mut results = new List<String>()
     
     for i in 1..=n {
         let mut result = ""
@@ -129,7 +129,7 @@ struct Board {
     fn new(size: Int) -> Self {
         return Self{
             size: size,
-            queens: List<(Int, Int)>.new()
+            queens: new List<(Int, Int)>()
         }
     }
     
@@ -196,7 +196,7 @@ fn solve_queens(board: &mut Board, col: Int) -> Bool {
 }
 
 fn eight_queens() {
-    let mut board = Board.new(8)
+    let mut board = new Board(8)
     
     if solve_queens(&mut board, 0) {
         print("Solution found:")
@@ -303,10 +303,10 @@ struct GameOfLife {
     
     fn new(width: Int, height: Int) -> Self {
         // Initialize empty grid
-        let mut grid = List<List<Bool>>.new()
+        let mut grid = new List<List<Bool>>()
         
         for _ in 0..height {
-            let mut row = List<Bool>.new()
+            let mut row = new List<Bool>()
             for _ in 0..width {
                 row.push(false)
             }
@@ -362,10 +362,10 @@ struct GameOfLife {
     
     fn next_generation(self: &mut Self) {
         // Create a new grid for the next generation
-        let mut new_grid = List<List<Bool>>.new()
+        let mut new_grid = new List<List<Bool>>()
         
         for row in 0..self.height {
-            let mut new_row = List<Bool>.new()
+            let mut new_row = new List<Bool>()
             
             for col in 0..self.width {
                 let alive = self.grid[row][col]
@@ -417,7 +417,7 @@ struct GameOfLife {
 
 fn main() {
     // Create a new game with a 20x10 grid
-    let mut game = GameOfLife.new(20, 10)
+    let mut game = new GameOfLife(20, 10)
     
     // Set up a "glider" pattern
     game.set_cell(1, 2, true)

@@ -426,7 +426,7 @@ pub use io::{print, println}
 use collections::List
 
 fn main() -> Int {
-    let mut numbers = List::new()
+    let mut numbers = new List()
     numbers.push(1)
     numbers.push(2)
     numbers.push(3)
@@ -444,7 +444,7 @@ fn main() -> Int {
 use collections::Map
 
 fn main() -> Int {
-    let mut scores = Map::new()
+    let mut scores = new Map()
     scores.insert("Alice", 100)
     scores.insert("Bob", 95)
     
@@ -499,7 +499,7 @@ fn word_count(filename: &str) -> Result<Map<String, Int>, IoError> {
     let mut file = File::open(filename)?
     let content = file.read_to_string()?
     
-    let mut counts = Map::new()
+    let mut counts = new Map()
     let words = content.split(" ")
     
     for word in words {
@@ -528,7 +528,7 @@ fn main() -> Int {
 use collections::List
 
 fn evaluate_rpn(expression: &str) -> Option<Int> {
-    let mut stack = List::new()
+    let mut stack = new List()
     let tokens = expression.split(" ")
     
     for token in tokens {

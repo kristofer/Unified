@@ -27,8 +27,9 @@ actor    async    await    break    case     const
 continue else     enum     false    fn       for
 if       impl     import   in       interface let
 loop     match    mod      module   move     mut
-pub      region   return   self     spawn    struct
-switch   true     type     var      where    while
+new      pub      region   return   self     spawn
+struct   switch   true     type     var      where
+while
 ```
 
 ### 3.2 Operators and Punctuation
@@ -715,7 +716,7 @@ async fn processUrls(urls: List<String>) -> List<String> {
 
 ```unified
 // Create a channel
-let channel = Channel<String>.new()
+let channel = new Channel<String>()
 
 // Send and receive
 channel.send("Hello")
@@ -760,7 +761,7 @@ fn modify(data: &mut String) {
 ```unified
 region temp {
     // Memory allocated in this region
-    let large_array = Array<Int>.new(1000000)
+    let large_array = new Array<Int>(1000000)
     
     // Use large_array
     
@@ -1774,7 +1775,7 @@ struct FileWrapper {
 
 fn process_file() -> Result<(), IOError> {
     // File is automatically closed at the end of this scope
-    let wrapper = FileWrapper.new("data.txt")?
+    let wrapper = new FileWrapper("data.txt")?
     
     // Use wrapper.file
     let data = wrapper.file.readToString()?
@@ -1798,7 +1799,7 @@ struct QueryBuilder {
     fn new() -> Self {
         return Self{
             table: "",
-            conditions: List<String>.new(),
+            conditions: new List<String>(),
             ordering: None,
             limit: None
         }
@@ -1843,7 +1844,7 @@ struct QueryBuilder {
 }
 
 // Usage
-let query = QueryBuilder.new()
+let query = new QueryBuilder()
     .from("users")
     .where("age > 18")
     .orderBy("last_name")
@@ -1887,10 +1888,10 @@ struct Sorter<T> {
 }
 
 // Usage
-let quickSorter = Sorter.new(QuickSort<Int>{})
+let quickSorter = new Sorter(QuickSort<Int>{})
 quickSorter.sort(&mut numbers)
 
-let mergeSorter = Sorter.new(MergeSort<Int>{})
+let mergeSorter = new Sorter(MergeSort<Int>{})
 mergeSorter.sort(&mut numbers)
 ```
 
@@ -1922,7 +1923,7 @@ actor UserInterface {
     events: Channel<Event>
     
     fn new() -> Self {
-        let channel = Channel<Event>.new()
+        let channel = new Channel<Event>()
         EventPublisher.subscribe(channel)
         return Self{events: channel}
     }
@@ -1991,8 +1992,8 @@ struct UserRepository {
 }
 
 // Usage
-let db = PostgresDB.new("connection_string")?
-let userRepo = UserRepository.new(db)
+let db = new PostgresDB("connection_string")?
+let userRepo = new UserRepository(db)
 let user = userRepo.findById("123")?
 ```
 

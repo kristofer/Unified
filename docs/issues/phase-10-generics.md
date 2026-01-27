@@ -334,8 +334,8 @@ struct Pair<A, B> {
 }
 
 fn main() -> Int {
-    let p1 = Pair::new(42, "answer")     // Pair<Int, String>
-    let p2 = Pair::new(3.14, true)       // Pair<Float, Bool>
+    let p1 = new Pair(42, "answer")     // Pair<Int, String>
+    let p2 = new Pair(3.14, true)       // Pair<Float, Bool>
     
     let num = p1.get_first()             // 42
     let pi = p2.get_first()              // 3.14
@@ -363,11 +363,11 @@ struct Box<T> {
 }
 
 fn main() -> Int {
-    let mut int_box = Box::new(42)
+    let mut int_box = new Box(42)
     let val = int_box.get()          // 42
     int_box.set(100)
     
-    let string_box = Box::new("hello")
+    let string_box = new Box("hello")
     let text = string_box.get()      // "hello"
     
     return int_box.get()  // Returns 100
@@ -460,7 +460,7 @@ struct Stack<T> {
 }
 
 fn main() -> Int {
-    let mut int_stack = Stack::new()
+    let mut int_stack = new Stack()
     int_stack.push(10)
     int_stack.push(20)
     int_stack.push(30)

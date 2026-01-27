@@ -28,7 +28,7 @@ struct List<T> {
     
     // Constructor from iterable
     fn from(iterable: impl Iterable<T>) -> Self {
-        let list = Self.new()
+        let list = new Self()
         for item in iterable {
             list.push(item)
         }
@@ -170,7 +170,7 @@ struct List<T> {
     
     // Filter elements
     fn filter(self, predicate: fn(&T) -> Bool) -> List<T> where T: Clone {
-        let result = List<T>.new()
+        let result = new List<T>()
         for i in 0..self.size {
             if predicate(&self.data[i]) {
                 result.push(self.data[i].clone())
@@ -360,7 +360,7 @@ struct ListIterator<T> {
 // Usage examples
 fn exampleUsage() {
     // Create a new list
-    let mut numbers = List<Int>.new()
+    let mut numbers = new List<Int>()
     
     // Add elements
     numbers.push(5)

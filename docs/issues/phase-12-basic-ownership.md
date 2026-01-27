@@ -465,7 +465,7 @@ impl Node {
     }
     
     fn set_next(&mut self, next: Node) {
-        self.next = Some(Box::new(next))
+        self.next = Some(new Box(next))
     }
     
     fn get_value(&self) -> Int {
@@ -474,8 +474,8 @@ impl Node {
 }
 
 fn main() -> Int {
-    let mut head = Node::new(1)
-    let second = Node::new(2)
+    let mut head = new Node(1)
+    let second = new Node(2)
     head.set_next(second)  // second moved
     
     return head.get_value()

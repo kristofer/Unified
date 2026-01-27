@@ -1,0 +1,26 @@
+// Test basic new keyword syntax
+fn main() {
+    // Basic new expression
+    let stack = new Stack<Int>()
+    
+    // New with arguments
+    let point = new Point(10, 20)
+    
+    // New with generic type
+    let list = new List<String>()
+    
+    return 0
+}
+
+struct Stack<T> {
+    data: List<T>
+}
+
+struct Point {
+    x: Int
+    y: Int
+}
+
+struct List<T> {
+    items: Array<T>
+}

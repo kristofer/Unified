@@ -600,7 +600,7 @@ fn factorial(n: Int) -> Int {
 /// # Examples
 ///
 /// ```
-/// let mut list = List::new()
+/// let mut list = new List()
 /// list.push(1)
 /// list.push(2)
 /// assert_eq!(list.len(), 2)

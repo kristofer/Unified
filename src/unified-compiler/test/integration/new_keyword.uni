@@ -1,0 +1,28 @@
+// Comprehensive test for new keyword
+fn test_basic_new() -> Int {
+	let stack = new Stack<Int>()
+	return 0
+}
+
+fn test_new_with_args() -> Int {
+	let point = new Point(10, 20)
+	return point.x + point.y
+}
+
+fn test_generic_new() -> Int {
+	let list = new List<String>()
+	return list.len()
+}
+
+struct Stack<T> {
+	items: List<T>
+}
+
+struct Point {
+	x: Int
+	y: Int
+}
+
+struct List<T> {
+	data: Array<T>
+}
