@@ -76,7 +76,7 @@
 **Incomplete:**
 - ❌ Struct field assignment (OpStoreField exists but not integrated)
 - ⚠️ Methods on structs (infrastructure exists, parser issues)
-- ❌ Associated functions (Type::new() syntax needs parser work)
+- ❌ Associated functions (new keyword syntax needs parser work)
 
 **Impact on Phase 10:**
 - ✅ **Minor blocker** - Generic structs will work for basic cases
