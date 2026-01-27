@@ -809,6 +809,10 @@ func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
 		// Grouping expression: (expr)
 		return v.VisitExpr(ctx.Expr().(*parser.ExprContext))
 	}
+	// TODO: Uncomment after parser regeneration with new keyword support
+	// if newExprCtx := ctx.NewExpr(); newExprCtx != nil {
+	// 	return v.VisitNewExpr(newExprCtx.(*parser.NewExprContext))
+	// }
 	if structExprCtx := ctx.StructExpr(); structExprCtx != nil {
 		return v.VisitStructExpr(structExprCtx.(*parser.StructExprContext))
 	}
@@ -836,6 +840,46 @@ func (v *ASTBuilder) VisitStructExpr(ctx *parser.StructExprContext) interface{} 
 		FieldInits: fieldInits,
 		Position:   v.getPosition(ctx),
 	}
+}
+
+// VisitNewExpr builds a NewExpr node
+// TODO: Change parameter type to *parser.NewExprContext after parser regeneration
+func (v *ASTBuilder) VisitNewExpr(ctx interface{}) interface{} {
+	// This implementation will work once parser is regenerated
+	// For now, we use interface{} to allow compilation
+	
+	// Temporarily disabled until parser regeneration
+	// After regeneration, uncomment and update type assertion
+	/*
+	newExprCtx := ctx.(*parser.NewExprContext)
+	
+	// Get type name
+	typeName := newExprCtx.Identifier().GetText()
+	
+	// Process generic type arguments if present
+	var typeArgs []Type
+	if newExprCtx.LT() != nil && newExprCtx.GT() != nil {
+		if typeListCtx := newExprCtx.TypeList(); typeListCtx != nil {
+			typeArgs = v.processTypeList(typeListCtx.(*parser.TypeListContext))
+		}
+	}
+	
+	// Process constructor arguments if present
+	var args []Expression
+	if argListCtx := newExprCtx.ArgList(); argListCtx != nil {
+		args = v.processArgList(argListCtx.(*parser.ArgListContext))
+	}
+	
+	return &NewExpr{
+		TypeName: typeName,
+		TypeArgs: typeArgs,
+		Args:     args,
+		Position: v.getPosition(newExprCtx),
+	}
+	*/
+	
+	// Placeholder return until parser regeneration
+	return nil
 }
 
 // processFieldInitList processes a list of field initializations

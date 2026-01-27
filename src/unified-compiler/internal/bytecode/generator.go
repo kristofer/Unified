@@ -354,6 +354,8 @@ func (g *Generator) generateExpression(expr ast.Expression) error {
 		return g.generateCallExpr(expr)
 	case *ast.StructExpr:
 		return g.generateStructExpr(expr)
+	case *ast.NewExpr:
+		return g.generateNewExpr(expr)
 	case *ast.FieldAccessExpr:
 		return g.generateFieldAccessExpr(expr)
 	case *ast.MethodCallExpr:
@@ -1012,6 +1014,63 @@ g.bytecode.AddInstruction(OpPush, int64(typeNameIdx))
 g.bytecode.AddInstruction(OpAllocStruct, int64(len(structInfo.Fields)))
 
 return nil
+}
+
+// generateNewExpr generates bytecode for new expressions
+func (g *Generator) generateNewExpr(expr *ast.NewExpr) error {
+	// For now, new Type() is semantically equivalent to Type{} (struct literal)
+	// This is a simplified implementation that treats new as struct initialization
+	// The main difference is that new uses constructor arguments instead of field initializers
+	
+	// Get struct type info
+	structInfo, ok := g.structTypes[expr.TypeName]
+	if !ok {
+		return fmt.Errorf("undefined struct type: %s", expr.TypeName)
+	}
+	
+	// If there are constructor arguments, we need to map them to struct fields
+	// For now, we'll support positional arguments that map to fields in declaration order
+	if len(expr.Args) > 0 {
+		// Get field names in order
+		fieldNames := make([]string, len(structInfo.Fields))
+		for fieldName, fieldIndex := range structInfo.Fields {
+			fieldNames[fieldIndex] = fieldName
+		}
+		
+		// Check argument count matches field count
+		if len(expr.Args) != len(structInfo.Fields) {
+			return fmt.Errorf("new %s: expected %d arguments, got %d", 
+				expr.TypeName, len(structInfo.Fields), len(expr.Args))
+		}
+		
+		// Push field name and value pairs onto stack
+		for i, arg := range expr.Args {
+			// Push field name
+			fieldNameIdx := g.bytecode.AddConstant(NewStringValue(fieldNames[i]))
+			g.bytecode.AddInstruction(OpPush, int64(fieldNameIdx))
+			
+			// Push field value
+			if err := g.generateExpression(arg); err != nil {
+				return err
+			}
+		}
+	} else {
+		// No arguments - need to initialize all fields with default values
+		// For now, this is an error - all fields must be initialized
+		if len(structInfo.Fields) > 0 {
+			return fmt.Errorf("new %s: constructor requires %d arguments", 
+				expr.TypeName, len(structInfo.Fields))
+		}
+	}
+	
+	// Push struct type name as a constant
+	typeNameIdx := g.bytecode.AddConstant(NewStringValue(expr.TypeName))
+	g.bytecode.AddInstruction(OpPush, int64(typeNameIdx))
+	
+	// Allocate struct with field count
+	g.bytecode.AddInstruction(OpAllocStruct, int64(len(structInfo.Fields)))
+	
+	return nil
 }
 
 // generateFieldAccessExpr generates bytecode for field access
