@@ -1,0 +1,17 @@
+// Test 15: Generic function called with different types
+// Tests monomorphization creates separate versions
+
+fn echo<T>(x: T) -> T {
+    return x
+}
+
+fn main() -> Int {
+    let int_val = echo(42)
+    let bool_val = echo(true)
+    let str_val = echo("test")
+    
+    if int_val == 42 {
+        return 1
+    }
+    return 0
+}

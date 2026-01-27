@@ -469,6 +469,7 @@ func (i *IndexExpr) expressionNode() {}
 type CallExpr struct {
 	Function  Expression
 	Arguments []Expression
+	TypeArgs  []Type     // Explicit type arguments for generic functions
 	Position  Position
 }
 
@@ -499,6 +500,7 @@ func (a *AsyncExpr) expressionNode() {}
 // StructExpr represents a struct instantiation
 type StructExpr struct {
 	Name       string
+	TypeArgs   []Type     // Type arguments for generic structs
 	FieldInits []*FieldInit
 	Position   Position
 }

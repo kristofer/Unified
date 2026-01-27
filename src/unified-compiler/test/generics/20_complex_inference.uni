@@ -1,0 +1,19 @@
+// Test 20: Complex type inference scenario
+// Tests inference with mixed literal and variable arguments
+
+fn select<T>(flag: Bool, a: T, b: T) -> T {
+    if flag {
+        return a
+    }
+    return b
+}
+
+fn main() -> Int {
+    // Should infer T = Int from arguments
+    let result = select(true, 10, 20)
+    
+    if result == 10 {
+        return 1
+    }
+    return 0
+}
