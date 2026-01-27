@@ -227,7 +227,7 @@ whileStatement
     ;
 
 forStatement
-    : (identifier COLON)? FOR identifier IN expr block
+    : (identifier COLON)? FOR (identifier | UNDERSCORE) IN expr block
     ;
 
 switchStatement

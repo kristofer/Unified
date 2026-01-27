@@ -1,6 +1,13 @@
+// Test range expressions in for loops (Phase 1 support)
+// Range expressions are only supported in for loops in Phase 1
 fn main() -> Int {
-    let x = 1;
-    let y = 4;
-    let z = x .. y;
-    return 0;
+    let mut count = 0
+    
+    // Range works in for loops (1..4 iterates over 1, 2, 3)
+    for i in 1..4 {
+        count = count + 1
+    }
+    
+    // Return the count (should be 3)
+    return count
 }

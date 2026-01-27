@@ -1209,6 +1209,19 @@ func (v *ASTBuilder) VisitWhileStatement(ctx *parser.WhileStatementContext) inte
 	}
 }
 
+// getForLoopVariable extracts the loop variable name from a for statement context.
+// It handles both identifier and underscore patterns.
+func (v *ASTBuilder) getForLoopVariable(ctx *parser.ForStatementContext, identifierIndex int) string {
+	identifiers := ctx.AllIdentifier()
+	if identifierIndex < len(identifiers) {
+		return identifiers[identifierIndex].GetText()
+	}
+	if ctx.UNDERSCORE() != nil {
+		return "_"
+	}
+	return ""
+}
+
 // VisitForStatement builds a for statement node
 func (v *ASTBuilder) VisitForStatement(ctx *parser.ForStatementContext) interface{} {
 	var label string
@@ -1217,10 +1230,9 @@ func (v *ASTBuilder) VisitForStatement(ctx *parser.ForStatementContext) interfac
 	// Check if we have a label (which would be followed by a colon)
 	if ctx.COLON() != nil {
 		label = ctx.Identifier(0).GetText()
-		iterVar = ctx.Identifier(1).GetText() // Iterator is the second identifier
+		iterVar = v.getForLoopVariable(ctx, 1)
 	} else {
-		// No label, iterator is the first identifier
-		iterVar = ctx.Identifier(0).GetText()
+		iterVar = v.getForLoopVariable(ctx, 0)
 	}
 
 	if ctx.Expr() == nil {

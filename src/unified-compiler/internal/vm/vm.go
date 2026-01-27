@@ -5,6 +5,13 @@ import (
 "unified-compiler/internal/bytecode"
 )
 
+const (
+// MainReturnIP indicates a function (main) that should not return to a caller
+MainReturnIP = -1
+// DefaultLocalsSize is the default size for local variable storage in a call frame
+DefaultLocalsSize = 100
+)
+
 // VM represents the virtual machine
 type VM struct {
 bytecode *bytecode.Bytecode
@@ -40,11 +47,23 @@ func (vm *VM) Run() (bytecode.Value, error) {
 		return bytecode.NewNullValue(), fmt.Errorf("no main function found")
 	}
 
+	// Create a call frame for main function
+	mainFrame := CallFrame{
+		returnIP: MainReturnIP,
+		locals:   make([]bytecode.Value, DefaultLocalsSize),
+	}
+	vm.callStack = append(vm.callStack, mainFrame)
+
 	// Jump to main
 	vm.ip = mainIdx
 
 	// Execute instructions
-	for vm.ip < len(vm.bytecode.Instructions) {
+	for {
+		// Check if we're done
+		if vm.ip >= len(vm.bytecode.Instructions) {
+			break
+		}
+		
 		instruction := vm.bytecode.Instructions[vm.ip]
 
 		if err := vm.executeInstruction(instruction); err != nil {
@@ -305,8 +324,8 @@ val := vm.stack.Pop()
 if len(vm.callStack) == 0 {
 // Create initial frame for main function
 vm.callStack = append(vm.callStack, CallFrame{
-returnIP: -1,
-locals:   make([]bytecode.Value, 100), // Preallocate space
+returnIP: MainReturnIP,
+locals:   make([]bytecode.Value, DefaultLocalsSize),
 })
 }
 frameIdx := len(vm.callStack) - 1
@@ -353,7 +372,7 @@ vm.ip++
 		// Create new call frame
 		frame := CallFrame{
 			returnIP: vm.ip + 1,
-			locals:   make([]bytecode.Value, 100),
+			locals:   make([]bytecode.Value, DefaultLocalsSize),
 		}
 		
 		// Set arguments as local variables
@@ -983,7 +1002,14 @@ if len(vm.callStack) > 0 {
 // Pop the call frame and return to caller
 frame := vm.callStack[len(vm.callStack)-1]
 vm.callStack = vm.callStack[:len(vm.callStack)-1]
+
+// Check if we're returning from main
+if frame.returnIP >= 0 {
 vm.ip = frame.returnIP
+} else {
+// Returning from main - end execution
+vm.ip = len(vm.bytecode.Instructions)
+}
 // Stack now has the Err value on top
 } else {
 // No call frame, we're in main - set ip to end execution
