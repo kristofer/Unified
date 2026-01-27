@@ -34,7 +34,9 @@ run-test: build
 run-all-tests: build
 	@echo "Running all Unified test files..."
 	@failed=0; \
-	for test_file in test/*.uni; do \
+	total=0; \
+	for test_file in $$(find test -name "*.uni" -type f | sort); do \
+		total=$$((total + 1)); \
 		echo ""; \
 		echo "Testing $$test_file..."; \
 		output=$$(./bin/unified --input "$$test_file" 2>&1); \
@@ -51,6 +53,7 @@ run-all-tests: build
 		fi; \
 	done; \
 	echo ""; \
+	echo "Ran $$total tests total"; \
 	if [ $$failed -eq 0 ]; then \
 		echo "All tests passed!"; \
 	else \
