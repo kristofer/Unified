@@ -128,8 +128,9 @@ Affected tests:
 - `test/integration/new_keyword.uni`
 
 #### Category 2: Missing Feature - Enum Variant Syntax (10 tests)
-**Issue**: `EnumType::Variant()` syntax not supported in expressions
+**Issue**: `EnumType::Variant()` syntax not supported in parser (VM/bytecode already implemented)
 **Error**: "extraneous input '::' expecting {...}"
+**Status**: VM has `OpAllocEnum` and full enum support. Parser needs `::` in expressions and AST visitor for enum construction.
 
 Affected tests:
 - `test/try_operator_basic_ok.uni`
@@ -158,14 +159,26 @@ Affected tests:
 - `test/generics/16_nested_calls.uni` - Nested generic calls
 
 #### Category 4: New Keyword (1 test)
-**Issue**: `new Type<T>()` syntax parsing issues
+**Issue**: `new Type<T>()` syntax exists in grammar but AST visitor not implemented
+**Status**: Grammar rule exists (line 341 in UnifiedParser.g4), but `VisitNewExpr` not implemented in AST visitor
 
 Affected tests:
 - `test/new_keyword_basic.uni`
 
 ## Implementation Status
 
-### Fully Implemented Features
+### Implementation Level Breakdown
+
+The Unified compiler has a multi-layer architecture. A feature can be implemented at different levels:
+
+1. **Grammar** - Syntax is recognized by parser
+2. **AST Visitor** - Parse tree is converted to AST nodes  
+3. **Bytecode Generator** - AST is compiled to bytecode
+4. **VM** - Bytecode instructions are executed
+
+Some features are partially implemented (e.g., VM support exists but parser missing).
+
+### Fully Implemented Features (All Layers)
 - ✅ Basic arithmetic and logical operations
 - ✅ Variable declarations (let/var, mut)
 - ✅ Function declarations and direct calls
@@ -182,14 +195,17 @@ Affected tests:
 - ✅ **Underscore in for loops** ✨
 
 ### Partially Implemented Features
-- ⚠️ Generics: Function generics work well, struct/enum generics partially
-- ⚠️ Enums: Can define but cannot construct variants with `::`
-- ⚠️ Ranges: Work in for loops but not as standalone expressions
+- ⚠️ **Enums**: Can define enums (grammar ✓, AST ✓). VM supports variants (OpAllocEnum ✓). **Missing**: Parser support for `Enum::Variant()` syntax
+- ⚠️ **Try Operator (`?`)**: VM fully supports try operator (OpTryPropagate ✓). **Missing**: Parser support for `?` in expressions
+- ⚠️ **New Keyword**: Grammar rule exists ✓. **Missing**: AST visitor implementation
+- ⚠️ **Generics**: Function generics work well (55% tests passing). Struct/enum generics need work
+- ⚠️ **Ranges**: Work in for loops but not as standalone expressions
 
 ### Not Implemented (Phase 1 Limitations)
 - ❌ Method call syntax (`obj.method()`, `Type.method()`)
-- ❌ Enum variant construction syntax (`Enum::Variant()`)
-- ❌ Try operator (`?`)
+- ❌ Enum variant construction syntax in parser (`Enum::Variant()`) - **VM/bytecode support exists, parser missing**
+- ❌ Try operator syntax in parser (`?`) - **VM/bytecode support exists, parser missing**
+- ❌ `new` keyword in AST visitor - **Grammar exists, visitor missing**
 - ❌ String interpolation (`"${var}"`)
 - ❌ Generic struct literal syntax (`Type<T> { ... }`)
 - ❌ Standard library (requires method calls)
@@ -208,14 +224,28 @@ Affected tests:
 
 ## Recommendations for Further Work
 
-### High Impact, Medium Effort
+### High Impact, Low-Medium Effort (VM already done!)
 1. **Enum Variant Syntax (`::`)**: Would fix 10 try_operator tests
-   - Update parser to allow `::` in expressions
-   - Update bytecode generator to handle enum construction
+   - ✅ VM support: Complete (OpAllocEnum implemented)
+   - ✅ Bytecode generator: Tests exist showing it works
+   - ❌ Parser: Need to allow `::` in expressions
+   - ❌ AST visitor: Need to handle enum variant construction
+   - **Effort**: Low-Medium (VM work already done, just parser/AST)
+
+2. **Try Operator (`?`)**: Would fix 10 tests (same as above)
+   - ✅ VM support: Complete (OpTryPropagate implemented)  
+   - ❌ Parser: Need to allow `?` postfix operator
+   - ❌ AST visitor: Need to handle try expressions
+   - **Effort**: Low (VM work already done)
+
+3. **New Keyword**: Would fix 1-2 tests
+   - ✅ Grammar: Already exists
+   - ❌ AST visitor: Need VisitNewExpr implementation
+   - **Effort**: Very Low
 
 ### Medium Impact, High Effort  
-2. **Method Call Syntax**: Would fix 24 tests but requires Phase 2 implementation
-3. **Generic Struct Literals**: Would fix 3-4 generic tests
+4. **Method Call Syntax**: Would fix 24 tests but requires significant work
+5. **Generic Struct Literals**: Would fix 3-4 generic tests
 
 ### Low Effort, Good for Completeness
 4. **Investigate remaining 9 generic tests**: Understand specific blockers

@@ -125,12 +125,17 @@ Parsing issue with `new Type<T>()` syntax
 ✅ **Underscore Pattern**: `for _ in` now supported
 
 ### What's Not Implemented (Phase 1 Limitations)
-❌ **Method Calls**: `obj.method()` syntax
-❌ **Enum Variants**: `Enum::Variant()` construction
-❌ **Try Operator**: `value?` error propagation
-❌ **String Interpolation**: `"Value: ${x}"`
-❌ **Standard Library**: Requires method call syntax
-❌ **Generic Struct Literals**: `Type<T> { field: value }`
+❌ **Method Calls**: `obj.method()` syntax (requires significant work)
+❌ **String Interpolation**: `"Value: ${x}"` (not started)
+❌ **Standard Library**: Requires method call syntax (not started)
+❌ **Generic Struct Literals**: `Type<T> { field: value }` (needs work)
+
+### What's Partially Implemented (Low-hanging fruit!)
+⚠️ **Enums**: ✅ VM/bytecode complete, ❌ Parser for `Enum::Variant()` syntax missing
+⚠️ **Try Operator**: ✅ VM/bytecode complete (OpTryPropagate), ❌ Parser for `?` missing  
+⚠️ **New Keyword**: ✅ Grammar exists, ❌ AST visitor missing
+⚠️ **Generics**: Functions work well (55% tests passing), structs/enums need work
+⚠️ **Ranges**: Work in for loops only
 
 ### What's Partially Implemented
 ⚠️ **Generics**: Functions work well (55% tests passing), structs/enums need work
@@ -165,6 +170,33 @@ Parsing issue with `new Type<T>()` syntax
 2. Add CONTRIBUTING.md section on test expectations
 3. Mark Phase 2 feature tests clearly
 4. Document workarounds for current limitations
+
+---
+
+## Key Finding: Significant VM Work Already Complete!
+
+**Important Discovery**: The VM and bytecode layers already have full support for several "missing" features:
+
+1. **Enum Variant Construction** (`Result::Ok(42)`)
+   - ✅ `OpAllocEnum` bytecode instruction implemented
+   - ✅ VM execution working (see `internal/vm/enum_test.go`)
+   - ❌ Only missing: Parser support for `::` in expressions
+
+2. **Try Operator** (`value?`)
+   - ✅ `OpTryPropagate` bytecode instruction implemented
+   - ✅ VM execution working (see `internal/vm/try_operator_test.go`)
+   - ❌ Only missing: Parser support for `?` postfix operator
+
+3. **New Keyword** (`new Type()`)
+   - ✅ Grammar rule defined in `UnifiedParser.g4` line 341
+   - ❌ Only missing: AST visitor implementation
+
+**Impact**: These 3 features could fix **21 tests** with relatively low effort since the hard VM work is done!
+- 10 try_operator tests (enum variants + try operator)
+- 10 more tests if both are implemented together
+- 1-2 new_keyword tests
+
+**Recommendation**: Prioritize parser/AST work for these features before tackling harder features like method calls.
 
 ---
 
