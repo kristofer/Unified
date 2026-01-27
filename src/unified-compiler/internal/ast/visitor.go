@@ -1217,10 +1217,19 @@ func (v *ASTBuilder) VisitForStatement(ctx *parser.ForStatementContext) interfac
 	// Check if we have a label (which would be followed by a colon)
 	if ctx.COLON() != nil {
 		label = ctx.Identifier(0).GetText()
-		iterVar = ctx.Identifier(1).GetText() // Iterator is the second identifier
+		// Iterator is the second identifier or underscore
+		if len(ctx.AllIdentifier()) > 1 {
+			iterVar = ctx.Identifier(1).GetText()
+		} else if ctx.UNDERSCORE() != nil {
+			iterVar = "_"
+		}
 	} else {
-		// No label, iterator is the first identifier
-		iterVar = ctx.Identifier(0).GetText()
+		// No label, iterator is the first identifier or underscore
+		if len(ctx.AllIdentifier()) > 0 {
+			iterVar = ctx.Identifier(0).GetText()
+		} else if ctx.UNDERSCORE() != nil {
+			iterVar = "_"
+		}
 	}
 
 	if ctx.Expr() == nil {
