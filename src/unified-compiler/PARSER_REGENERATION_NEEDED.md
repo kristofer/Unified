@@ -17,15 +17,20 @@ The ANTLR-generated parser files in `internal/parser/` are auto-generated from t
 
 1. Install ANTLR4:
    ```bash
-   # On macOS with Homebrew
+   # On macOS with Homebrew (recommended - verifies signatures)
    brew install antlr
    
-   # On Ubuntu/Debian
+   # On Ubuntu/Debian (recommended - verifies signatures)
    sudo apt-get install antlr4
    
-   # Or download the jar directly
+   # Or download the jar directly (IMPORTANT: verify SHA-256 checksum)
    cd /usr/local/lib
    sudo curl -O https://www.antlr.org/download/antlr-4.13.2-complete.jar
+   
+   # Verify the checksum (get expected checksum from https://www.antlr.org/download.html)
+   sha256sum antlr-4.13.2-complete.jar
+   # Compare with official checksum before proceeding
+   
    sudo chmod +x /usr/local/bin/antlr4
    ```
 
@@ -35,12 +40,13 @@ The ANTLR-generated parser files in `internal/parser/` are auto-generated from t
    make parser
    ```
 
-### Option 2: Using Python antlr4-tools
+### Option 2: Using Python antlr4-tools (Recommended for CI/CD)
 
 1. Install antlr4-tools:
    ```bash
    pip install antlr4-tools
    ```
+   Note: This installs from PyPI which verifies package signatures.
 
 2. Generate the parser:
    ```bash

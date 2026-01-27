@@ -497,7 +497,10 @@ type AsyncExpr struct {
 func (a *AsyncExpr) Pos() Position   { return a.Position }
 func (a *AsyncExpr) expressionNode() {}
 
-// NewExpr represents a new expression: new Type<T>(args)
+// NewExpr represents a new expression for object instantiation.
+// Syntax: new Type<T>(args)
+// Example: new Stack<Int>(), new Point(10, 20)
+// This replaces the old Type::new() and Type.new() syntax.
 type NewExpr struct {
 	TypeName string
 	TypeArgs []Type       // Type arguments for generic types
