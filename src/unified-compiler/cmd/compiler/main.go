@@ -53,6 +53,7 @@ func compile(inputFile *string) {
 	}
 
 	fmt.Printf("Generated %d instructions\n", len(bc.Instructions))
+	fmt.Printf("Functions: %v\n", bc.Functions)
 
 	// 4. Execute with VM
 	virtualMachine := vm.NewVM(bc)

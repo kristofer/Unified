@@ -1,0 +1,8 @@
+fn identity(x: Int) -> Int {
+    return x
+}
+
+fn main() -> Int {
+    let a = identity(42)
+    return a
+}
