@@ -342,7 +342,7 @@ constructorExpr
     ;
 
 structExpr
-    : identifier LBRACE fieldInitList RBRACE
+    : identifier (LT typeList GT)? LBRACE fieldInitList RBRACE
     ;
 
 fieldInitList
