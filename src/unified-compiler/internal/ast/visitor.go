@@ -828,6 +828,12 @@ func (v *ASTBuilder) VisitStructExpr(ctx *parser.StructExprContext) interface{} 
 	// Get struct name
 	name := ctx.Identifier().GetText()
 
+	// Process type arguments if present
+	var typeArgs []Type
+	if typeListCtx := ctx.TypeList(); typeListCtx != nil {
+		typeArgs = v.processTypeList(typeListCtx.(*parser.TypeListContext))
+	}
+
 	// Process field initializations
 	var fieldInits []*FieldInit
 	if fieldInitListCtx := ctx.FieldInitList(); fieldInitListCtx != nil {
@@ -836,6 +842,7 @@ func (v *ASTBuilder) VisitStructExpr(ctx *parser.StructExprContext) interface{} 
 
 	return &StructExpr{
 		Name:       name,
+		TypeArgs:   typeArgs,
 		FieldInits: fieldInits,
 		Position:   v.getPosition(ctx),
 	}

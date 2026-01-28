@@ -526,6 +526,7 @@ func (s *StructExpr) expressionNode() {}
 type EnumConstructorExpr struct {
 	EnumName    string
 	Variant     string
+	TypeArgs    []Type     // Type arguments for generic enums
 	Arguments   []Expression
 	Position    Position
 }
