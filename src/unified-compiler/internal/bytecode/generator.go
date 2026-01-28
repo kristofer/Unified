@@ -20,6 +20,8 @@ BaseName   string
 TypeArgs   []ast.Type
 MangledName string
 Generated  bool
+Template   *ast.FunctionDecl  // Template function
+Context    *semantic.GenericContext  // Generic context for this monomorphization
 }
 
 // MonomorphizedStruct tracks a specialized version of a generic struct
@@ -42,6 +44,7 @@ Generated   bool
 type Generator struct {
 bytecode      *Bytecode
 localVars     map[string]int // Variable name -> stack index
+localVarTypes map[string]ast.Type // Variable name -> type (for type inference)
 localVarCount int            // Number of local variables
 loopStack     []LoopContext  // Stack of nested loop contexts
 structTypes   map[string]*StructTypeInfo // Struct type information
@@ -54,6 +57,14 @@ genericContext *semantic.GenericContext // Generic type parameter context for cu
 // Maps mangled name -> MonomorphizedFunction. Created during Generate() when generic
 // functions are instantiated with concrete types. Used to avoid duplicate generation.
 monomorphized map[string]*MonomorphizedFunction
+	
+// Deferred monomorphization queue
+// Functions that need to be generated after all regular functions
+deferredMonomorphizations []*MonomorphizedFunction
+
+// Call patches for deferred functions
+// Maps function name -> list of call instruction positions to patch
+callPatches map[string][]int
 	
 // Generic function templates
 // Maps function name -> FunctionDecl. Populated in first pass of Generate() to store
@@ -104,6 +115,7 @@ func NewGenerator() *Generator {
 return &Generator{
 bytecode:    NewBytecode(),
 localVars:   make(map[string]int),
+localVarTypes: make(map[string]ast.Type),
 structTypes: make(map[string]*StructTypeInfo),
 enumTypes:   make(map[string]*EnumTypeInfo),
 genericContext: semantic.NewGenericContext(),
@@ -113,6 +125,7 @@ genericStructs: make(map[string]*ast.StructDecl),
 monomorphizedStructs: make(map[string]*MonomorphizedStruct),
 genericEnums: make(map[string]*ast.EnumDecl),
 monomorphizedEnums: make(map[string]*MonomorphizedEnum),
+callPatches: make(map[string][]int),
 }
 }
 
@@ -175,6 +188,11 @@ return nil, fmt.Errorf("unsupported top-level item: %T", item)
 }
 }
 
+// Third pass: Generate all deferred monomorphized functions
+if err := g.processDeferredMonomorphizations(); err != nil {
+return nil, err
+}
+
 // Add final HALT instruction
 g.bytecode.AddInstruction(OpHalt, 0)
 
@@ -189,11 +207,13 @@ g.bytecode.AddFunction(fn.Name, entryPoint)
 
 // Reset local variables for this function
 g.localVars = make(map[string]int)
+g.localVarTypes = make(map[string]ast.Type)
 g.localVarCount = 0
 
 // Add parameters to local variables
 for i, param := range fn.Parameters {
 g.localVars[param.Name] = i
+g.localVarTypes[param.Name] = param.Type
 g.localVarCount++
 }
 
@@ -292,19 +312,35 @@ func (g *Generator) generateStatement(stmt ast.Statement) error {
 
 func (g *Generator) generateLetStatement(stmt *ast.LetStatement) error {
 // Generate the initializer expression
+var varType ast.Type
 if stmt.Value != nil {
 if err := g.generateExpression(stmt.Value); err != nil {
 return err
+}
+// Try to infer type from the value expression
+inferredType, _ := g.inferExpressionType(stmt.Value)
+if inferredType != nil {
+varType = inferredType
+} else if stmt.Type != nil {
+varType = stmt.Type
 }
 } else {
 // Default initialize to 0
 constIdx := g.bytecode.AddConstant(NewIntValue(0))
 g.bytecode.AddInstruction(OpPush, int64(constIdx))
+if stmt.Type != nil {
+varType = stmt.Type
+} else {
+varType = &ast.TypeReference{Name: "Int"} // Default to Int
+}
 }
 
 // Allocate local variable
 varIdx := g.localVarCount
 g.localVars[stmt.Name] = varIdx
+if varType != nil {
+g.localVarTypes[stmt.Name] = varType
+}
 g.localVarCount++
 
 // Store the value
@@ -316,17 +352,33 @@ return nil
 // generateVarStatement generates bytecode for var statement
 func (g *Generator) generateVarStatement(stmt *ast.VarStatement) error {
 // Similar to let statement for Phase 1
+var varType ast.Type
 if stmt.Value != nil {
 if err := g.generateExpression(stmt.Value); err != nil {
 return err
 }
+// Try to infer type from the value expression
+inferredType, _ := g.inferExpressionType(stmt.Value)
+if inferredType != nil {
+varType = inferredType
+} else if stmt.Type != nil {
+varType = stmt.Type
+}
 } else {
 constIdx := g.bytecode.AddConstant(NewIntValue(0))
 g.bytecode.AddInstruction(OpPush, int64(constIdx))
+if stmt.Type != nil {
+varType = stmt.Type
+} else {
+varType = &ast.TypeReference{Name: "Int"} // Default to Int
+}
 }
 
 varIdx := g.localVarCount
 g.localVars[stmt.Name] = varIdx
+if varType != nil {
+g.localVarTypes[stmt.Name] = varType
+}
 g.localVarCount++
 
 g.bytecode.AddInstruction(OpStoreLocal, int64(varIdx))
@@ -654,10 +706,13 @@ return err
 // Call the monomorphized version
 funcIdx, ok := g.bytecode.Functions[mangledName]
 if !ok {
-return fmt.Errorf("monomorphized function not found: %s", mangledName)
-}
-		
+// Function not yet generated - emit placeholder and record patch position
+callPos := g.bytecode.CurrentPosition()
+g.callPatches[mangledName] = append(g.callPatches[mangledName], callPos)
+g.bytecode.AddInstructionWithArgCount(OpCall, 0, len(expr.Arguments)) // Placeholder operand
+} else {
 g.bytecode.AddInstructionWithArgCount(OpCall, int64(funcIdx), len(expr.Arguments))
+}
 return nil
 }
 
@@ -1442,8 +1497,8 @@ func (g *Generator) monomorphizeFunction(baseName string, typeArgs []ast.Type) (
 // Create mangled name for this specialization
 mangledName := semantic.MangleName(baseName, typeArgs)
 	
-// Check if already monomorphized
-if mono, ok := g.monomorphized[mangledName]; ok && mono.Generated {
+// Check if already registered for monomorphization
+if _, ok := g.monomorphized[mangledName]; ok {
 return mangledName, nil
 }
 	
@@ -1478,31 +1533,82 @@ Body:       template.Body, // Body stays the same, types are handled at runtime
 Position:   template.Position,
 }
 	
-// Mark as being generated
-g.monomorphized[mangledName] = &MonomorphizedFunction{
+// Create monomorphization record and defer generation
+mono := &MonomorphizedFunction{
 BaseName:   baseName,
 TypeArgs:   typeArgs,
 MangledName: mangledName,
 Generated:  false,
+Template:   specializedFn,
+Context:    monoCtx,
 }
 	
+// Store in both maps
+g.monomorphized[mangledName] = mono
+g.deferredMonomorphizations = append(g.deferredMonomorphizations, mono)
+	
+return mangledName, nil
+}
+
+// generateMonomorphizedFunction generates bytecode for a monomorphized function
+func (g *Generator) generateMonomorphizedFunction(mono *MonomorphizedFunction) error {
 // Save current generic context
 savedCtx := g.genericContext
-g.genericContext = monoCtx
+g.genericContext = mono.Context
 	
 // Generate the specialized function
-if err := g.generateFunction(specializedFn); err != nil {
-g.genericContext = savedCtx
-return "", fmt.Errorf("error monomorphizing %s: %w", baseName, err)
-}
+err := g.generateFunction(mono.Template)
 	
 // Restore generic context
 g.genericContext = savedCtx
 	
-// Mark as generated
-g.monomorphized[mangledName].Generated = true
-	
-return mangledName, nil
+return err
+}
+
+// processDeferredMonomorphizations is a helper method for testing
+// It processes all deferred monomorphizations immediately
+func (g *Generator) processDeferredMonomorphizations() error {
+for len(g.deferredMonomorphizations) > 0 {
+mono := g.deferredMonomorphizations[0]
+g.deferredMonomorphizations = g.deferredMonomorphizations[1:]
+
+if mono.Generated {
+continue
+}
+
+if err := g.generateMonomorphizedFunction(mono); err != nil {
+return fmt.Errorf("error generating monomorphized function %s: %w", mono.MangledName, err)
+}
+
+mono.Generated = true
+
+// Patch any calls
+if patches, ok := g.callPatches[mono.MangledName]; ok {
+funcIdx, ok := g.bytecode.Functions[mono.MangledName]
+if !ok {
+return fmt.Errorf("monomorphized function %s not registered in Functions map", mono.MangledName)
+}
+for _, patchPos := range patches {
+// Bounds check before patching
+if patchPos < 0 || patchPos >= len(g.bytecode.Instructions) {
+return fmt.Errorf("invalid patch position %d (instruction count: %d)", patchPos, len(g.bytecode.Instructions))
+}
+g.bytecode.Instructions[patchPos].Operand = int64(funcIdx)
+}
+delete(g.callPatches, mono.MangledName)
+}
+}
+
+// Check if any calls remain unpatched (shouldn't happen)
+if len(g.callPatches) > 0 {
+var unpatched []string
+for name := range g.callPatches {
+unpatched = append(unpatched, name)
+}
+return fmt.Errorf("unpatched function calls: %v", unpatched)
+}
+
+return nil
 }
 
 // substituteParameters applies type substitutions to function parameters
@@ -1721,8 +1827,65 @@ return nil, fmt.Errorf("unknown literal kind: %v", e.Kind)
 }
 case *ast.Identifier:
 // Look up in local variables to get type
-// For now, return nil to indicate we need more context
+if varType, ok := g.localVarTypes[e.Name]; ok {
+return varType, nil
+}
 return nil, fmt.Errorf("cannot infer type for identifier %s", e.Name)
+case *ast.BinaryExpr:
+// For arithmetic and comparison operators, infer from operands
+switch e.Operator {
+case ast.OperatorAdd, ast.OperatorSub, ast.OperatorMul, ast.OperatorDiv, ast.OperatorMod:
+// Arithmetic operations - return type of left operand (simplified)
+return g.inferExpressionType(e.Left)
+case ast.OperatorEq, ast.OperatorNe, ast.OperatorLt, ast.OperatorLe, ast.OperatorGt, ast.OperatorGe:
+// Comparison operations - always return Bool
+return &ast.TypeReference{Name: "Bool"}, nil
+case ast.OperatorAnd, ast.OperatorOr:
+// Logical operations - always return Bool
+return &ast.TypeReference{Name: "Bool"}, nil
+default:
+return nil, fmt.Errorf("unknown binary operator: %v", e.Operator)
+}
+case *ast.UnaryExpr:
+// For unary operators, infer from operand
+switch e.Operator {
+case ast.OperatorUnaryMinus, ast.OperatorUnaryPlus:
+return g.inferExpressionType(e.Operand)
+case ast.OperatorNot:
+return &ast.TypeReference{Name: "Bool"}, nil
+default:
+return nil, fmt.Errorf("unknown unary operator: %v", e.Operator)
+}
+case *ast.CallExpr:
+// Try to infer return type from function
+if funcIdent, ok := e.Function.(*ast.Identifier); ok {
+// Check if it's a generic function
+if genericFn, ok := g.genericFunctions[funcIdent.Name]; ok {
+// Return the generic return type (may have type params)
+return genericFn.ReturnType, nil
+}
+// For regular functions, we don't have return type info available
+// This would require semantic analysis integration
+}
+return nil, fmt.Errorf("cannot infer type for call expression")
+case *ast.StructExpr:
+// Return the struct type
+if len(e.TypeArgs) > 0 {
+return &ast.TypeReference{
+Name: e.Name,
+TypeArgs: e.TypeArgs,
+}, nil
+}
+return &ast.TypeReference{Name: e.Name}, nil
+case *ast.EnumConstructorExpr:
+// Return the enum type
+if len(e.TypeArgs) > 0 {
+return &ast.TypeReference{
+Name: e.EnumName,
+TypeArgs: e.TypeArgs,
+}, nil
+}
+return &ast.TypeReference{Name: e.EnumName}, nil
 default:
 return nil, fmt.Errorf("cannot infer type for expression: %T", expr)
 }
