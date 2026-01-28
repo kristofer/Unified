@@ -22,6 +22,14 @@ MangledName string
 Generated  bool
 }
 
+// MonomorphizedStruct tracks a specialized version of a generic struct
+type MonomorphizedStruct struct {
+BaseName    string
+TypeArgs    []ast.Type
+MangledName string
+Generated   bool
+}
+
 // Generator converts AST to bytecode
 type Generator struct {
 bytecode      *Bytecode
@@ -43,6 +51,15 @@ monomorphized map[string]*MonomorphizedFunction
 // Maps function name -> FunctionDecl. Populated in first pass of Generate() to store
 // generic function templates that will be monomorphized on-demand during call generation.
 genericFunctions map[string]*ast.FunctionDecl
+
+// Generic struct templates
+// Maps struct name -> StructDecl. Populated in first pass to store generic struct
+// templates that will be monomorphized on-demand during instantiation.
+genericStructs map[string]*ast.StructDecl
+
+// Monomorphized struct tracking
+// Maps mangled name -> MonomorphizedStruct to avoid duplicate generation.
+monomorphizedStructs map[string]*MonomorphizedStruct
 }
 
 // StructTypeInfo holds metadata about a struct type
@@ -75,6 +92,8 @@ enumTypes:   make(map[string]*EnumTypeInfo),
 genericContext: semantic.NewGenericContext(),
 monomorphized: make(map[string]*MonomorphizedFunction),
 genericFunctions: make(map[string]*ast.FunctionDecl),
+genericStructs: make(map[string]*ast.StructDecl),
+monomorphizedStructs: make(map[string]*MonomorphizedStruct),
 }
 }
 
@@ -84,8 +103,14 @@ func (g *Generator) Generate(program *ast.Program) (*Bytecode, error) {
 for _, item := range program.Items {
 switch item := item.(type) {
 case *ast.StructDecl:
+// Store generic structs for monomorphization
+if len(item.GenericParams) > 0 {
+g.genericStructs[item.Name] = item
+} else {
+// Register non-generic structs immediately
 if err := g.registerStructType(item); err != nil {
 return nil, fmt.Errorf("error registering struct %s: %w", item.Name, err)
+}
 }
 case *ast.EnumDecl:
 if err := g.registerEnumType(item); err != nil {
@@ -957,63 +982,81 @@ return nil
 
 // generateStructExpr generates bytecode for struct instantiation
 func (g *Generator) generateStructExpr(expr *ast.StructExpr) error {
-// Get struct type info
-structInfo, ok := g.structTypes[expr.Name]
-if !ok {
-return fmt.Errorf("undefined struct type: %s", expr.Name)
-}
-
-// Create a map to track which fields are initialized
-initializedFields := make(map[string]bool)
-
-// Build ordered list of field names and values
-type fieldPair struct {
-name  string
-value ast.Expression
-index int
-}
-fieldPairs := make([]fieldPair, len(structInfo.Fields))
-
-for _, fieldInit := range expr.FieldInits {
-fieldIndex, ok := structInfo.Fields[fieldInit.Name]
-if !ok {
-return fmt.Errorf("unknown field %s in struct %s", fieldInit.Name, expr.Name)
-}
-fieldPairs[fieldIndex] = fieldPair{
-name:  fieldInit.Name,
-value: fieldInit.Value,
-index: fieldIndex,
-}
-initializedFields[fieldInit.Name] = true
-}
-
-// Check that all fields are initialized
-for fieldName := range structInfo.Fields {
-if !initializedFields[fieldName] {
-return fmt.Errorf("missing field initialization: %s", fieldName)
-}
-}
-
-// Push field name and value pairs onto stack
-for _, pair := range fieldPairs {
-// Push field name
-fieldNameIdx := g.bytecode.AddConstant(NewStringValue(pair.name))
-g.bytecode.AddInstruction(OpPush, int64(fieldNameIdx))
-
-// Push field value
-if err := g.generateExpression(pair.value); err != nil {
-return err
-}
-}
-
-// Push struct type name as a constant
-typeNameIdx := g.bytecode.AddConstant(NewStringValue(expr.Name))
-g.bytecode.AddInstruction(OpPush, int64(typeNameIdx))
-
-// Allocate struct with field count
-g.bytecode.AddInstruction(OpAllocStruct, int64(len(structInfo.Fields)))
-
-return nil
+	// Determine the actual struct name to use (might be monomorphized)
+	structName := expr.Name
+	
+	// Check if this is a generic struct instantiation
+	if len(expr.TypeArgs) > 0 {
+		// Check if this struct is a generic template
+		if _, ok := g.genericStructs[expr.Name]; ok {
+			// Monomorphize the struct with the provided type arguments
+			mangledName, err := g.monomorphizeStruct(expr.Name, expr.TypeArgs)
+			if err != nil {
+				return fmt.Errorf("error monomorphizing struct %s: %w", expr.Name, err)
+			}
+			structName = mangledName
+		} else {
+			return fmt.Errorf("struct %s is not generic but type arguments provided", expr.Name)
+		}
+	}
+	
+	// Get struct type info (either concrete or monomorphized)
+	structInfo, ok := g.structTypes[structName]
+	if !ok {
+		return fmt.Errorf("undefined struct type: %s", structName)
+	}
+	
+	// Create a map to track which fields are initialized
+	initializedFields := make(map[string]bool)
+	
+	// Build ordered list of field names and values
+	type fieldPair struct {
+		name  string
+		value ast.Expression
+		index int
+	}
+	fieldPairs := make([]fieldPair, len(structInfo.Fields))
+	
+	for _, fieldInit := range expr.FieldInits {
+		fieldIndex, ok := structInfo.Fields[fieldInit.Name]
+		if !ok {
+			return fmt.Errorf("unknown field %s in struct %s", fieldInit.Name, structName)
+		}
+		fieldPairs[fieldIndex] = fieldPair{
+			name:  fieldInit.Name,
+			value: fieldInit.Value,
+			index: fieldIndex,
+		}
+		initializedFields[fieldInit.Name] = true
+	}
+	
+	// Check that all fields are initialized
+	for fieldName := range structInfo.Fields {
+		if !initializedFields[fieldName] {
+			return fmt.Errorf("missing field initialization: %s", fieldName)
+		}
+	}
+	
+	// Push field name and value pairs onto stack
+	for _, pair := range fieldPairs {
+		// Push field name
+		fieldNameIdx := g.bytecode.AddConstant(NewStringValue(pair.name))
+		g.bytecode.AddInstruction(OpPush, int64(fieldNameIdx))
+		
+		// Push field value
+		if err := g.generateExpression(pair.value); err != nil {
+			return err
+		}
+	}
+	
+	// Push struct type name as a constant (use mangled name for generic structs)
+	typeNameIdx := g.bytecode.AddConstant(NewStringValue(structName))
+	g.bytecode.AddInstruction(OpPush, int64(typeNameIdx))
+	
+	// Allocate struct with field count
+	g.bytecode.AddInstruction(OpAllocStruct, int64(len(structInfo.Fields)))
+	
+	return nil
 }
 
 // generateNewExpr generates bytecode for new expressions
@@ -1430,6 +1473,80 @@ IsSelf:      param.IsSelf,
 IsReference: param.IsReference,
 IsMutable:   param.IsMutable,
 Position:    param.Position,
+}
+}
+return result
+}
+
+// monomorphizeStruct generates a specialized version of a generic struct
+func (g *Generator) monomorphizeStruct(baseName string, typeArgs []ast.Type) (string, error) {
+// Create mangled name for this specialization
+mangledName := semantic.MangleName(baseName, typeArgs)
+
+// Check if already monomorphized
+if mono, ok := g.monomorphizedStructs[mangledName]; ok && mono.Generated {
+return mangledName, nil
+}
+
+// Get the generic struct template
+template, ok := g.genericStructs[baseName]
+if !ok {
+return "", fmt.Errorf("generic struct %s not found", baseName)
+}
+
+// Verify type argument count matches
+if len(template.GenericParams) != len(typeArgs) {
+return "", fmt.Errorf("wrong number of type arguments for %s: expected %d, got %d",
+baseName, len(template.GenericParams), len(typeArgs))
+}
+
+// Create a child generic context for this monomorphization
+monoCtx := g.genericContext.NewChildContext()
+
+// Add type parameter substitutions
+for i, param := range template.GenericParams {
+monoCtx.AddTypeParameter(param)
+monoCtx.Substitutions[param.Name] = typeArgs[i]
+}
+
+// Create a specialized version of the struct
+specializedStruct := &ast.StructDecl{
+Name:       mangledName,
+IsPublic:   template.IsPublic,
+Members:    g.substituteStructMembers(template.Members, monoCtx),
+Position:   template.Position,
+// No GenericParams - this is a concrete type
+}
+
+// Mark as being generated
+g.monomorphizedStructs[mangledName] = &MonomorphizedStruct{
+BaseName:    baseName,
+TypeArgs:    typeArgs,
+MangledName: mangledName,
+Generated:   false,
+}
+
+// Register the specialized struct type
+if err := g.registerStructType(specializedStruct); err != nil {
+return "", fmt.Errorf("error registering monomorphized struct %s: %w", mangledName, err)
+}
+
+// Mark as generated
+g.monomorphizedStructs[mangledName].Generated = true
+
+return mangledName, nil
+}
+
+// substituteStructMembers applies type substitutions to struct members
+func (g *Generator) substituteStructMembers(members []*ast.StructMember, ctx *semantic.GenericContext) []*ast.StructMember {
+result := make([]*ast.StructMember, len(members))
+for i, member := range members {
+result[i] = &ast.StructMember{
+Name:     member.Name,
+Type:     ctx.Substitute(member.Type),
+IsMethod: member.IsMethod,
+Method:   member.Method, // TODO: Substitute method types if needed
+Position: member.Position,
 }
 }
 return result
