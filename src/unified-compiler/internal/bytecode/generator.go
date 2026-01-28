@@ -30,6 +30,14 @@ MangledName string
 Generated   bool
 }
 
+// MonomorphizedEnum tracks a specialized version of a generic enum
+type MonomorphizedEnum struct {
+BaseName    string
+TypeArgs    []ast.Type
+MangledName string
+Generated   bool
+}
+
 // Generator converts AST to bytecode
 type Generator struct {
 bytecode      *Bytecode
@@ -60,6 +68,15 @@ genericStructs map[string]*ast.StructDecl
 // Monomorphized struct tracking
 // Maps mangled name -> MonomorphizedStruct to avoid duplicate generation.
 monomorphizedStructs map[string]*MonomorphizedStruct
+
+// Generic enum templates
+// Maps enum name -> EnumDecl. Populated in first pass to store generic enum
+// templates that will be monomorphized on-demand during instantiation.
+genericEnums map[string]*ast.EnumDecl
+
+// Monomorphized enum tracking
+// Maps mangled name -> MonomorphizedEnum to avoid duplicate generation.
+monomorphizedEnums map[string]*MonomorphizedEnum
 }
 
 // StructTypeInfo holds metadata about a struct type
@@ -94,6 +111,8 @@ monomorphized: make(map[string]*MonomorphizedFunction),
 genericFunctions: make(map[string]*ast.FunctionDecl),
 genericStructs: make(map[string]*ast.StructDecl),
 monomorphizedStructs: make(map[string]*MonomorphizedStruct),
+genericEnums: make(map[string]*ast.EnumDecl),
+monomorphizedEnums: make(map[string]*MonomorphizedEnum),
 }
 }
 
@@ -113,8 +132,14 @@ return nil, fmt.Errorf("error registering struct %s: %w", item.Name, err)
 }
 }
 case *ast.EnumDecl:
+// Store generic enums for monomorphization
+if len(item.GenericParams) > 0 {
+g.genericEnums[item.Name] = item
+} else {
+// Register non-generic enums immediately
 if err := g.registerEnumType(item); err != nil {
 return nil, fmt.Errorf("error registering enum %s: %w", item.Name, err)
+}
 }
 case *ast.FunctionDecl:
 // Store generic functions for monomorphization
@@ -1169,47 +1194,65 @@ return nil
 
 // generateEnumConstructorExpr generates bytecode for enum variant construction
 func (g *Generator) generateEnumConstructorExpr(expr *ast.EnumConstructorExpr) error {
-// Get enum type info
-enumInfo, ok := g.enumTypes[expr.EnumName]
-if !ok {
-return fmt.Errorf("undefined enum type: %s", expr.EnumName)
-}
-
-// Get variant info
-variantInfo, ok := enumInfo.Variants[expr.Variant]
-if !ok {
-return fmt.Errorf("undefined variant %s in enum %s", expr.Variant, expr.EnumName)
-}
-
-// Check argument count
-if len(expr.Arguments) != variantInfo.Arity {
-return fmt.Errorf("variant %s::%s expects %d arguments, got %d",
-expr.EnumName, expr.Variant, variantInfo.Arity, len(expr.Arguments))
-}
-
-// Push variant data (arguments) onto stack
-for _, arg := range expr.Arguments {
-if err := g.generateExpression(arg); err != nil {
-return err
-}
-}
-
-// Push enum name
-enumNameIdx := g.bytecode.AddConstant(NewStringValue(expr.EnumName))
-g.bytecode.AddInstruction(OpPush, int64(enumNameIdx))
-
-// Push variant name
-variantNameIdx := g.bytecode.AddConstant(NewStringValue(expr.Variant))
-g.bytecode.AddInstruction(OpPush, int64(variantNameIdx))
-
-// Push variant tag
-tagIdx := g.bytecode.AddConstant(NewIntValue(int64(variantInfo.Tag)))
-g.bytecode.AddInstruction(OpPush, int64(tagIdx))
-
-// Allocate enum with data count
-g.bytecode.AddInstruction(OpAllocEnum, int64(variantInfo.Arity))
-
-return nil
+	// Determine the actual enum name to use (might be monomorphized)
+	enumName := expr.EnumName
+	
+	// Check if this is a generic enum instantiation
+	if len(expr.TypeArgs) > 0 {
+		// Check if this enum is a generic template
+		if _, ok := g.genericEnums[expr.EnumName]; ok {
+			// Monomorphize the enum with the provided type arguments
+			mangledName, err := g.monomorphizeEnum(expr.EnumName, expr.TypeArgs)
+			if err != nil {
+				return fmt.Errorf("error monomorphizing enum %s: %w", expr.EnumName, err)
+			}
+			enumName = mangledName
+		} else {
+			return fmt.Errorf("enum %s is not generic but type arguments provided", expr.EnumName)
+		}
+	}
+	
+	// Get enum type info (either concrete or monomorphized)
+	enumInfo, ok := g.enumTypes[enumName]
+	if !ok {
+		return fmt.Errorf("undefined enum type: %s", enumName)
+	}
+	
+	// Get variant info
+	variantInfo, ok := enumInfo.Variants[expr.Variant]
+	if !ok {
+		return fmt.Errorf("undefined variant %s in enum %s", expr.Variant, enumName)
+	}
+	
+	// Check argument count
+	if len(expr.Arguments) != variantInfo.Arity {
+		return fmt.Errorf("variant %s::%s expects %d arguments, got %d",
+			enumName, expr.Variant, variantInfo.Arity, len(expr.Arguments))
+	}
+	
+	// Push variant data (arguments) onto stack
+	for _, arg := range expr.Arguments {
+		if err := g.generateExpression(arg); err != nil {
+			return err
+		}
+	}
+	
+	// Push enum name (use mangled name for generic enums)
+	enumNameIdx := g.bytecode.AddConstant(NewStringValue(enumName))
+	g.bytecode.AddInstruction(OpPush, int64(enumNameIdx))
+	
+	// Push variant name
+	variantNameIdx := g.bytecode.AddConstant(NewStringValue(expr.Variant))
+	g.bytecode.AddInstruction(OpPush, int64(variantNameIdx))
+	
+	// Push variant tag
+	tagIdx := g.bytecode.AddConstant(NewIntValue(int64(variantInfo.Tag)))
+	g.bytecode.AddInstruction(OpPush, int64(tagIdx))
+	
+	// Allocate enum with data count
+	g.bytecode.AddInstruction(OpAllocEnum, int64(variantInfo.Arity))
+	
+	return nil
 }
 
 // generateMatchExpr generates bytecode for match expressions
@@ -1547,6 +1590,88 @@ Type:     ctx.Substitute(member.Type),
 IsMethod: member.IsMethod,
 Method:   member.Method, // TODO: Substitute method types if needed
 Position: member.Position,
+}
+}
+return result
+}
+
+// monomorphizeEnum generates a specialized version of a generic enum
+func (g *Generator) monomorphizeEnum(baseName string, typeArgs []ast.Type) (string, error) {
+// Create mangled name for this specialization
+mangledName := semantic.MangleName(baseName, typeArgs)
+
+// Check if already monomorphized
+if mono, ok := g.monomorphizedEnums[mangledName]; ok && mono.Generated {
+return mangledName, nil
+}
+
+// Get the generic enum template
+template, ok := g.genericEnums[baseName]
+if !ok {
+return "", fmt.Errorf("generic enum %s not found", baseName)
+}
+
+// Verify type argument count matches
+if len(template.GenericParams) != len(typeArgs) {
+return "", fmt.Errorf("wrong number of type arguments for %s: expected %d, got %d",
+baseName, len(template.GenericParams), len(typeArgs))
+}
+
+// Create a child generic context for this monomorphization
+monoCtx := g.genericContext.NewChildContext()
+
+// Add type parameter substitutions
+for i, param := range template.GenericParams {
+monoCtx.AddTypeParameter(param)
+monoCtx.Substitutions[param.Name] = typeArgs[i]
+}
+
+// Create a specialized version of the enum
+specializedEnum := &ast.EnumDecl{
+Name:     mangledName,
+IsPublic: template.IsPublic,
+Variants: g.substituteEnumVariants(template.Variants, monoCtx),
+Position: template.Position,
+// No GenericParams - this is a concrete type
+}
+
+// Mark as being generated
+g.monomorphizedEnums[mangledName] = &MonomorphizedEnum{
+BaseName:    baseName,
+TypeArgs:    typeArgs,
+MangledName: mangledName,
+Generated:   false,
+}
+
+// Register the specialized enum type
+if err := g.registerEnumType(specializedEnum); err != nil {
+return "", fmt.Errorf("error registering monomorphized enum %s: %w", mangledName, err)
+}
+
+// Mark as generated
+g.monomorphizedEnums[mangledName].Generated = true
+
+return mangledName, nil
+}
+
+// substituteEnumVariants applies type substitutions to enum variants
+func (g *Generator) substituteEnumVariants(variants []*ast.EnumVariant, ctx *semantic.GenericContext) []*ast.EnumVariant {
+result := make([]*ast.EnumVariant, len(variants))
+for i, variant := range variants {
+// Substitute types in variant parameters
+newParams := make([]*ast.EnumVariantParam, len(variant.Parameters))
+for j, param := range variant.Parameters {
+newParams[j] = &ast.EnumVariantParam{
+Name:     param.Name,
+Type:     ctx.Substitute(param.Type),
+Position: param.Position,
+}
+}
+
+result[i] = &ast.EnumVariant{
+Name:       variant.Name,
+Parameters: newParams,
+Position:   variant.Position,
 }
 }
 return result
