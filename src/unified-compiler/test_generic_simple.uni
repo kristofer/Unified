@@ -1,8 +1,0 @@
-fn identity<T>(x: T) -> T {
-    return x
-}
-
-fn main() -> Int {
-    let a = identity(42)
-    return a
-}

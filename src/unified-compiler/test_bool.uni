@@ -1,4 +1,0 @@
-fn main() -> Int {
-    let z = true
-    return 0
-}

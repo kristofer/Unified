@@ -61,6 +61,10 @@ monomorphized map[string]*MonomorphizedFunction
 // Deferred monomorphization queue
 // Functions that need to be generated after all regular functions
 deferredMonomorphizations []*MonomorphizedFunction
+
+// Call patches for deferred functions
+// Maps function name -> list of call instruction positions to patch
+callPatches map[string][]int
 	
 // Generic function templates
 // Maps function name -> FunctionDecl. Populated in first pass of Generate() to store
@@ -121,6 +125,7 @@ genericStructs: make(map[string]*ast.StructDecl),
 monomorphizedStructs: make(map[string]*MonomorphizedStruct),
 genericEnums: make(map[string]*ast.EnumDecl),
 monomorphizedEnums: make(map[string]*MonomorphizedEnum),
+callPatches: make(map[string][]int),
 }
 }
 
@@ -200,6 +205,25 @@ return nil, fmt.Errorf("error generating monomorphized function %s: %w", mono.Ma
 }
 
 mono.Generated = true
+
+// Patch any calls to this function
+if patches, ok := g.callPatches[mono.MangledName]; ok {
+funcIdx := g.bytecode.Functions[mono.MangledName]
+for _, patchPos := range patches {
+// Update the operand of the OpCall instruction
+g.bytecode.Instructions[patchPos].Operand = int64(funcIdx)
+}
+delete(g.callPatches, mono.MangledName)
+}
+}
+
+// Check if any calls remain unpatched (shouldn't happen)
+if len(g.callPatches) > 0 {
+var unpatched []string
+for name := range g.callPatches {
+unpatched = append(unpatched, name)
+}
+return nil, fmt.Errorf("unpatched function calls: %v", unpatched)
 }
 
 // Add final HALT instruction
@@ -715,10 +739,13 @@ return err
 // Call the monomorphized version
 funcIdx, ok := g.bytecode.Functions[mangledName]
 if !ok {
-return fmt.Errorf("monomorphized function not found: %s", mangledName)
-}
-		
+// Function not yet generated - emit placeholder and record patch position
+callPos := g.bytecode.CurrentPosition()
+g.callPatches[mangledName] = append(g.callPatches[mangledName], callPos)
+g.bytecode.AddInstructionWithArgCount(OpCall, 0, len(expr.Arguments)) // Placeholder operand
+} else {
 g.bytecode.AddInstructionWithArgCount(OpCall, int64(funcIdx), len(expr.Arguments))
+}
 return nil
 }
 
@@ -1552,10 +1579,6 @@ Context:    monoCtx,
 // Store in both maps
 g.monomorphized[mangledName] = mono
 g.deferredMonomorphizations = append(g.deferredMonomorphizations, mono)
-
-// Add placeholder entry to Functions map - will be updated when generated
-// Use -1 as a placeholder to indicate "not yet generated"
-g.bytecode.AddFunction(mangledName, -1)
 	
 return mangledName, nil
 }
@@ -1573,6 +1596,35 @@ err := g.generateFunction(mono.Template)
 g.genericContext = savedCtx
 	
 return err
+}
+
+// processDeferredMonomorphizations is a helper method for testing
+// It processes all deferred monomorphizations immediately
+func (g *Generator) processDeferredMonomorphizations() error {
+for len(g.deferredMonomorphizations) > 0 {
+mono := g.deferredMonomorphizations[0]
+g.deferredMonomorphizations = g.deferredMonomorphizations[1:]
+
+if mono.Generated {
+continue
+}
+
+if err := g.generateMonomorphizedFunction(mono); err != nil {
+return err
+}
+
+mono.Generated = true
+
+// Patch any calls
+if patches, ok := g.callPatches[mono.MangledName]; ok {
+funcIdx := g.bytecode.Functions[mono.MangledName]
+for _, patchPos := range patches {
+g.bytecode.Instructions[patchPos].Operand = int64(funcIdx)
+}
+delete(g.callPatches, mono.MangledName)
+}
+}
+return nil
 }
 
 // substituteParameters applies type substitutions to function parameters

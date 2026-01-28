@@ -43,6 +43,11 @@ func TestMonomorphizeIdentityFunction(t *testing.T) {
 		t.Errorf("Expected mangled name %s, got %s", expectedName, mangledName)
 	}
 	
+	// Process deferred monomorphizations
+	if err := gen.processDeferredMonomorphizations(); err != nil {
+		t.Fatalf("Failed to process deferred monomorphizations: %v", err)
+	}
+	
 	// Check that the function was registered
 	if _, ok := gen.bytecode.Functions[mangledName]; !ok {
 		t.Errorf("Monomorphized function %s not registered", mangledName)
@@ -83,6 +88,11 @@ func TestMonomorphizePairFunction(t *testing.T) {
 	mangledName, err := gen.monomorphizeFunction("pair", typeArgs)
 	if err != nil {
 		t.Fatalf("Monomorphization failed: %v", err)
+	}
+	
+	// Process deferred monomorphizations
+	if err := gen.processDeferredMonomorphizations(); err != nil {
+		t.Fatalf("Failed to process deferred monomorphizations: %v", err)
 	}
 	
 	expectedName := "pair_Int_String"
@@ -128,6 +138,11 @@ func TestGenerateGenericCallWithInference(t *testing.T) {
 	err := gen.generateCallExpr(callExpr)
 	if err != nil {
 		t.Fatalf("Failed to generate generic call: %v", err)
+	}
+	
+	// Process deferred monomorphizations
+	if err := gen.processDeferredMonomorphizations(); err != nil {
+		t.Fatalf("Failed to process deferred monomorphizations: %v", err)
 	}
 	
 	// Verify monomorphized function was created
@@ -228,6 +243,11 @@ func TestMultipleMonomorphizations(t *testing.T) {
 	// Verify different names
 	if name1 == name2 {
 		t.Errorf("Expected different mangled names, both are %s", name1)
+	}
+	
+	// Process deferred monomorphizations
+	if err := gen.processDeferredMonomorphizations(); err != nil {
+		t.Fatalf("Failed to process deferred monomorphizations: %v", err)
 	}
 	
 	// Verify both functions are registered

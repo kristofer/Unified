@@ -1,4 +1,0 @@
-fn main() -> Int {
-    let a = 42
-    return a
-}
