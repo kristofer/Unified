@@ -189,41 +189,8 @@ return nil, fmt.Errorf("unsupported top-level item: %T", item)
 }
 
 // Third pass: Generate all deferred monomorphized functions
-for len(g.deferredMonomorphizations) > 0 {
-// Pop the first deferred function
-mono := g.deferredMonomorphizations[0]
-g.deferredMonomorphizations = g.deferredMonomorphizations[1:]
-
-// Skip if already generated
-if mono.Generated {
-continue
-}
-
-// Generate the monomorphized function
-if err := g.generateMonomorphizedFunction(mono); err != nil {
-return nil, fmt.Errorf("error generating monomorphized function %s: %w", mono.MangledName, err)
-}
-
-mono.Generated = true
-
-// Patch any calls to this function
-if patches, ok := g.callPatches[mono.MangledName]; ok {
-funcIdx := g.bytecode.Functions[mono.MangledName]
-for _, patchPos := range patches {
-// Update the operand of the OpCall instruction
-g.bytecode.Instructions[patchPos].Operand = int64(funcIdx)
-}
-delete(g.callPatches, mono.MangledName)
-}
-}
-
-// Check if any calls remain unpatched (shouldn't happen)
-if len(g.callPatches) > 0 {
-var unpatched []string
-for name := range g.callPatches {
-unpatched = append(unpatched, name)
-}
-return nil, fmt.Errorf("unpatched function calls: %v", unpatched)
+if err := g.processDeferredMonomorphizations(); err != nil {
+return nil, err
 }
 
 // Add final HALT instruction
@@ -1610,20 +1577,37 @@ continue
 }
 
 if err := g.generateMonomorphizedFunction(mono); err != nil {
-return err
+return fmt.Errorf("error generating monomorphized function %s: %w", mono.MangledName, err)
 }
 
 mono.Generated = true
 
 // Patch any calls
 if patches, ok := g.callPatches[mono.MangledName]; ok {
-funcIdx := g.bytecode.Functions[mono.MangledName]
+funcIdx, ok := g.bytecode.Functions[mono.MangledName]
+if !ok {
+return fmt.Errorf("monomorphized function %s not registered in Functions map", mono.MangledName)
+}
 for _, patchPos := range patches {
+// Bounds check before patching
+if patchPos < 0 || patchPos >= len(g.bytecode.Instructions) {
+return fmt.Errorf("invalid patch position %d (instruction count: %d)", patchPos, len(g.bytecode.Instructions))
+}
 g.bytecode.Instructions[patchPos].Operand = int64(funcIdx)
 }
 delete(g.callPatches, mono.MangledName)
 }
 }
+
+// Check if any calls remain unpatched (shouldn't happen)
+if len(g.callPatches) > 0 {
+var unpatched []string
+for name := range g.callPatches {
+unpatched = append(unpatched, name)
+}
+return fmt.Errorf("unpatched function calls: %v", unpatched)
+}
+
 return nil
 }
 
@@ -1875,19 +1859,13 @@ return nil, fmt.Errorf("unknown unary operator: %v", e.Operator)
 case *ast.CallExpr:
 // Try to infer return type from function
 if funcIdent, ok := e.Function.(*ast.Identifier); ok {
-// Check if it's a regular function
-if fn, ok := g.bytecode.Functions[funcIdent.Name]; ok {
-// We don't have return type info in Functions map
-// For now, return nil
-_ = fn
-return nil, fmt.Errorf("cannot infer return type for function call %s", funcIdent.Name)
-}
 // Check if it's a generic function
 if genericFn, ok := g.genericFunctions[funcIdent.Name]; ok {
-// We would need to monomorphize to get the return type
-// For now, return the generic return type (may have type params)
+// Return the generic return type (may have type params)
 return genericFn.ReturnType, nil
 }
+// For regular functions, we don't have return type info available
+// This would require semantic analysis integration
 }
 return nil, fmt.Errorf("cannot infer type for call expression")
 case *ast.StructExpr:
