@@ -625,8 +625,26 @@ func (g *Generator) getExpressionType(expr ast.Expression) ValueType {
 	case *ast.StructExpr, *ast.EnumConstructorExpr, *ast.ListExpr:
 		// Complex types are represented as pointers (i32 in WASM)
 		return I32
-	case *ast.FieldAccessExpr, *ast.IndexExpr:
-		// Field access and indexing return the field/element type
+	case *ast.FieldAccessExpr:
+		// Field access returns the field type
+		// Try to determine the struct type and field type
+		if ident, ok := e.Object.(*ast.Identifier); ok {
+			if varType, exists := g.localVarTypes[ident.Name]; exists {
+				if typeRef, ok := varType.(*ast.TypeReference); ok {
+					if structInfo, exists := g.structRegistry[typeRef.Name]; exists {
+						for i, fieldName := range structInfo.FieldNames {
+							if fieldName == e.Field && i < len(structInfo.FieldTypes) {
+								return g.convertType(structInfo.FieldTypes[i])
+							}
+						}
+					}
+				}
+			}
+		}
+		// Default to i64 if we can't determine the type
+		return I64
+	case *ast.IndexExpr:
+		// Array indexing returns the element type
 		// For simplicity, default to i64
 		return I64
 	default:
@@ -830,20 +848,30 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 		}
 	}
 	
-	// Look up field offset in struct registry
+	// Look up field offset and type in struct registry
 	fieldOffset := 4 // Default to first field
+	fieldType := I64 // Default type
 	if structInfo, exists := g.structRegistry[structName]; exists {
 		for i, fieldName := range structInfo.FieldNames {
 			if fieldName == fieldAccess.Field {
 				fieldOffset = 4 + i*8
+				// Get the WASM type for this field
+				if i < len(structInfo.FieldTypes) {
+					fieldType = g.convertType(structInfo.FieldTypes[i])
+				}
 				break
 			}
 		}
 	}
 	
-	// Load field value
-	body.WriteByte(0x29) // i64.load
-	g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
+	// Load field value using the correct load instruction
+	if fieldType == I32 {
+		body.WriteByte(0x28) // i32.load
+		g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	} else {
+		body.WriteByte(0x29) // i64.load
+		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
+	}
 	g.emitULEB128(body, uint64(fieldOffset))
 	
 	return nil
