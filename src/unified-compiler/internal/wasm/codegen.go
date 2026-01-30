@@ -625,8 +625,26 @@ func (g *Generator) getExpressionType(expr ast.Expression) ValueType {
 	case *ast.StructExpr, *ast.EnumConstructorExpr, *ast.ListExpr:
 		// Complex types are represented as pointers (i32 in WASM)
 		return I32
-	case *ast.FieldAccessExpr, *ast.IndexExpr:
-		// Field access and indexing return the field/element type
+	case *ast.FieldAccessExpr:
+		// Field access returns the field type
+		// Try to determine the struct type and field type
+		if ident, ok := e.Object.(*ast.Identifier); ok {
+			if varType, exists := g.localVarTypes[ident.Name]; exists {
+				if typeRef, ok := varType.(*ast.TypeReference); ok {
+					if structInfo, exists := g.structRegistry[typeRef.Name]; exists {
+						for i, fieldName := range structInfo.FieldNames {
+							if fieldName == e.Field && i < len(structInfo.FieldTypes) {
+								return g.convertType(structInfo.FieldTypes[i])
+							}
+						}
+					}
+				}
+			}
+		}
+		// Default to i64 if we can't determine the type
+		return I64
+	case *ast.IndexExpr:
+		// Array indexing returns the element type
 		// For simplicity, default to i64
 		return I64
 	default:
@@ -666,8 +684,8 @@ func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) e
 	// For now, we'll assume the iterable has its length at offset 0
 	g.emitGetLocal(body, iterableLocal)
 	body.WriteByte(0x28) // i32.load
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Store length in a local
 	lengthLocal := g.localVarCount
@@ -708,8 +726,8 @@ func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) e
 	body.WriteByte(0x6C) // i32.mul
 	body.WriteByte(0x6A) // i32.add
 	body.WriteByte(0x29) // i64.load
-	body.WriteByte(0x03) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
+	g.emitULEB128(body, 0) // offset
 	g.emitSetLocal(body, loopVarLocal)
 	
 	// Generate loop body
@@ -764,12 +782,17 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	// Calculate struct size (simplified: 4 bytes for type + 8 bytes per field)
 	structSize := uint32(4 + (len(structExpr.FieldInits) * 8))
 	
-	// Allocate memory on heap
+	// Allocate memory on heap (leaves pointer on stack)
 	g.emitHeapAlloc(body, structSize)
 	
-	// Duplicate pointer for storing fields
-	body.WriteByte(0x22) // local.tee
+	// We need to use this pointer multiple times (for type ID and each field)
+	// So we store it in a temporary local
 	tempLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)  // Pointer is i32
+	g.localVarCount++
+	
+	// Store pointer to temp local (consumes the pointer from heap alloc)
+	body.WriteByte(0x21) // local.set
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store type ID (simple hash of struct name)
@@ -782,20 +805,22 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	body.WriteByte(0x41) // i32.const (type ID)
 	g.emitULEB128(body, uint64(typeID))
 	body.WriteByte(0x36) // i32.store
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Store each field
 	for i, field := range structExpr.FieldInits {
+		// Load struct pointer
+		g.emitGetLocal(body, tempLocal)
+		
 		// Generate field value
 		if err := g.generateExpression(body, field.Value); err != nil {
 			return err
 		}
 		
 		// Store at offset (4 + i*8)
-		g.emitGetLocal(body, tempLocal)
 		body.WriteByte(0x37) // i64.store
-		body.WriteByte(0x03) // alignment
+		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8)) // offset
 	}
 	
@@ -812,13 +837,41 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 		return err
 	}
 	
-	// TODO: Look up field offset based on struct type
-	// For now, assume fields are at fixed offsets (4 bytes for type + 8*index)
-	fieldOffset := 4 // Placeholder
+	// Determine the struct type from the object expression
+	var structName string
+	if ident, ok := fieldAccess.Object.(*ast.Identifier); ok {
+		// Get the type of the variable
+		if varType, exists := g.localVarTypes[ident.Name]; exists {
+			if typeRef, ok := varType.(*ast.TypeReference); ok {
+				structName = typeRef.Name
+			}
+		}
+	}
 	
-	// Load field value
-	body.WriteByte(0x29) // i64.load
-	body.WriteByte(0x03) // alignment
+	// Look up field offset and type in struct registry
+	fieldOffset := 4 // Default to first field
+	fieldType := I64 // Default type
+	if structInfo, exists := g.structRegistry[structName]; exists {
+		for i, fieldName := range structInfo.FieldNames {
+			if fieldName == fieldAccess.Field {
+				fieldOffset = 4 + i*8
+				// Get the WASM type for this field
+				if i < len(structInfo.FieldTypes) {
+					fieldType = g.convertType(structInfo.FieldTypes[i])
+				}
+				break
+			}
+		}
+	}
+	
+	// Load field value using the correct load instruction
+	if fieldType == I32 {
+		body.WriteByte(0x28) // i32.load
+		g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	} else {
+		body.WriteByte(0x29) // i64.load
+		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
+	}
 	g.emitULEB128(body, uint64(fieldOffset))
 	
 	return nil
@@ -847,8 +900,8 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 	body.WriteByte(0x41) // i32.const (tag value)
 	g.emitULEB128(body, uint64(variantTag))
 	body.WriteByte(0x36) // i32.store
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Store each argument
 	for i, arg := range enumExpr.Arguments {
@@ -858,7 +911,7 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 		
 		g.emitGetLocal(body, tempLocal)
 		body.WriteByte(0x37) // i64.store
-		body.WriteByte(0x03) // alignment
+		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8))
 	}
 	
@@ -888,8 +941,8 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 	body.WriteByte(0x41) // i32.const (length)
 	g.emitULEB128(body, uint64(len(listExpr.Elements)))
 	body.WriteByte(0x36) // i32.store
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Store each element
 	for i, elem := range listExpr.Elements {
@@ -899,7 +952,7 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 		
 		g.emitGetLocal(body, tempLocal)
 		body.WriteByte(0x37) // i64.store
-		body.WriteByte(0x03) // alignment
+		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8))
 	}
 	
@@ -966,8 +1019,8 @@ func (g *Generator) generateIndexExpr(body *bytes.Buffer, indexExpr *ast.IndexEx
 	
 	// Load element
 	body.WriteByte(0x29) // i64.load
-	body.WriteByte(0x03) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	return nil
 }

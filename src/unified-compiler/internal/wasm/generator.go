@@ -7,6 +7,13 @@ import (
 	"unified-compiler/internal/ast"
 )
 
+// StructInfo stores information about a struct type
+type StructInfo struct {
+	Name      string
+	FieldNames []string
+	FieldTypes []ast.Type
+}
+
 // Generator converts AST to WASM module
 type Generator struct {
 	module         *Module
@@ -18,6 +25,7 @@ type Generator struct {
 	currentFuncReturnType ast.Type     // Return type of current function being generated
 	memoryAllocator *MemoryAllocator   // Memory allocator for static data
 	stringTable     map[string]uint32  // Map string literals to memory offsets
+	structRegistry  map[string]*StructInfo // Map struct names to their info
 }
 
 // Module represents a WASM module
@@ -94,6 +102,7 @@ func NewGenerator() *Generator {
 		functionIndex:  0,
 		memoryAllocator: NewMemoryAllocator(),
 		stringTable:     make(map[string]uint32),
+		structRegistry:  make(map[string]*StructInfo),
 	}
 }
 
@@ -102,7 +111,26 @@ func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 	// Initialize heap pointer global
 	g.InitializeHeapPointer()
 	
-	// First pass: collect function declarations
+	// First pass: collect struct declarations
+	for _, item := range program.Items {
+		if structDecl, ok := item.(*ast.StructDecl); ok {
+			fieldNames := make([]string, 0, len(structDecl.Members))
+			fieldTypes := make([]ast.Type, 0, len(structDecl.Members))
+			for _, member := range structDecl.Members {
+				if !member.IsMethod {
+					fieldNames = append(fieldNames, member.Name)
+					fieldTypes = append(fieldTypes, member.Type)
+				}
+			}
+			g.structRegistry[structDecl.Name] = &StructInfo{
+				Name:       structDecl.Name,
+				FieldNames: fieldNames,
+				FieldTypes: fieldTypes,
+			}
+		}
+	}
+	
+	// Second pass: collect function declarations
 	for _, item := range program.Items {
 		if fn, ok := item.(*ast.FunctionDecl); ok {
 			if err := g.addFunction(fn); err != nil {
@@ -286,7 +314,8 @@ func (g *Generator) convertType(t ast.Type) ValueType {
 		case "f64", "Float64", "Float":
 			return F64
 		default:
-			return I64
+			// For user-defined types (structs, enums, etc.), use I32 as pointer type
+			return I32
 		}
 	default:
 		return I64

@@ -24,6 +24,11 @@ func (m *Module) Encode() ([]byte, error) {
 		return nil, err
 	}
 
+	// Global section
+	if err := m.encodeGlobalSection(&buf); err != nil {
+		return nil, err
+	}
+
 	// Memory section
 	if err := m.encodeMemorySection(&buf); err != nil {
 		return nil, err
@@ -96,6 +101,41 @@ func (m *Module) encodeFunctionSection(buf *bytes.Buffer) error {
 
 	// Write section
 	buf.WriteByte(0x03) // function section ID
+	writeULEB128(buf, uint64(section.Len()))
+	buf.Write(section.Bytes())
+
+	return nil
+}
+
+// encodeGlobalSection encodes the global section
+func (m *Module) encodeGlobalSection(buf *bytes.Buffer) error {
+	if len(m.Globals) == 0 {
+		return nil
+	}
+
+	var section bytes.Buffer
+
+	// Number of globals
+	writeULEB128(&section, uint64(len(m.Globals)))
+
+	// Encode each global
+	for _, global := range m.Globals {
+		// Global type
+		section.WriteByte(byte(global.Type))
+		
+		// Mutability
+		if global.Mutable {
+			section.WriteByte(0x01)
+		} else {
+			section.WriteByte(0x00)
+		}
+		
+		// Initializer expression
+		section.Write(global.Init)
+	}
+
+	// Write section
+	buf.WriteByte(0x06) // global section ID
 	writeULEB128(buf, uint64(section.Len()))
 	buf.Write(section.Bytes())
 
