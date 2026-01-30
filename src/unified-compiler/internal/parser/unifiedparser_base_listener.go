@@ -368,6 +368,12 @@ func (s *BaseUnifiedParserListener) EnterConstructorExpr(ctx *ConstructorExprCon
 // ExitConstructorExpr is called when production constructorExpr is exited.
 func (s *BaseUnifiedParserListener) ExitConstructorExpr(ctx *ConstructorExprContext) {}
 
+// EnterEnumConstructorExpr is called when production enumConstructorExpr is entered.
+func (s *BaseUnifiedParserListener) EnterEnumConstructorExpr(ctx *EnumConstructorExprContext) {}
+
+// ExitEnumConstructorExpr is called when production enumConstructorExpr is exited.
+func (s *BaseUnifiedParserListener) ExitEnumConstructorExpr(ctx *EnumConstructorExprContext) {}
+
 // EnterStructExpr is called when production structExpr is entered.
 func (s *BaseUnifiedParserListener) EnterStructExpr(ctx *StructExprContext) {}
 
