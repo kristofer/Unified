@@ -1061,7 +1061,22 @@ func (v *ASTBuilder) VisitExprStatement(ctx *parser.ExprStatementContext) interf
 		return nil
 	}
 
-	expr := v.VisitExpr(ctx.Expr().(*parser.ExprContext))
+	// Special case: if the expression is an if-construct, we need to check
+	// if it should be treated as an IfStatement instead of an ExprStatement
+	exprCtx := ctx.Expr().(*parser.ExprContext)
+	if len(exprCtx.AllIF()) > 0 && len(exprCtx.AllBlock()) > 0 {
+		// This is an if-construct used as a statement
+		// Extract the parts and build an IfStatement directly
+		return v.buildIfStatement(
+			exprCtx.AllExpr(),
+			exprCtx.AllBlock(),
+			exprCtx.AllIF(),
+			exprCtx.AllELSE(),
+			exprCtx,
+		)
+	}
+
+	expr := v.VisitExpr(exprCtx)
 	if expr == nil {
 		return nil
 	}
@@ -1069,6 +1084,58 @@ func (v *ASTBuilder) VisitExprStatement(ctx *parser.ExprStatementContext) interf
 	return &ExprStatement{
 		Expression: expr.(Expression),
 		Position:   v.getPosition(ctx),
+	}
+}
+
+// buildIfStatement is a shared helper to build IfStatement from context parts
+// This works with both IfStatementContext and ExprContext that contain if-constructs
+func (v *ASTBuilder) buildIfStatement(
+	allExpr []parser.IExprContext,
+	allBlock []parser.IBlockContext,
+	allIF []antlr.TerminalNode,
+	allELSE []antlr.TerminalNode,
+	ctx antlr.ParserRuleContext,
+) *IfStatement {
+	// Process main if condition and block
+	condition := v.VisitExpr(allExpr[0].(*parser.ExprContext)).(Expression)
+	thenBlock := v.VisitBlock(allBlock[0].(*parser.BlockContext)).(*Block)
+
+	// Process else-if branches
+	var elseIfBranches []*IfBranch
+	
+	// Count how many else-if branches we have
+	elseIfCount := 0
+	for i := 0; i < len(allELSE) && i < len(allIF)-1; i++ {
+		if allELSE[i] != nil && i+1 < len(allIF) {
+			elseIfCount++
+		}
+	}
+
+	// Process each else-if branch
+	for i := 0; i < elseIfCount; i++ {
+		exprIndex := i + 1
+		blockIndex := i + 1
+		elseIfCondition := v.VisitExpr(allExpr[exprIndex].(*parser.ExprContext)).(Expression)
+		elseIfBlock := v.VisitBlock(allBlock[blockIndex].(*parser.BlockContext)).(*Block)
+		elseIfBranches = append(elseIfBranches, &IfBranch{
+			Condition: elseIfCondition,
+			Body:      elseIfBlock,
+		})
+	}
+
+	// Process else block if present
+	var elseBlock *Block
+	if len(allELSE) > len(allIF)-1 {
+		elseBlockIndex := len(allBlock) - 1
+		elseBlock = v.VisitBlock(allBlock[elseBlockIndex].(*parser.BlockContext)).(*Block)
+	}
+
+	return &IfStatement{
+		Condition:      condition,
+		ThenBlock:      thenBlock,
+		ElseIfBranches: elseIfBranches,
+		ElseBlock:      elseBlock,
+		Position:       v.getPosition(ctx),
 	}
 }
 
@@ -1135,51 +1202,13 @@ func (v *ASTBuilder) VisitRegionStatement(ctx *parser.RegionStatementContext) in
 
 // VisitIfStatement builds an if statement node
 func (v *ASTBuilder) VisitIfStatement(ctx *parser.IfStatementContext) interface{} {
-	// Process main if condition and block
-	condition := v.VisitExpr(ctx.Expr(0).(*parser.ExprContext)).(Expression)
-	thenBlock := v.VisitBlock(ctx.Block(0).(*parser.BlockContext)).(*Block)
-
-	// Process else-if branches
-	var elseIfBranches []*IfBranch
-
-	// Count how many else-if branches we have
-	elseIfCount := 0
-	for i := 0; i < len(ctx.AllELSE()) && i < len(ctx.AllIF())-1; i++ {
-		if ctx.ELSE(i) != nil && i+1 < len(ctx.AllIF()) {
-			elseIfCount++
-		}
-	}
-
-	// Process each else-if branch
-	for i := 0; i < elseIfCount; i++ {
-		// The condition is the expression after the first IF
-		exprIndex := i + 1  // Skip the first expression which belongs to the main if
-		blockIndex := i + 1 // Skip the first block which belongs to the main if
-
-		elseIfCondition := v.VisitExpr(ctx.Expr(exprIndex).(*parser.ExprContext)).(Expression)
-		elseIfBlock := v.VisitBlock(ctx.Block(blockIndex).(*parser.BlockContext)).(*Block)
-
-		elseIfBranches = append(elseIfBranches, &IfBranch{
-			Condition: elseIfCondition,
-			Body:      elseIfBlock,
-		})
-	}
-
-	// Process else block if present
-	var elseBlock *Block
-	if len(ctx.AllELSE()) > len(ctx.AllIF())-1 { // There's one more ELSE than IF-1
-		// The last block is the else block
-		elseBlockIndex := len(ctx.AllBlock()) - 1
-		elseBlock = v.VisitBlock(ctx.Block(elseBlockIndex).(*parser.BlockContext)).(*Block)
-	}
-
-	return &IfStatement{
-		Condition:      condition,
-		ThenBlock:      thenBlock,
-		ElseIfBranches: elseIfBranches,
-		ElseBlock:      elseBlock,
-		Position:       v.getPosition(ctx),
-	}
+	return v.buildIfStatement(
+		ctx.AllExpr(),
+		ctx.AllBlock(),
+		ctx.AllIF(),
+		ctx.AllELSE(),
+		ctx,
+	)
 }
 
 // VisitLoopStatement builds a loop statement node

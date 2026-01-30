@@ -9,11 +9,13 @@ import (
 
 // Generator converts AST to WASM module
 type Generator struct {
-	module        *Module
-	localVars     map[string]int
-	localVarTypes map[string]ast.Type
-	localVarCount int
-	functionIndex int
+	module         *Module
+	localVars      map[string]int
+	localVarTypes  map[string]ast.Type
+	localVarCount  int
+	functionIndex  int
+	localTypeOrder []ValueType          // Track the order of local variable types
+	currentFuncReturnType ast.Type     // Return type of current function being generated
 }
 
 // Module represents a WASM module
@@ -84,9 +86,10 @@ func NewGenerator() *Generator {
 			Data:          make([]DataSegment, 0),
 			Globals:       make([]Global, 0),
 		},
-		localVars:     make(map[string]int),
-		localVarTypes: make(map[string]ast.Type),
-		functionIndex: 0,
+		localVars:      make(map[string]int),
+		localVarTypes:  make(map[string]ast.Type),
+		localTypeOrder: make([]ValueType, 0),
+		functionIndex:  0,
 	}
 }
 
@@ -121,6 +124,7 @@ func (g *Generator) addFunction(fn *ast.FunctionDecl) error {
 	// Reset local variable tracking for this function
 	g.localVars = make(map[string]int)
 	g.localVarTypes = make(map[string]ast.Type)
+	g.localTypeOrder = make([]ValueType, 0)
 	g.localVarCount = 0
 
 	// Create function type
@@ -130,6 +134,8 @@ func (g *Generator) addFunction(fn *ast.FunctionDecl) error {
 		// Add parameter as local variable
 		g.localVars[param.Name] = g.localVarCount
 		g.localVarTypes[param.Name] = param.Type
+		// Track parameter types in order
+		g.localTypeOrder = append(g.localTypeOrder, params[i])
 		g.localVarCount++
 	}
 
@@ -145,6 +151,9 @@ func (g *Generator) addFunction(fn *ast.FunctionDecl) error {
 
 	// Check if this function type already exists
 	typeIndex := g.findOrAddFunctionType(fnType)
+
+	// Set current function return type for type conversions
+	g.currentFuncReturnType = fn.ReturnType
 
 	// Generate function body
 	body, locals, err := g.generateFunctionBody(fn)
@@ -224,15 +233,27 @@ func (g *Generator) generateFunctionBody(fn *ast.FunctionDecl) ([]byte, []LocalV
 		}
 	}
 
-	// TODO: Type handling - currently all locals are treated as i64
-	// This needs to be enhanced to track actual types and create separate
-	// LocalVar entries for each type (i32, i64, f32, f64)
+	// Declare local variables grouped by type
+	// WASM requires locals to be declared in consecutive groups of the same type
+	// However, the indices remain in the order they were declared
 	if g.localVarCount > initialLocalCount {
-		// For now, treat all locals as i64
-		locals = append(locals, LocalVar{
-			Count: g.localVarCount - initialLocalCount,
-			Type:  I64,
-		})
+		// Group consecutive locals of the same type
+		for i := initialLocalCount; i < g.localVarCount; {
+			currentType := g.localTypeOrder[i]
+			count := 1
+			
+			// Count consecutive locals of the same type
+			for i+count < g.localVarCount && g.localTypeOrder[i+count] == currentType {
+				count++
+			}
+			
+			locals = append(locals, LocalVar{
+				Count: count,
+				Type:  currentType,
+			})
+			
+			i += count
+		}
 	}
 
 	// Add end instruction
