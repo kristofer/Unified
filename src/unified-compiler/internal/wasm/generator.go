@@ -16,6 +16,8 @@ type Generator struct {
 	functionIndex  int
 	localTypeOrder []ValueType          // Track the order of local variable types
 	currentFuncReturnType ast.Type     // Return type of current function being generated
+	memoryAllocator *MemoryAllocator   // Memory allocator for static data
+	stringTable     map[string]uint32  // Map string literals to memory offsets
 }
 
 // Module represents a WASM module
@@ -90,11 +92,16 @@ func NewGenerator() *Generator {
 		localVarTypes:  make(map[string]ast.Type),
 		localTypeOrder: make([]ValueType, 0),
 		functionIndex:  0,
+		memoryAllocator: NewMemoryAllocator(),
+		stringTable:     make(map[string]uint32),
 	}
 }
 
 // Generate converts an AST program to a WASM module
 func (g *Generator) Generate(program *ast.Program) (*Module, error) {
+	// Initialize heap pointer global
+	g.InitializeHeapPointer()
+	
 	// First pass: collect function declarations
 	for _, item := range program.Items {
 		if fn, ok := item.(*ast.FunctionDecl); ok {
@@ -115,6 +122,9 @@ func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 			break
 		}
 	}
+	
+	// Add data segments from memory allocator
+	g.module.Data = g.memoryAllocator.GetDataSegments()
 
 	return g.module, nil
 }

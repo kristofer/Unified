@@ -171,16 +171,27 @@ fn main() -> i64 {
 
 These issues don't block basic functionality but need systematic fixes for full language support.
 
-### 3. Missing Features (Not Yet Implemented)
-- Struct operations
-- Enum operations
-- Array operations
-- String manipulation (beyond literals)
-- For loops
-- Pattern matching
-- Advanced control flow
+### 3. Advanced Features (Recently Implemented) ✅
 
-These features worked in the old VM and need WASM implementations.
+The following features have been successfully implemented in the WASM backend:
+
+- ✅ **Struct operations** - Heap allocation, field access, type identification
+- ✅ **Enum operations** - Variant construction, tagged unions, basic pattern matching
+- ✅ **Array operations** - Literals, indexing with bounds checking, iteration
+- ✅ **String manipulation** - Literals in data section, deduplication, length access
+- ✅ **For loops** - Array iteration with proper variable binding
+- ✅ **Pattern matching** - Match expressions as if-else chains
+- ✅ **Advanced control flow** - Break and continue statements
+
+**Implementation Details:**
+- Memory allocator: Bump allocator with 8-byte alignment
+- Memory layouts defined for all complex types
+- 15+ unit tests covering all features
+- See `WASM_FEATURE_EXPANSION_SUMMARY.md` for complete details
+
+**Test Compatibility:**
+- ~10 existing test files should now work
+- See `WASM_TEST_COMPATIBILITY.md` for full list
 
 ## Benefits Achieved
 

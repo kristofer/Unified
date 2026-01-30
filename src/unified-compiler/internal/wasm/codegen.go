@@ -26,8 +26,14 @@ func (g *Generator) generateStatement(body *bytes.Buffer, stmt ast.Statement) er
 		return g.generateIf(body, s)
 	case *ast.WhileStatement:
 		return g.generateWhile(body, s)
+	case *ast.ForStatement:
+		return g.generateFor(body, s)
 	case *ast.AssignmentStatement:
 		return g.generateAssignment(body, s)
+	case *ast.BreakStatement:
+		return g.generateBreak(body, s)
+	case *ast.ContinueStatement:
+		return g.generateContinue(body, s)
 	default:
 		return fmt.Errorf("unsupported statement type: %T", stmt)
 	}
@@ -213,6 +219,18 @@ func (g *Generator) generateExpression(body *bytes.Buffer, expr ast.Expression) 
 		return g.generateIdentifier(body, e)
 	case *ast.CallExpr:
 		return g.generateCall(body, e)
+	case *ast.StructExpr:
+		return g.generateStructExpr(body, e)
+	case *ast.FieldAccessExpr:
+		return g.generateFieldAccess(body, e)
+	case *ast.EnumConstructorExpr:
+		return g.generateEnumConstructor(body, e)
+	case *ast.ListExpr:
+		return g.generateListExpr(body, e)
+	case *ast.IndexExpr:
+		return g.generateIndexExpr(body, e)
+	case *ast.MatchExpr:
+		return g.generateMatchExpr(body, e)
 	default:
 		return fmt.Errorf("unsupported expression type: %T", expr)
 	}
@@ -244,6 +262,31 @@ func (g *Generator) generateLiteral(body *bytes.Buffer, lit *ast.Literal) error 
 			body.WriteByte(0x01)
 		} else {
 			body.WriteByte(0x00)
+		}
+	case ast.LiteralString:
+		// String literals need to be stored in data section and referenced
+		// Check if we've already allocated this string
+		if offset, ok := g.stringTable[lit.Value]; ok {
+			// String already allocated, just return its pointer
+			body.WriteByte(0x41) // i32.const
+			g.emitULEB128(body, uint64(offset))
+		} else {
+			// Allocate new string in memory
+			// Layout: [length:i32][bytes...]
+			stringBytes := []byte(lit.Value)
+			
+			// Create data with length prefix
+			data := make([]byte, 4+len(stringBytes))
+			binary.LittleEndian.PutUint32(data[0:4], uint32(len(stringBytes)))
+			copy(data[4:], stringBytes)
+			
+			// Allocate in memory
+			offset := g.memoryAllocator.AllocateWithData(data)
+			g.stringTable[lit.Value] = offset
+			
+			// Return pointer to string
+			body.WriteByte(0x41) // i32.const
+			g.emitULEB128(body, uint64(offset))
 		}
 	default:
 		return fmt.Errorf("unsupported literal kind: %v", lit.Kind)
@@ -299,6 +342,10 @@ func (g *Generator) generateCall(body *bytes.Buffer, call *ast.CallExpr) error {
 
 // generateBinaryExpr generates WASM bytecode for a binary expression
 func (g *Generator) generateBinaryExpr(body *bytes.Buffer, expr *ast.BinaryExpr) error {
+	// Check for string concatenation (if both operands are strings and operator is Add)
+	// For now, we'll detect this by checking if operands are string literals
+	// TODO: Implement proper type inference
+	
 	// Determine types of operands
 	leftType := g.getExpressionType(expr.Left)
 	rightType := g.getExpressionType(expr.Right)
@@ -575,7 +622,398 @@ func (g *Generator) getExpressionType(expr ast.Expression) ValueType {
 		// Would need to look up function return type
 		// For now, default to i64
 		return I64
+	case *ast.StructExpr, *ast.EnumConstructorExpr, *ast.ListExpr:
+		// Complex types are represented as pointers (i32 in WASM)
+		return I32
+	case *ast.FieldAccessExpr, *ast.IndexExpr:
+		// Field access and indexing return the field/element type
+		// For simplicity, default to i64
+		return I64
 	default:
 		return I64 // Default to i64
 	}
+}
+
+// generateFor generates WASM bytecode for a for loop
+func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) error {
+	// For loops iterate over a collection
+	// We need to:
+	// 1. Evaluate the iterable expression (array/list)
+	// 2. Get its length
+	// 3. Loop from 0 to length-1
+	// 4. For each iteration, load the element and bind to the loop variable
+	
+	// Generate the iterable expression
+	if err := g.generateExpression(body, forStmt.Iterable); err != nil {
+		return err
+	}
+	
+	// Store the iterable in a temporary local
+	iterableLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32) // Pointer to array
+	g.localVarCount++
+	g.emitSetLocal(body, iterableLocal)
+	
+	// Create index variable (starts at 0)
+	indexLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	body.WriteByte(0x41) // i32.const
+	body.WriteByte(0x00) // 0
+	g.emitSetLocal(body, indexLocal)
+	
+	// Get length of iterable
+	// For now, we'll assume the iterable has its length at offset 0
+	g.emitGetLocal(body, iterableLocal)
+	body.WriteByte(0x28) // i32.load
+	body.WriteByte(0x02) // alignment
+	body.WriteByte(0x00) // offset
+	
+	// Store length in a local
+	lengthLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	g.emitSetLocal(body, lengthLocal)
+	
+	// Create loop variable
+	loopVarLocal := g.localVarCount
+	g.localVars[forStmt.Variable] = loopVarLocal
+	g.localTypeOrder = append(g.localTypeOrder, I64) // Element type
+	g.localVarCount++
+	
+	// block (outer - for break)
+	body.WriteByte(0x02) // block
+	body.WriteByte(0x40) // empty block type
+	
+	// loop (inner - for continue)
+	body.WriteByte(0x03) // loop
+	body.WriteByte(0x40) // empty block type
+	
+	// Check if index < length
+	g.emitGetLocal(body, indexLocal)
+	g.emitGetLocal(body, lengthLocal)
+	body.WriteByte(0x4E) // i32.ge_s (index >= length?)
+	body.WriteByte(0x0D) // br_if
+	body.WriteByte(0x01) // break to outer block if true
+	
+	// Load current element into loop variable
+	// Calculate address: iterable + 4 + (index * 8)
+	g.emitGetLocal(body, iterableLocal)
+	body.WriteByte(0x41) // i32.const
+	body.WriteByte(0x04) // 4 (skip length)
+	body.WriteByte(0x6A) // i32.add
+	g.emitGetLocal(body, indexLocal)
+	body.WriteByte(0x41) // i32.const
+	body.WriteByte(0x08) // 8 (element size)
+	body.WriteByte(0x6C) // i32.mul
+	body.WriteByte(0x6A) // i32.add
+	body.WriteByte(0x29) // i64.load
+	body.WriteByte(0x03) // alignment
+	body.WriteByte(0x00) // offset
+	g.emitSetLocal(body, loopVarLocal)
+	
+	// Generate loop body
+	for _, stmt := range forStmt.Body.Statements {
+		if err := g.generateStatement(body, stmt); err != nil {
+			return err
+		}
+	}
+	
+	// Increment index
+	g.emitGetLocal(body, indexLocal)
+	body.WriteByte(0x41) // i32.const
+	body.WriteByte(0x01) // 1
+	body.WriteByte(0x6A) // i32.add
+	g.emitSetLocal(body, indexLocal)
+	
+	// Branch back to loop start
+	body.WriteByte(0x0C) // br
+	body.WriteByte(0x00) // continue to loop
+	
+	body.WriteByte(0x0B) // end loop
+	body.WriteByte(0x0B) // end block
+	
+	return nil
+}
+
+// generateBreak generates WASM bytecode for a break statement
+func (g *Generator) generateBreak(body *bytes.Buffer, breakStmt *ast.BreakStatement) error {
+	// TODO: Implement proper label tracking for nested loops
+	// For now, break to depth 1 (outer block)
+	body.WriteByte(0x0C) // br
+	body.WriteByte(0x01) // break to outer block
+	return nil
+}
+
+// generateContinue generates WASM bytecode for a continue statement
+func (g *Generator) generateContinue(body *bytes.Buffer, continueStmt *ast.ContinueStatement) error {
+	// TODO: Implement proper label tracking for nested loops
+	// For now, continue to depth 0 (loop start)
+	body.WriteByte(0x0C) // br
+	body.WriteByte(0x00) // continue to loop
+	return nil
+}
+
+// generateStructExpr generates WASM bytecode for struct instantiation
+func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.StructExpr) error {
+	// Allocate memory for the struct
+	// For simplicity, we'll use a fixed layout:
+	// - First 4 bytes: type ID (hash of struct name)
+	// - Following bytes: fields in order (8 bytes each for i64)
+	
+	// Calculate struct size (simplified: 4 bytes for type + 8 bytes per field)
+	structSize := uint32(4 + (len(structExpr.FieldInits) * 8))
+	
+	// Allocate memory on heap
+	g.emitHeapAlloc(body, structSize)
+	
+	// Duplicate pointer for storing fields
+	body.WriteByte(0x22) // local.tee
+	tempLocal := g.localVarCount
+	g.emitULEB128(body, uint64(tempLocal))
+	
+	// Store type ID (simple hash of struct name)
+	typeID := uint32(0)
+	for _, ch := range structExpr.Name {
+		typeID = typeID*31 + uint32(ch)
+	}
+	
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x41) // i32.const (type ID)
+	g.emitULEB128(body, uint64(typeID))
+	body.WriteByte(0x36) // i32.store
+	body.WriteByte(0x02) // alignment
+	body.WriteByte(0x00) // offset
+	
+	// Store each field
+	for i, field := range structExpr.FieldInits {
+		// Generate field value
+		if err := g.generateExpression(body, field.Value); err != nil {
+			return err
+		}
+		
+		// Store at offset (4 + i*8)
+		g.emitGetLocal(body, tempLocal)
+		body.WriteByte(0x37) // i64.store
+		body.WriteByte(0x03) // alignment
+		g.emitULEB128(body, uint64(4+i*8)) // offset
+	}
+	
+	// Push the struct pointer as result
+	g.emitGetLocal(body, tempLocal)
+	
+	return nil
+}
+
+// generateFieldAccess generates WASM bytecode for field access
+func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.FieldAccessExpr) error {
+	// Generate the object expression (should produce a pointer)
+	if err := g.generateExpression(body, fieldAccess.Object); err != nil {
+		return err
+	}
+	
+	// TODO: Look up field offset based on struct type
+	// For now, assume fields are at fixed offsets (4 bytes for type + 8*index)
+	fieldOffset := 4 // Placeholder
+	
+	// Load field value
+	body.WriteByte(0x29) // i64.load
+	body.WriteByte(0x03) // alignment
+	g.emitULEB128(body, uint64(fieldOffset))
+	
+	return nil
+}
+
+// generateEnumConstructor generates WASM bytecode for enum construction
+func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.EnumConstructorExpr) error {
+	// Allocate memory for the enum
+	// Layout: [tag:i32][data1:i64][data2:i64]...
+	
+	enumSize := uint32(4 + (len(enumExpr.Arguments) * 8))
+	
+	// Allocate memory on heap
+	g.emitHeapAlloc(body, enumSize)
+	
+	// Duplicate pointer for storing data
+	body.WriteByte(0x22) // local.tee
+	tempLocal := g.localVarCount
+	g.emitULEB128(body, uint64(tempLocal))
+	
+	// Store tag (variant index)
+	// TODO: Look up variant tag from enum definition
+	variantTag := uint32(0) // Placeholder
+	
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x41) // i32.const (tag value)
+	g.emitULEB128(body, uint64(variantTag))
+	body.WriteByte(0x36) // i32.store
+	body.WriteByte(0x02) // alignment
+	body.WriteByte(0x00) // offset
+	
+	// Store each argument
+	for i, arg := range enumExpr.Arguments {
+		if err := g.generateExpression(body, arg); err != nil {
+			return err
+		}
+		
+		g.emitGetLocal(body, tempLocal)
+		body.WriteByte(0x37) // i64.store
+		body.WriteByte(0x03) // alignment
+		g.emitULEB128(body, uint64(4+i*8))
+	}
+	
+	// Push enum pointer
+	g.emitGetLocal(body, tempLocal)
+	
+	return nil
+}
+
+// generateListExpr generates WASM bytecode for array/list literal
+func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr) error {
+	// Allocate memory for the array
+	// Layout: [length:i32][elem0:i64][elem1:i64]...
+	
+	arraySize := uint32(4 + (len(listExpr.Elements) * 8))
+	
+	// Allocate memory on heap
+	g.emitHeapAlloc(body, arraySize)
+	
+	// Duplicate pointer for storing elements
+	body.WriteByte(0x22) // local.tee
+	tempLocal := g.localVarCount
+	g.emitULEB128(body, uint64(tempLocal))
+	
+	// Store length
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x41) // i32.const (length)
+	g.emitULEB128(body, uint64(len(listExpr.Elements)))
+	body.WriteByte(0x36) // i32.store
+	body.WriteByte(0x02) // alignment
+	body.WriteByte(0x00) // offset
+	
+	// Store each element
+	for i, elem := range listExpr.Elements {
+		if err := g.generateExpression(body, elem); err != nil {
+			return err
+		}
+		
+		g.emitGetLocal(body, tempLocal)
+		body.WriteByte(0x37) // i64.store
+		body.WriteByte(0x03) // alignment
+		g.emitULEB128(body, uint64(4+i*8))
+	}
+	
+	// Push array pointer
+	g.emitGetLocal(body, tempLocal)
+	
+	return nil
+}
+
+// generateIndexExpr generates WASM bytecode for array indexing
+func (g *Generator) generateIndexExpr(body *bytes.Buffer, indexExpr *ast.IndexExpr) error {
+	// Generate the array expression (should produce a pointer)
+	if err := g.generateExpression(body, indexExpr.Object); err != nil {
+		return err
+	}
+	
+	// Store array pointer in a temp local
+	tempLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	g.emitSetLocal(body, tempLocal)
+	
+	// Generate the index expression
+	if err := g.generateExpression(body, indexExpr.Index); err != nil {
+		return err
+	}
+	
+	// Convert i64 index to i32 if needed
+	// TODO: Add proper type checking
+	body.WriteByte(0xA7) // i32.wrap_i64
+	
+	// Store index in a temp local
+	indexLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	g.emitSetLocal(body, indexLocal)
+	
+	// Bounds checking: load array length and compare
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x28) // i32.load (load length)
+	body.WriteByte(0x02) // alignment
+	body.WriteByte(0x00) // offset
+	
+	// Check if index >= length
+	g.emitGetLocal(body, indexLocal)
+	body.WriteByte(0x4D) // i32.le_s (length <= index?)
+	
+	// If true, trap (out of bounds)
+	body.WriteByte(0x04) // if
+	body.WriteByte(0x40) // void
+	body.WriteByte(0x00) // unreachable (trap)
+	body.WriteByte(0x0B) // end
+	
+	// Calculate element address: array + 4 + (index * 8)
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x41) // i32.const
+	body.WriteByte(0x04) // 4 (skip length)
+	body.WriteByte(0x6A) // i32.add
+	g.emitGetLocal(body, indexLocal)
+	body.WriteByte(0x41) // i32.const
+	body.WriteByte(0x08) // 8
+	body.WriteByte(0x6C) // i32.mul
+	body.WriteByte(0x6A) // i32.add
+	
+	// Load element
+	body.WriteByte(0x29) // i64.load
+	body.WriteByte(0x03) // alignment
+	body.WriteByte(0x00) // offset
+	
+	return nil
+}
+
+// generateMatchExpr generates WASM bytecode for pattern matching
+func (g *Generator) generateMatchExpr(body *bytes.Buffer, matchExpr *ast.MatchExpr) error {
+	// Generate the value to match
+	if err := g.generateExpression(body, matchExpr.Value); err != nil {
+		return err
+	}
+	
+	// Store in temporary local
+	tempLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32) // Assuming pointer
+	g.localVarCount++
+	g.emitSetLocal(body, tempLocal)
+	
+	// Generate a series of if-else blocks for each case
+	for i, caseExpr := range matchExpr.Cases {
+		// TODO: Implement pattern matching logic
+		// For now, only support simple patterns
+		
+		if i < len(matchExpr.Cases)-1 {
+			// Not the last case, generate if
+			// TODO: Generate pattern test
+			body.WriteByte(0x41) // i32.const (placeholder condition)
+			body.WriteByte(0x01)
+			
+			body.WriteByte(0x04) // if
+			body.WriteByte(0x40) // void
+		}
+		
+		// Generate case expression
+		if err := g.generateExpression(body, caseExpr.Expression); err != nil {
+			return err
+		}
+		
+		if i < len(matchExpr.Cases)-1 {
+			body.WriteByte(0x05) // else
+		}
+	}
+	
+	// Close all if blocks
+	for i := 0; i < len(matchExpr.Cases)-1; i++ {
+		body.WriteByte(0x0B) // end
+	}
+	
+	return nil
 }
