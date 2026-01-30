@@ -224,11 +224,12 @@ func (g *Generator) generateFunctionBody(fn *ast.FunctionDecl) ([]byte, []LocalV
 		}
 	}
 
-	// TODO: Type handling - currently all locals are treated as i64
-	// This needs to be enhanced to track actual types and create separate
-	// LocalVar entries for each type (i32, i64, f32, f64)
+	// Currently all local variables are declared as i64
+	// This works for all integer types and comparisons
+	// Future enhancement: Track actual types (i32, f32, f64) separately
+	// to optimize variable storage and enable float/int distinction
 	if g.localVarCount > initialLocalCount {
-		// For now, treat all locals as i64
+		// All locals are i64 for simplicity
 		locals = append(locals, LocalVar{
 			Count: g.localVarCount - initialLocalCount,
 			Type:  I64,
