@@ -231,6 +231,8 @@ func (g *Generator) generateExpression(body *bytes.Buffer, expr ast.Expression) 
 		return g.generateIndexExpr(body, e)
 	case *ast.MatchExpr:
 		return g.generateMatchExpr(body, e)
+	case *ast.TryExpr:
+		return g.generateTryExpr(body, e)
 	default:
 		return fmt.Errorf("unsupported expression type: %T", expr)
 	}
@@ -887,9 +889,11 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 	// Allocate memory on heap
 	g.emitHeapAlloc(body, enumSize)
 	
-	// Duplicate pointer for storing data
-	body.WriteByte(0x22) // local.tee
+	// Store pointer in a temporary local
 	tempLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	body.WriteByte(0x21) // local.set
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store tag (variant index)
@@ -931,9 +935,11 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 	// Allocate memory on heap
 	g.emitHeapAlloc(body, arraySize)
 	
-	// Duplicate pointer for storing elements
-	body.WriteByte(0x22) // local.tee
+	// Store pointer in a temporary local
 	tempLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	body.WriteByte(0x21) // local.set
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store length
@@ -1067,6 +1073,61 @@ func (g *Generator) generateMatchExpr(body *bytes.Buffer, matchExpr *ast.MatchEx
 	for i := 0; i < len(matchExpr.Cases)-1; i++ {
 		body.WriteByte(0x0B) // end
 	}
+	
+	return nil
+}
+
+// generateTryExpr generates WASM bytecode for the try operator (?)
+// The try operator unwraps a Result/Option enum:
+// - For Result::Ok(value) or Option::Some(value), it returns the value
+// - For Result::Err(e) or Option::None, it performs an early return
+func (g *Generator) generateTryExpr(body *bytes.Buffer, tryExpr *ast.TryExpr) error {
+	// Generate the operand expression (should be a Result or Option enum)
+	if err := g.generateExpression(body, tryExpr.Operand); err != nil {
+		return err
+	}
+	
+	// Store the enum pointer in a temporary local
+	tempLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32) // Enum is a pointer
+	g.localVarCount++
+	body.WriteByte(0x21) // local.set
+	g.emitULEB128(body, uint64(tempLocal))
+	
+	// Load the variant tag (first i32 in the enum)
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x28) // i32.load
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
+	
+	// Store tag in another temporary
+	tagLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	body.WriteByte(0x21) // local.set
+	g.emitULEB128(body, uint64(tagLocal))
+	
+	// Check if tag == 0 (Ok/Some variant)
+	// If tag != 0, we need to return early with the error
+	g.emitGetLocal(body, tagLocal)
+	body.WriteByte(0x45) // i32.eqz (check if tag == 0)
+	
+	body.WriteByte(0x04) // if
+	body.WriteByte(0x40) // void
+	
+	// Tag == 0 (Ok/Some): Extract the value from offset 4
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x29) // i64.load
+	g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
+	g.emitULEB128(body, 4) // offset (skip 4-byte tag)
+	
+	body.WriteByte(0x05) // else
+	
+	// Tag != 0 (Err/None): Return the enum itself for error propagation
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x0F) // return (early return)
+	
+	body.WriteByte(0x0B) // end if
 	
 	return nil
 }

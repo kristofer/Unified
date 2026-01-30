@@ -26,6 +26,7 @@ type Generator struct {
 	memoryAllocator *MemoryAllocator   // Memory allocator for static data
 	stringTable     map[string]uint32  // Map string literals to memory offsets
 	structRegistry  map[string]*StructInfo // Map struct names to their info
+	enumRegistry    map[string]bool    // Map enum names to track which types are enums
 }
 
 // Module represents a WASM module
@@ -103,6 +104,7 @@ func NewGenerator() *Generator {
 		memoryAllocator: NewMemoryAllocator(),
 		stringTable:     make(map[string]uint32),
 		structRegistry:  make(map[string]*StructInfo),
+		enumRegistry:    make(map[string]bool),
 	}
 }
 
@@ -111,7 +113,7 @@ func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 	// Initialize heap pointer global
 	g.InitializeHeapPointer()
 	
-	// First pass: collect struct declarations
+	// First pass: collect struct and enum declarations
 	for _, item := range program.Items {
 		if structDecl, ok := item.(*ast.StructDecl); ok {
 			fieldNames := make([]string, 0, len(structDecl.Members))
@@ -127,6 +129,9 @@ func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 				FieldNames: fieldNames,
 				FieldTypes: fieldTypes,
 			}
+		} else if enumDecl, ok := item.(*ast.EnumDecl); ok {
+			// Register enum names so we know they're user-defined types
+			g.enumRegistry[enumDecl.Name] = true
 		}
 	}
 	
@@ -314,7 +319,14 @@ func (g *Generator) convertType(t ast.Type) ValueType {
 		case "f64", "Float64", "Float":
 			return F64
 		default:
-			// For user-defined types (structs, enums, etc.), use I32 as pointer type
+			// Check if this is a registered struct or enum
+			if _, isStruct := g.structRegistry[t.Name]; isStruct {
+				return I32 // Structs are pointers
+			}
+			if _, isEnum := g.enumRegistry[t.Name]; isEnum {
+				return I32 // Enums are pointers
+			}
+			// For unknown user-defined types, use I32 as pointer type
 			return I32
 		}
 	default:
