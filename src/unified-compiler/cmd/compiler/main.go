@@ -9,7 +9,7 @@ import (
 	"unified-compiler/internal/ast"
 	"unified-compiler/internal/bytecode"
 	"unified-compiler/internal/parser"
-	"unified-compiler/internal/vm"
+	"unified-compiler/internal/wasm"
 
 	"github.com/antlr4-go/antlr/v4"
 )
@@ -44,19 +44,27 @@ func compile(inputFile *string) {
 
 	fmt.Printf("AST built with %d top-level items\n", len(program.Items))
 
-	// 3. Generate bytecode
-	generator := bytecode.NewGenerator()
-	bc, err := generator.Generate(program)
+	// 3. Generate WASM module
+	wasmGenerator := wasm.NewGenerator()
+	module, err := wasmGenerator.Generate(program)
 	if err != nil {
-		fmt.Printf("Error generating bytecode: %v\n", err)
+		fmt.Printf("Error generating WASM: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Generated %d instructions\n", len(bc.Instructions))
+	fmt.Printf("Generated WASM module with %d functions\n", len(module.Functions))
 
-	// 4. Execute with VM
-	virtualMachine := vm.NewVM(bc)
-	result, err := virtualMachine.Run()
+	// 4. Encode WASM module to binary
+	wasmBytes, err := module.Encode()
+	if err != nil {
+		fmt.Printf("Error encoding WASM: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Encoded WASM module (%d bytes)\n", len(wasmBytes))
+
+	// 5. Execute with wazero runtime
+	result, err := wasm.CompileAndRun(wasmBytes)
 	if err != nil {
 		fmt.Printf("Runtime error: %v\n", err)
 		os.Exit(1)
