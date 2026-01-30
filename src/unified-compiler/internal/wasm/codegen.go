@@ -51,10 +51,6 @@ func (g *Generator) generateReturn(body *bytes.Buffer, ret *ast.ReturnStatement)
 			exprType := g.getExpressionType(ret.Value)
 			returnType := g.convertType(g.currentFuncReturnType)
 			
-			// DEBUG LOGGING
-			fmt.Printf("DEBUG generateReturn: expression type='%v', expected return type='%v'\n",
-				exprType, returnType)
-			
 			if exprType != returnType {
 				// Convert between types
 				if exprType == I32 && returnType == I64 {
@@ -861,6 +857,7 @@ func (g *Generator) generateRangeFor(body *bytes.Buffer, forStmt *ast.ForStateme
 	// Store start value in loop variable (use i64 for compatibility with Int type)
 	loopVarLocal := g.localVarCount
 	g.localVars[forStmt.Variable] = loopVarLocal
+	g.localVarTypes[forStmt.Variable] = &ast.TypeReference{Name: "Int", Position: ast.Position{}}
 	g.localTypeOrder = append(g.localTypeOrder, I64)
 	g.localVarCount++
 	
@@ -977,14 +974,16 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store type ID (simple hash of struct name)
+	// Use modulo to ensure it fits in positive int32 range
 	typeID := uint32(0)
 	for _, ch := range structExpr.Name {
 		typeID = typeID*31 + uint32(ch)
 	}
+	typeID = typeID % 0x7FFFFFFF // Keep in positive int32 range
 	
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (type ID)
-	g.emitLEB128(body, int64(int32(typeID)))
+	g.emitLEB128(body, int64(typeID))
 	body.WriteByte(0x36) // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
@@ -1021,10 +1020,6 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 	// Determine the struct type from the object expression
 	structName := g.getStructTypeName(fieldAccess.Object)
 	
-	// DEBUG LOGGING
-	fmt.Printf("DEBUG generateFieldAccess: object type='%s', field name='%s'\n", 
-		structName, fieldAccess.Field)
-	
 	// Look up field offset and type in struct registry
 	fieldOffset := 4 // Default to first field
 	fieldType := I64 // Default type
@@ -1035,22 +1030,11 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 				// Get the WASM type for this field
 				if i < len(structInfo.FieldTypes) {
 					fieldType = g.convertType(structInfo.FieldTypes[i])
-					fmt.Printf("DEBUG generateFieldAccess: field AST type='%v', WASM type='%v'\n", 
-						structInfo.FieldTypes[i], fieldType)
 				}
 				break
 			}
 		}
 	}
-	
-	// DEBUG LOGGING
-	fmt.Printf("DEBUG generateFieldAccess: field offset=%d, load instruction=%s\n", 
-		fieldOffset, func() string {
-			if fieldType == I32 {
-				return "i32.load"
-			}
-			return "i64.load"
-		}())
 	
 	// Load field value using the correct load instruction
 	if fieldType == I32 {
@@ -1111,8 +1095,8 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store tag (variant index)
-	// TODO: Look up variant tag from enum definition
-	variantTag := uint32(0) // Placeholder
+	// Keep variant tag in positive int32 range
+	variantTag := uint32(0) % 0x7FFFFFFF // Placeholder
 	
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (tag value)
@@ -1166,7 +1150,7 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 	
 	// Store each element
 	for i, elem := range listExpr.Elements {
-		// Load struct pointer
+		// Load array pointer
 		g.emitGetLocal(body, tempLocal)
 		
 		// Generate element value
