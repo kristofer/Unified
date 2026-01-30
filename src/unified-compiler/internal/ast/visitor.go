@@ -812,6 +812,9 @@ func (v *ASTBuilder) VisitPrimary(ctx *parser.PrimaryContext) interface{} {
 	if constructorExprCtx := ctx.ConstructorExpr(); constructorExprCtx != nil {
 		return v.VisitConstructorExpr(constructorExprCtx.(*parser.ConstructorExprContext))
 	}
+	if enumConstructorExprCtx := ctx.EnumConstructorExpr(); enumConstructorExprCtx != nil {
+		return v.VisitEnumConstructorExpr(enumConstructorExprCtx.(*parser.EnumConstructorExprContext))
+	}
 	if structExprCtx := ctx.StructExpr(); structExprCtx != nil {
 		return v.VisitStructExpr(structExprCtx.(*parser.StructExprContext))
 	}
@@ -845,6 +848,32 @@ func (v *ASTBuilder) VisitStructExpr(ctx *parser.StructExprContext) interface{} 
 		TypeArgs:   typeArgs,
 		FieldInits: fieldInits,
 		Position:   v.getPosition(ctx),
+	}
+}
+
+// VisitEnumConstructorExpr builds an EnumConstructorExpr node
+func (v *ASTBuilder) VisitEnumConstructorExpr(ctx *parser.EnumConstructorExprContext) interface{} {
+	// Get the two identifiers (enum name and variant name)
+	identifiers := ctx.AllIdentifier()
+	if len(identifiers) < 2 {
+		// Invalid enum constructor
+		return nil
+	}
+	
+	enumName := identifiers[0].GetText()
+	variantName := identifiers[1].GetText()
+	
+	// Process arguments if present
+	var args []Expression
+	if argListCtx := ctx.ArgList(); argListCtx != nil {
+		args = v.processArgList(argListCtx.(*parser.ArgListContext))
+	}
+	
+	return &EnumConstructorExpr{
+		EnumName:  enumName,
+		Variant:   variantName,
+		Arguments: args,
+		Position:  v.getPosition(ctx),
 	}
 }
 

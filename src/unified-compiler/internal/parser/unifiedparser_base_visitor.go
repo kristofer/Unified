@@ -239,6 +239,10 @@ func (v *BaseUnifiedParserVisitor) VisitConstructorExpr(ctx *ConstructorExprCont
 	return v.VisitChildren(ctx)
 }
 
+func (v *BaseUnifiedParserVisitor) VisitEnumConstructorExpr(ctx *EnumConstructorExprContext) interface{} {
+	return v.VisitChildren(ctx)
+}
+
 func (v *BaseUnifiedParserVisitor) VisitStructExpr(ctx *StructExprContext) interface{} {
 	return v.VisitChildren(ctx)
 }

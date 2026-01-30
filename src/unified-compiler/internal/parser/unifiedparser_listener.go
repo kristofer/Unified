@@ -181,6 +181,9 @@ type UnifiedParserListener interface {
 	// EnterConstructorExpr is called when entering the constructorExpr production.
 	EnterConstructorExpr(c *ConstructorExprContext)
 
+	// EnterEnumConstructorExpr is called when entering the enumConstructorExpr production.
+	EnterEnumConstructorExpr(c *EnumConstructorExprContext)
+
 	// EnterStructExpr is called when entering the structExpr production.
 	EnterStructExpr(c *StructExprContext)
 
@@ -393,6 +396,9 @@ type UnifiedParserListener interface {
 
 	// ExitConstructorExpr is called when exiting the constructorExpr production.
 	ExitConstructorExpr(c *ConstructorExprContext)
+
+	// ExitEnumConstructorExpr is called when exiting the enumConstructorExpr production.
+	ExitEnumConstructorExpr(c *EnumConstructorExprContext)
 
 	// ExitStructExpr is called when exiting the structExpr production.
 	ExitStructExpr(c *StructExprContext)
