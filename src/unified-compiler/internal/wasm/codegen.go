@@ -923,15 +923,7 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 	}
 	
 	// Determine the struct type from the object expression
-	var structName string
-	if ident, ok := fieldAccess.Object.(*ast.Identifier); ok {
-		// Get the type of the variable
-		if varType, exists := g.localVarTypes[ident.Name]; exists {
-			if typeRef, ok := varType.(*ast.TypeReference); ok {
-				structName = typeRef.Name
-			}
-		}
-	}
+	structName := g.getStructTypeName(fieldAccess.Object)
 	
 	// DEBUG LOGGING
 	fmt.Printf("DEBUG generateFieldAccess: object type='%s', field name='%s'\n", 
@@ -975,6 +967,36 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 	g.emitULEB128(body, uint64(fieldOffset))
 	
 	return nil
+}
+
+// getStructTypeName determines the struct type name from an expression
+func (g *Generator) getStructTypeName(expr ast.Expression) string {
+	switch e := expr.(type) {
+	case *ast.Identifier:
+		// Look up the variable type
+		if varType, exists := g.localVarTypes[e.Name]; exists {
+			if typeRef, ok := varType.(*ast.TypeReference); ok {
+				return typeRef.Name
+			}
+		}
+	case *ast.FieldAccessExpr:
+		// For nested field access, get the type of the field being accessed
+		parentStructName := g.getStructTypeName(e.Object)
+		if structInfo, exists := g.structRegistry[parentStructName]; exists {
+			for i, fieldName := range structInfo.FieldNames {
+				if fieldName == e.Field && i < len(structInfo.FieldTypes) {
+					// Return the type name of this field
+					if typeRef, ok := structInfo.FieldTypes[i].(*ast.TypeReference); ok {
+						return typeRef.Name
+					}
+				}
+			}
+		}
+	case *ast.StructExpr:
+		// Direct struct construction
+		return e.Name
+	}
+	return ""
 }
 
 // generateEnumConstructor generates WASM bytecode for enum construction
