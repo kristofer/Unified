@@ -186,6 +186,15 @@ func (g *Generator) addFunction(fn *ast.FunctionDecl) error {
 		Params:  params,
 		Returns: returns,
 	}
+	
+	// DEBUG LOGGING
+	fmt.Printf("DEBUG addFunction: function='%s', return AST type='%v', return WASM type='%v'\n",
+		fn.Name, fn.ReturnType, func() string {
+			if len(returns) > 0 {
+				return fmt.Sprintf("%d", returns[0])
+			}
+			return "none"
+		}())
 
 	// Check if this function type already exists
 	typeIndex := g.findOrAddFunctionType(fnType)
@@ -275,6 +284,9 @@ func (g *Generator) generateFunctionBody(fn *ast.FunctionDecl) ([]byte, []LocalV
 	// WASM requires locals to be declared in consecutive groups of the same type
 	// However, the indices remain in the order they were declared
 	if g.localVarCount > initialLocalCount {
+		// DEBUG LOGGING
+		fmt.Printf("DEBUG generateFunctionBody: localTypeOrder=%v\n", g.localTypeOrder[initialLocalCount:])
+		
 		// Group consecutive locals of the same type
 		for i := initialLocalCount; i < g.localVarCount; {
 			currentType := g.localTypeOrder[i]

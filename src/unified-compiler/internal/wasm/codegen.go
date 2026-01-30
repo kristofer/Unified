@@ -51,6 +51,10 @@ func (g *Generator) generateReturn(body *bytes.Buffer, ret *ast.ReturnStatement)
 			exprType := g.getExpressionType(ret.Value)
 			returnType := g.convertType(g.currentFuncReturnType)
 			
+			// DEBUG LOGGING
+			fmt.Printf("DEBUG generateReturn: expression type='%v', expected return type='%v'\n",
+				exprType, returnType)
+			
 			if exprType != returnType {
 				// Convert between types
 				if exprType == I32 && returnType == I64 {
@@ -68,35 +72,52 @@ func (g *Generator) generateReturn(body *bytes.Buffer, ret *ast.ReturnStatement)
 
 // generateLet generates WASM bytecode for a let statement
 func (g *Generator) generateLet(body *bytes.Buffer, let *ast.LetStatement) error {
-	// Determine the WASM type for this variable
-	wasmType := g.convertType(let.Type)
+	// Determine the actual type and WASM type for this variable
+	var actualType ast.Type
+	var wasmType ValueType
 	
-	// Generate the initial value
+	// Generate the initial value first to infer type if needed
 	if let.Value != nil {
 		if err := g.generateExpression(body, let.Value); err != nil {
 			return err
 		}
 		
-		// Add type conversion if needed
+		// Get the expression's type
 		exprType := g.getExpressionType(let.Value)
-		if exprType != wasmType {
-			// Convert between types
-			if exprType == I32 && wasmType == I64 {
-				g.emitI32ToI64Conversion(body)
-			} else if exprType == I64 && wasmType == I32 {
-				g.emitI64ToI32Conversion(body)
+		
+		// If no explicit type annotation, infer from expression
+		if let.Type == nil {
+			// Use expression type as the variable type
+			wasmType = exprType
+			// Try to infer AST type from expression for struct tracking
+			actualType = g.inferASTType(let.Value, exprType)
+		} else {
+			// Use declared type
+			actualType = let.Type
+			wasmType = g.convertType(let.Type)
+			
+			// Add type conversion if needed
+			if exprType != wasmType {
+				// Convert between types
+				if exprType == I32 && wasmType == I64 {
+					g.emitI32ToI64Conversion(body)
+				} else if exprType == I64 && wasmType == I32 {
+					g.emitI64ToI32Conversion(body)
+				}
+				// Note: Float conversions would be added here in a complete implementation
 			}
-			// Note: Float conversions would be added here in a complete implementation
 		}
 	} else {
-		// Default value
+		// Default value - use declared type
+		actualType = let.Type
+		wasmType = g.convertType(let.Type)
 		g.emitDefaultValue(body, let.Type)
 	}
 
 	// Assign local variable index
 	localIndex := g.localVarCount
 	g.localVars[let.Name] = localIndex
-	g.localVarTypes[let.Name] = let.Type
+	g.localVarTypes[let.Name] = actualType
 	
 	// Track the type order for this local
 	g.localTypeOrder = append(g.localTypeOrder, wasmType)
@@ -652,6 +673,70 @@ func (g *Generator) getExpressionType(expr ast.Expression) ValueType {
 	}
 }
 
+// inferASTType tries to infer the AST type from an expression
+// This is used for type inference when no explicit type is given
+func (g *Generator) inferASTType(expr ast.Expression, wasmType ValueType) ast.Type {
+	switch e := expr.(type) {
+	case *ast.StructExpr:
+		// For struct expressions, create a TypeReference to the struct
+		return &ast.TypeReference{
+			Name:     e.Name,
+			Position: e.Pos(),
+		}
+	case *ast.EnumConstructorExpr:
+		// For enum expressions, create a TypeReference to the enum
+		return &ast.TypeReference{
+			Name:     e.EnumName,
+			Position: e.Pos(),
+		}
+	case *ast.ListExpr:
+		// For array/list expressions, we'd need element type info
+		// For now, return a generic array type
+		return &ast.TypeReference{
+			Name:     "Array",
+			Position: e.Pos(),
+		}
+	case *ast.FieldAccessExpr:
+		// Field access - try to get the field's actual type
+		if ident, ok := e.Object.(*ast.Identifier); ok {
+			if varType, exists := g.localVarTypes[ident.Name]; exists {
+				if typeRef, ok := varType.(*ast.TypeReference); ok {
+					if structInfo, exists := g.structRegistry[typeRef.Name]; exists {
+						for i, fieldName := range structInfo.FieldNames {
+							if fieldName == e.Field && i < len(structInfo.FieldTypes) {
+								return structInfo.FieldTypes[i]
+							}
+						}
+					}
+				}
+			}
+		}
+		// Fall through to default
+	case *ast.Identifier:
+		// Look up the identifier's type
+		if varType, ok := g.localVarTypes[e.Name]; ok {
+			return varType
+		}
+	case *ast.CallExpr:
+		// Function calls - would need return type tracking
+		// Fall through to default
+	}
+	
+	// Default: create a basic type based on WASM type
+	switch wasmType {
+	case I32:
+		return &ast.TypeReference{Name: "Int32", Position: ast.Position{}}
+	case I64:
+		return &ast.TypeReference{Name: "Int", Position: ast.Position{}}
+	case F32:
+		return &ast.TypeReference{Name: "Float32", Position: ast.Position{}}
+	case F64:
+		return &ast.TypeReference{Name: "Float", Position: ast.Position{}}
+	default:
+		return &ast.TypeReference{Name: "Int", Position: ast.Position{}}
+	}
+}
+
 // generateFor generates WASM bytecode for a for loop
 func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) error {
 	// For loops iterate over a collection
@@ -848,6 +933,10 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 		}
 	}
 	
+	// DEBUG LOGGING
+	fmt.Printf("DEBUG generateFieldAccess: object type='%s', field name='%s'\n", 
+		structName, fieldAccess.Field)
+	
 	// Look up field offset and type in struct registry
 	fieldOffset := 4 // Default to first field
 	fieldType := I64 // Default type
@@ -858,11 +947,22 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 				// Get the WASM type for this field
 				if i < len(structInfo.FieldTypes) {
 					fieldType = g.convertType(structInfo.FieldTypes[i])
+					fmt.Printf("DEBUG generateFieldAccess: field AST type='%v', WASM type='%v'\n", 
+						structInfo.FieldTypes[i], fieldType)
 				}
 				break
 			}
 		}
 	}
+	
+	// DEBUG LOGGING
+	fmt.Printf("DEBUG generateFieldAccess: field offset=%d, load instruction=%s\n", 
+		fieldOffset, func() string {
+			if fieldType == I32 {
+				return "i32.load"
+			}
+			return "i64.load"
+		}())
 	
 	// Load field value using the correct load instruction
 	if fieldType == I32 {

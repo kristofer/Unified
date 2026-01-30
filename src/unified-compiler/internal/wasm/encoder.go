@@ -2,6 +2,7 @@ package wasm
 
 import (
 	"bytes"
+	"fmt"
 )
 
 // Encode encodes a WASM module to binary format
@@ -59,7 +60,7 @@ func (m *Module) encodeTypeSection(buf *bytes.Buffer) error {
 	writeULEB128(&section, uint64(len(m.FunctionTypes)))
 
 	// Encode each type
-	for _, ft := range m.FunctionTypes {
+	for i, ft := range m.FunctionTypes {
 		section.WriteByte(0x60) // func type
 
 		// Parameters
@@ -73,6 +74,10 @@ func (m *Module) encodeTypeSection(buf *bytes.Buffer) error {
 		for _, r := range ft.Returns {
 			section.WriteByte(byte(r))
 		}
+		
+		// DEBUG LOGGING
+		fmt.Printf("DEBUG encodeTypeSection: type[%d] params=%v returns=%v\n", 
+			i, ft.Params, ft.Returns)
 	}
 
 	// Write section
@@ -215,7 +220,7 @@ func (m *Module) encodeCodeSection(buf *bytes.Buffer) error {
 	writeULEB128(&section, uint64(len(m.Functions)))
 
 	// Encode each function body
-	for _, fn := range m.Functions {
+	for i, fn := range m.Functions {
 		var fnBody bytes.Buffer
 
 		// Locals
@@ -224,6 +229,10 @@ func (m *Module) encodeCodeSection(buf *bytes.Buffer) error {
 			writeULEB128(&fnBody, uint64(local.Count))
 			fnBody.WriteByte(byte(local.Type))
 		}
+		
+		// DEBUG LOGGING
+		fmt.Printf("DEBUG encodeCodeSection: function[%d] '%s', locals=%v\n",
+			i, fn.Name, fn.Locals)
 
 		// Body code
 		fnBody.Write(fn.Body)
