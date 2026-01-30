@@ -10,23 +10,23 @@ import (
 
 // StructInfo stores information about a struct type
 type StructInfo struct {
-	Name      string
+	Name       string
 	FieldNames []string
 	FieldTypes []ast.Type
 }
 
 // Generator converts AST to WASM module
 type Generator struct {
-	module         *Module
-	localVars      map[string]int
-	localVarTypes  map[string]ast.Type
-	localVarCount  int
-	functionIndex  int
-	localTypeOrder []ValueType          // Track the order of local variable types
-	currentFuncReturnType ast.Type     // Return type of current function being generated
-	memoryAllocator *MemoryAllocator   // Memory allocator for static data
-	stringTable     map[string]uint32  // Map string literals to memory offsets
-	structRegistry  map[string]*StructInfo // Map struct names to their info
+	module                *Module
+	localVars             map[string]int
+	localVarTypes         map[string]ast.Type
+	localVarCount         int
+	functionIndex         int
+	localTypeOrder        []ValueType            // Track the order of local variable types
+	currentFuncReturnType ast.Type               // Return type of current function being generated
+	memoryAllocator       *MemoryAllocator       // Memory allocator for static data
+	stringTable           map[string]uint32      // Map string literals to memory offsets
+	structRegistry        map[string]*StructInfo // Map struct names to their info
 }
 
 // Module represents a WASM module
@@ -97,10 +97,10 @@ func NewGenerator() *Generator {
 			Data:          make([]DataSegment, 0),
 			Globals:       make([]Global, 0),
 		},
-		localVars:      make(map[string]int),
-		localVarTypes:  make(map[string]ast.Type),
-		localTypeOrder: make([]ValueType, 0),
-		functionIndex:  0,
+		localVars:       make(map[string]int),
+		localVarTypes:   make(map[string]ast.Type),
+		localTypeOrder:  make([]ValueType, 0),
+		functionIndex:   0,
 		memoryAllocator: NewMemoryAllocator(),
 		stringTable:     make(map[string]uint32),
 		structRegistry:  make(map[string]*StructInfo),
@@ -111,7 +111,7 @@ func NewGenerator() *Generator {
 func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 	// Initialize heap pointer global
 	g.InitializeHeapPointer()
-	
+
 	// First pass: collect struct declarations
 	for _, item := range program.Items {
 		if structDecl, ok := item.(*ast.StructDecl); ok {
@@ -130,7 +130,7 @@ func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 			}
 		}
 	}
-	
+
 	// Second pass: collect function declarations
 	for _, item := range program.Items {
 		if fn, ok := item.(*ast.FunctionDecl); ok {
@@ -151,7 +151,7 @@ func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 			break
 		}
 	}
-	
+
 	// Add data segments from memory allocator
 	g.module.Data = g.memoryAllocator.GetDataSegments()
 
@@ -187,7 +187,7 @@ func (g *Generator) addFunction(fn *ast.FunctionDecl) error {
 		Params:  params,
 		Returns: returns,
 	}
-	
+
 	// Check if this function type already exists
 	typeIndex := g.findOrAddFunctionType(fnType)
 
@@ -276,22 +276,22 @@ func (g *Generator) generateFunctionBody(fn *ast.FunctionDecl) ([]byte, []LocalV
 	// WASM requires locals to be declared in consecutive groups of the same type
 	// However, the indices remain in the order they were declared
 	if g.localVarCount > initialLocalCount {
-		
+
 		// Group consecutive locals of the same type
 		for i := initialLocalCount; i < g.localVarCount; {
 			currentType := g.localTypeOrder[i]
 			count := 1
-			
+
 			// Count consecutive locals of the same type
 			for i+count < g.localVarCount && g.localTypeOrder[i+count] == currentType {
 				count++
 			}
-			
+
 			locals = append(locals, LocalVar{
 				Count: count,
 				Type:  currentType,
 			})
-			
+
 			i += count
 		}
 	}
@@ -316,8 +316,12 @@ func (g *Generator) convertType(t ast.Type) ValueType {
 		case "f64", "Float64", "Float":
 			return F64
 		default:
-			// For user-defined types (structs, enums, etc.), use I32 as pointer type
-			return I32
+			// For generic type parameters and user-defined types:
+			// - Generic type parameters (T, U, etc.) should ideally be resolved at instantiation
+			// - For now, default to I64 for numeric generics
+			// - User-defined types (structs, enums) would be pointers (I32) when heap-allocated
+			// TODO: Implement proper generic type parameter resolution
+			return I64
 		}
 	default:
 		return I64
