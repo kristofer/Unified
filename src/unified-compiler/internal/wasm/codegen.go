@@ -45,12 +45,12 @@ func (g *Generator) generateReturn(body *bytes.Buffer, ret *ast.ReturnStatement)
 		if err := g.generateExpression(body, ret.Value); err != nil {
 			return err
 		}
-		
+
 		// Add type conversion if the expression type doesn't match return type
 		if g.currentFuncReturnType != nil {
 			exprType := g.getExpressionType(ret.Value)
 			returnType := g.convertType(g.currentFuncReturnType)
-			
+
 			if exprType != returnType {
 				// Convert between types
 				if exprType == I32 && returnType == I64 {
@@ -71,16 +71,16 @@ func (g *Generator) generateLet(body *bytes.Buffer, let *ast.LetStatement) error
 	// Determine the actual type and WASM type for this variable
 	var actualType ast.Type
 	var wasmType ValueType
-	
+
 	// Generate the initial value first to infer type if needed
 	if let.Value != nil {
 		if err := g.generateExpression(body, let.Value); err != nil {
 			return err
 		}
-		
+
 		// Get the expression's type
 		exprType := g.getExpressionType(let.Value)
-		
+
 		// If no explicit type annotation, infer from expression
 		if let.Type == nil {
 			// Use expression type as the variable type
@@ -91,7 +91,7 @@ func (g *Generator) generateLet(body *bytes.Buffer, let *ast.LetStatement) error
 			// Use declared type
 			actualType = let.Type
 			wasmType = g.convertType(let.Type)
-			
+
 			// Add type conversion if needed
 			if exprType != wasmType {
 				// Convert between types
@@ -114,7 +114,7 @@ func (g *Generator) generateLet(body *bytes.Buffer, let *ast.LetStatement) error
 	localIndex := g.localVarCount
 	g.localVars[let.Name] = localIndex
 	g.localVarTypes[let.Name] = actualType
-	
+
 	// Track the type order for this local
 	g.localTypeOrder = append(g.localTypeOrder, wasmType)
 	g.localVarCount++
@@ -137,12 +137,12 @@ func (g *Generator) generateAssignment(body *bytes.Buffer, assign *ast.Assignmen
 	if assign.Operator != ast.AssignNormal {
 		// Load current value
 		g.emitGetLocal(body, localIndex)
-		
+
 		// Generate the right-hand side expression
 		if err := g.generateExpression(body, assign.Value); err != nil {
 			return err
 		}
-		
+
 		// Apply the operation
 		switch assign.Operator {
 		case ast.AssignAdd:
@@ -181,7 +181,7 @@ func (g *Generator) generateIf(body *bytes.Buffer, ifStmt *ast.IfStatement) erro
 	if err := g.generateExpression(body, ifStmt.Condition); err != nil {
 		return err
 	}
-	
+
 	// if instruction
 	body.WriteByte(0x04) // if
 	body.WriteByte(0x40) // empty block type (void)
@@ -318,16 +318,16 @@ func (g *Generator) generateLiteral(body *bytes.Buffer, lit *ast.Literal) error 
 			// Allocate new string in memory
 			// Layout: [length:i32][bytes...]
 			stringBytes := []byte(lit.Value)
-			
+
 			// Create data with length prefix
 			data := make([]byte, 4+len(stringBytes))
 			binary.LittleEndian.PutUint32(data[0:4], uint32(len(stringBytes)))
 			copy(data[4:], stringBytes)
-			
+
 			// Allocate in memory
 			offset := g.memoryAllocator.AllocateWithData(data)
 			g.stringTable[lit.Value] = offset
-			
+
 			// Return pointer to string
 			body.WriteByte(0x41) // i32.const
 			g.emitLEB128(body, int64(offset))
@@ -389,16 +389,16 @@ func (g *Generator) generateBinaryExpr(body *bytes.Buffer, expr *ast.BinaryExpr)
 	// Check for string concatenation (if both operands are strings and operator is Add)
 	// For now, we'll detect this by checking if operands are string literals
 	// TODO: Implement proper type inference
-	
+
 	// Determine types of operands
 	leftType := g.getExpressionType(expr.Left)
 	rightType := g.getExpressionType(expr.Right)
-	
+
 	// Generate left operand
 	if err := g.generateExpression(body, expr.Left); err != nil {
 		return err
 	}
-	
+
 	// Convert left operand if needed for comparison/arithmetic operations
 	// For most operations, we want both operands to be the same type
 	// Promote i32 to i64 if one operand is i64
@@ -407,12 +407,12 @@ func (g *Generator) generateBinaryExpr(body *bytes.Buffer, expr *ast.BinaryExpr)
 		g.emitI32ToI64Conversion(body)
 		targetType = I64
 	}
-	
+
 	// Generate right operand
 	if err := g.generateExpression(body, expr.Right); err != nil {
 		return err
 	}
-	
+
 	// Convert right operand if needed
 	if rightType == I32 && targetType == I64 {
 		g.emitI32ToI64Conversion(body)
@@ -744,7 +744,7 @@ func (g *Generator) inferASTType(expr ast.Expression, wasmType ValueType) ast.Ty
 		// Function calls - would need return type tracking
 		// Fall through to default
 	}
-	
+
 	// Default: create a basic type based on WASM type
 	switch wasmType {
 	case I32:
@@ -763,29 +763,29 @@ func (g *Generator) inferASTType(expr ast.Expression, wasmType ValueType) ast.Ty
 // generateFor generates WASM bytecode for a for loop
 func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) error {
 	// Check if this is a range-based for loop
-	if rangeExpr, ok := forStmt.Iterable.(*ast.BinaryExpr); ok && 
-	   (rangeExpr.Operator == ast.OperatorRange || rangeExpr.Operator == ast.OperatorRangeIncl) {
+	if rangeExpr, ok := forStmt.Iterable.(*ast.BinaryExpr); ok &&
+		(rangeExpr.Operator == ast.OperatorRange || rangeExpr.Operator == ast.OperatorRangeIncl) {
 		return g.generateRangeFor(body, forStmt, rangeExpr)
 	}
-	
+
 	// For loops iterate over a collection
 	// We need to:
 	// 1. Evaluate the iterable expression (array/list)
 	// 2. Get its length
 	// 3. Loop from 0 to length-1
 	// 4. For each iteration, load the element and bind to the loop variable
-	
+
 	// Generate the iterable expression
 	if err := g.generateExpression(body, forStmt.Iterable); err != nil {
 		return err
 	}
-	
+
 	// Store the iterable in a temporary local
 	iterableLocal := g.localVarCount
 	g.localTypeOrder = append(g.localTypeOrder, I32) // Pointer to array
 	g.localVarCount++
 	g.emitSetLocal(body, iterableLocal)
-	
+
 	// Create index variable (starts at 0)
 	indexLocal := g.localVarCount
 	g.localTypeOrder = append(g.localTypeOrder, I32)
@@ -793,41 +793,41 @@ func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) e
 	body.WriteByte(0x41) // i32.const
 	body.WriteByte(0x00) // 0
 	g.emitSetLocal(body, indexLocal)
-	
+
 	// Get length of iterable
 	// For now, we'll assume the iterable has its length at offset 0
 	g.emitGetLocal(body, iterableLocal)
-	body.WriteByte(0x28) // i32.load
+	body.WriteByte(0x28)   // i32.load
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
-	
+
 	// Store length in a local
 	lengthLocal := g.localVarCount
 	g.localTypeOrder = append(g.localTypeOrder, I32)
 	g.localVarCount++
 	g.emitSetLocal(body, lengthLocal)
-	
+
 	// Create loop variable
 	loopVarLocal := g.localVarCount
 	g.localVars[forStmt.Variable] = loopVarLocal
 	g.localTypeOrder = append(g.localTypeOrder, I64) // Element type
 	g.localVarCount++
-	
+
 	// block (outer - for break)
 	body.WriteByte(0x02) // block
 	body.WriteByte(0x40) // empty block type
-	
+
 	// loop (inner - for continue)
 	body.WriteByte(0x03) // loop
 	body.WriteByte(0x40) // empty block type
-	
+
 	// Check if index < length
 	g.emitGetLocal(body, indexLocal)
 	g.emitGetLocal(body, lengthLocal)
 	body.WriteByte(0x4E) // i32.ge_s (index >= length?)
 	body.WriteByte(0x0D) // br_if
 	body.WriteByte(0x01) // break to outer block if true
-	
+
 	// Load current element into loop variable
 	// Calculate address: iterable + 4 + (index * 8)
 	g.emitGetLocal(body, iterableLocal)
@@ -835,36 +835,36 @@ func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) e
 	body.WriteByte(0x04) // 4 (skip length)
 	body.WriteByte(0x6A) // i32.add
 	g.emitGetLocal(body, indexLocal)
-	body.WriteByte(0x41) // i32.const
-	body.WriteByte(0x08) // 8 (element size)
-	body.WriteByte(0x6C) // i32.mul
-	body.WriteByte(0x6A) // i32.add
-	body.WriteByte(0x29) // i64.load
+	body.WriteByte(0x41)   // i32.const
+	body.WriteByte(0x08)   // 8 (element size)
+	body.WriteByte(0x6C)   // i32.mul
+	body.WriteByte(0x6A)   // i32.add
+	body.WriteByte(0x29)   // i64.load
 	g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 	g.emitULEB128(body, 0) // offset
 	g.emitSetLocal(body, loopVarLocal)
-	
+
 	// Generate loop body
 	for _, stmt := range forStmt.Body.Statements {
 		if err := g.generateStatement(body, stmt); err != nil {
 			return err
 		}
 	}
-	
+
 	// Increment index
 	g.emitGetLocal(body, indexLocal)
 	body.WriteByte(0x41) // i32.const
 	body.WriteByte(0x01) // 1
 	body.WriteByte(0x6A) // i32.add
 	g.emitSetLocal(body, indexLocal)
-	
+
 	// Branch back to loop start
 	body.WriteByte(0x0C) // br
 	body.WriteByte(0x00) // continue to loop
-	
+
 	body.WriteByte(0x0B) // end loop
 	body.WriteByte(0x0B) // end block
-	
+
 	return nil
 }
 
@@ -875,55 +875,55 @@ func (g *Generator) generateRangeFor(body *bytes.Buffer, forStmt *ast.ForStateme
 	// 1. Evaluate start and end expressions
 	// 2. Loop from start to end (exclusive) or end (inclusive)
 	// 3. For each iteration, bind the current value to the loop variable
-	
+
 	// Generate start expression
 	if err := g.generateExpression(body, rangeExpr.Left); err != nil {
 		return err
 	}
-	
+
 	// Store start value in loop variable (use i64 for compatibility with Int type)
 	loopVarLocal := g.localVarCount
 	g.localVars[forStmt.Variable] = loopVarLocal
 	g.localVarTypes[forStmt.Variable] = &ast.TypeReference{Name: "Int", Position: ast.Position{}}
 	g.localTypeOrder = append(g.localTypeOrder, I64)
 	g.localVarCount++
-	
+
 	// Convert to i64 if needed
 	startType := g.getExpressionType(rangeExpr.Left)
 	if startType == I32 {
 		g.emitI32ToI64Conversion(body)
 	}
 	g.emitSetLocal(body, loopVarLocal)
-	
+
 	// Generate end expression
 	if err := g.generateExpression(body, rangeExpr.Right); err != nil {
 		return err
 	}
-	
+
 	// Store end value in a local (also i64)
 	endLocal := g.localVarCount
 	g.localTypeOrder = append(g.localTypeOrder, I64)
 	g.localVarCount++
-	
+
 	// Convert to i64 if needed
 	endType := g.getExpressionType(rangeExpr.Right)
 	if endType == I32 {
 		g.emitI32ToI64Conversion(body)
 	}
 	g.emitSetLocal(body, endLocal)
-	
+
 	// block (outer - for break)
 	body.WriteByte(0x02) // block
 	body.WriteByte(0x40) // empty block type
-	
+
 	// loop (inner - for continue)
 	body.WriteByte(0x03) // loop
 	body.WriteByte(0x40) // empty block type
-	
+
 	// Check loop condition based on range type
 	g.emitGetLocal(body, loopVarLocal)
 	g.emitGetLocal(body, endLocal)
-	
+
 	if rangeExpr.Operator == ast.OperatorRange {
 		// Exclusive range: loop while i < end
 		body.WriteByte(0x56) // i64.ge_s (i >= end?)
@@ -931,31 +931,31 @@ func (g *Generator) generateRangeFor(body *bytes.Buffer, forStmt *ast.ForStateme
 		// Inclusive range: loop while i <= end
 		body.WriteByte(0x55) // i64.gt_s (i > end?)
 	}
-	
+
 	body.WriteByte(0x0D) // br_if
 	body.WriteByte(0x01) // break to outer block if true
-	
+
 	// Generate loop body
 	for _, stmt := range forStmt.Body.Statements {
 		if err := g.generateStatement(body, stmt); err != nil {
 			return err
 		}
 	}
-	
+
 	// Increment loop variable
 	g.emitGetLocal(body, loopVarLocal)
-	body.WriteByte(0x42) // i64.const
+	body.WriteByte(0x42)  // i64.const
 	g.emitLEB128(body, 1) // 1
-	body.WriteByte(0x7C) // i64.add
+	body.WriteByte(0x7C)  // i64.add
 	g.emitSetLocal(body, loopVarLocal)
-	
+
 	// Branch back to loop start
 	body.WriteByte(0x0C) // br
 	body.WriteByte(0x00) // continue to loop
-	
+
 	body.WriteByte(0x0B) // end loop
 	body.WriteByte(0x0B) // end block
-	
+
 	return nil
 }
 
@@ -983,23 +983,23 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	// For simplicity, we'll use a fixed layout:
 	// - First 4 bytes: type ID (hash of struct name)
 	// - Following bytes: fields in order (8 bytes each for i64)
-	
+
 	// Calculate struct size (simplified: 4 bytes for type + 8 bytes per field)
 	structSize := uint32(4 + (len(structExpr.FieldInits) * 8))
-	
+
 	// Allocate memory on heap (leaves pointer on stack)
 	g.emitHeapAlloc(body, structSize)
-	
+
 	// We need to use this pointer multiple times (for type ID and each field)
 	// So we store it in a temporary local
 	tempLocal := g.localVarCount
-	g.localTypeOrder = append(g.localTypeOrder, I32)  // Pointer is i32
+	g.localTypeOrder = append(g.localTypeOrder, I32) // Pointer is i32
 	g.localVarCount++
-	
+
 	// Store pointer to temp local (consumes the pointer from heap alloc)
 	body.WriteByte(0x21) // local.set
 	g.emitULEB128(body, uint64(tempLocal))
-	
+
 	// Store type ID (simple hash of struct name)
 	// Use modulo to ensure it fits in positive int32 range
 	typeID := uint32(0)
@@ -1007,33 +1007,33 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 		typeID = typeID*31 + uint32(ch)
 	}
 	typeID = typeID % 0x7FFFFFFF // Keep in positive int32 range
-	
+
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (type ID)
 	g.emitLEB128(body, int64(typeID))
-	body.WriteByte(0x36) // i32.store
+	body.WriteByte(0x36)   // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
-	
+
 	// Store each field
 	for i, field := range structExpr.FieldInits {
 		// Load struct pointer
 		g.emitGetLocal(body, tempLocal)
-		
+
 		// Generate field value
 		if err := g.generateExpression(body, field.Value); err != nil {
 			return err
 		}
-		
+
 		// Store at offset (4 + i*8)
-		body.WriteByte(0x37) // i64.store
-		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
+		body.WriteByte(0x37)               // i64.store
+		g.emitULEB128(body, 3)             // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8)) // offset
 	}
-	
+
 	// Push the struct pointer as result
 	g.emitGetLocal(body, tempLocal)
-	
+
 	return nil
 }
 
@@ -1043,10 +1043,10 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 	if err := g.generateExpression(body, fieldAccess.Object); err != nil {
 		return err
 	}
-	
+
 	// Determine the struct type from the object expression
 	structName := g.getStructTypeName(fieldAccess.Object)
-	
+
 	// Look up field offset and type in struct registry
 	fieldOffset := 4 // Default to first field
 	fieldType := I64 // Default type
@@ -1062,17 +1062,17 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 			}
 		}
 	}
-	
+
 	// Load field value using the correct load instruction
 	if fieldType == I32 {
-		body.WriteByte(0x28) // i32.load
+		body.WriteByte(0x28)   // i32.load
 		g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	} else {
-		body.WriteByte(0x29) // i64.load
+		body.WriteByte(0x29)   // i64.load
 		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 	}
 	g.emitULEB128(body, uint64(fieldOffset))
-	
+
 	return nil
 }
 
@@ -1110,43 +1110,43 @@ func (g *Generator) getStructTypeName(expr ast.Expression) string {
 func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.EnumConstructorExpr) error {
 	// Allocate memory for the enum
 	// Layout: [tag:i32][data1:i64][data2:i64]...
-	
+
 	enumSize := uint32(4 + (len(enumExpr.Arguments) * 8))
-	
+
 	// Allocate memory on heap
 	g.emitHeapAlloc(body, enumSize)
-	
+
 	// Duplicate pointer for storing data
 	body.WriteByte(0x22) // local.tee
 	tempLocal := g.localVarCount
 	g.emitULEB128(body, uint64(tempLocal))
-	
+
 	// Store tag (variant index)
 	// Keep variant tag in positive int32 range
 	variantTag := uint32(0) % 0x7FFFFFFF // Placeholder
-	
+
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (tag value)
 	g.emitLEB128(body, int64(variantTag))
-	body.WriteByte(0x36) // i32.store
+	body.WriteByte(0x36)   // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
-	
+
 	// Store each argument
 	for i, arg := range enumExpr.Arguments {
 		if err := g.generateExpression(body, arg); err != nil {
 			return err
 		}
-		
+
 		g.emitGetLocal(body, tempLocal)
-		body.WriteByte(0x37) // i64.store
+		body.WriteByte(0x37)   // i64.store
 		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8))
 	}
-	
+
 	// Push enum pointer
 	g.emitGetLocal(body, tempLocal)
-	
+
 	return nil
 }
 
@@ -1154,46 +1154,46 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr) error {
 	// Allocate memory for the array
 	// Layout: [length:i32][elem0:i64][elem1:i64]...
-	
+
 	arraySize := uint32(4 + (len(listExpr.Elements) * 8))
-	
+
 	// Allocate memory on heap
 	g.emitHeapAlloc(body, arraySize)
-	
+
 	// Store pointer in a temp local
 	tempLocal := g.localVarCount
 	g.localTypeOrder = append(g.localTypeOrder, I32)
 	g.localVarCount++
 	body.WriteByte(0x21) // local.set
 	g.emitULEB128(body, uint64(tempLocal))
-	
+
 	// Store length
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (length)
 	g.emitLEB128(body, int64(len(listExpr.Elements)))
-	body.WriteByte(0x36) // i32.store
+	body.WriteByte(0x36)   // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
-	
+
 	// Store each element
 	for i, elem := range listExpr.Elements {
 		// Load array pointer
 		g.emitGetLocal(body, tempLocal)
-		
+
 		// Generate element value
 		if err := g.generateExpression(body, elem); err != nil {
 			return err
 		}
-		
+
 		// Store at offset (4 + i*8)
-		body.WriteByte(0x37) // i64.store
+		body.WriteByte(0x37)   // i64.store
 		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8))
 	}
-	
+
 	// Push array pointer
 	g.emitGetLocal(body, tempLocal)
-	
+
 	return nil
 }
 
@@ -1203,60 +1203,60 @@ func (g *Generator) generateIndexExpr(body *bytes.Buffer, indexExpr *ast.IndexEx
 	if err := g.generateExpression(body, indexExpr.Object); err != nil {
 		return err
 	}
-	
+
 	// Store array pointer in a temp local
 	tempLocal := g.localVarCount
 	g.localTypeOrder = append(g.localTypeOrder, I32)
 	g.localVarCount++
 	g.emitSetLocal(body, tempLocal)
-	
+
 	// Generate the index expression
 	if err := g.generateExpression(body, indexExpr.Index); err != nil {
 		return err
 	}
-	
+
 	// Convert i64 index to i32 if needed
 	// TODO: Add proper type checking
 	body.WriteByte(0xA7) // i32.wrap_i64
-	
+
 	// Store index in a temp local
 	indexLocal := g.localVarCount
 	g.localTypeOrder = append(g.localTypeOrder, I32)
 	g.localVarCount++
 	g.emitSetLocal(body, indexLocal)
-	
+
 	// Bounds checking: load array length and compare
 	g.emitGetLocal(body, tempLocal)
-	body.WriteByte(0x28) // i32.load (load length)
+	body.WriteByte(0x28)   // i32.load (load length)
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
-	
+
 	// Check if index >= length
 	g.emitGetLocal(body, indexLocal)
 	body.WriteByte(0x4D) // i32.le_s (length <= index?)
-	
+
 	// If true, trap (out of bounds)
 	body.WriteByte(0x04) // if
 	body.WriteByte(0x40) // void
 	body.WriteByte(0x00) // unreachable (trap)
 	body.WriteByte(0x0B) // end
-	
+
 	// Calculate element address: array + 4 + (index * 8)
 	g.emitGetLocal(body, tempLocal)
-	body.WriteByte(0x41) // i32.const
+	body.WriteByte(0x41)  // i32.const
 	g.emitLEB128(body, 4) // 4 (skip length)
-	body.WriteByte(0x6A) // i32.add
+	body.WriteByte(0x6A)  // i32.add
 	g.emitGetLocal(body, indexLocal)
-	body.WriteByte(0x41) // i32.const
+	body.WriteByte(0x41)  // i32.const
 	g.emitLEB128(body, 8) // 8
-	body.WriteByte(0x6C) // i32.mul
-	body.WriteByte(0x6A) // i32.add
-	
+	body.WriteByte(0x6C)  // i32.mul
+	body.WriteByte(0x6A)  // i32.add
+
 	// Load element
-	body.WriteByte(0x29) // i64.load
+	body.WriteByte(0x29)   // i64.load
 	g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 	g.emitULEB128(body, 0) // offset
-	
+
 	return nil
 }
 
@@ -1266,42 +1266,42 @@ func (g *Generator) generateMatchExpr(body *bytes.Buffer, matchExpr *ast.MatchEx
 	if err := g.generateExpression(body, matchExpr.Value); err != nil {
 		return err
 	}
-	
+
 	// Store in temporary local
 	tempLocal := g.localVarCount
 	g.localTypeOrder = append(g.localTypeOrder, I32) // Assuming pointer
 	g.localVarCount++
 	g.emitSetLocal(body, tempLocal)
-	
+
 	// Generate a series of if-else blocks for each case
 	for i, caseExpr := range matchExpr.Cases {
 		// TODO: Implement pattern matching logic
 		// For now, only support simple patterns
-		
+
 		if i < len(matchExpr.Cases)-1 {
 			// Not the last case, generate if
 			// TODO: Generate pattern test
 			body.WriteByte(0x41) // i32.const (placeholder condition)
 			body.WriteByte(0x01)
-			
+
 			body.WriteByte(0x04) // if
 			body.WriteByte(0x40) // void
 		}
-		
+
 		// Generate case expression
 		if err := g.generateExpression(body, caseExpr.Expression); err != nil {
 			return err
 		}
-		
+
 		if i < len(matchExpr.Cases)-1 {
 			body.WriteByte(0x05) // else
 		}
 	}
-	
+
 	// Close all if blocks
 	for i := 0; i < len(matchExpr.Cases)-1; i++ {
 		body.WriteByte(0x0B) // end
 	}
-	
+
 	return nil
 }
