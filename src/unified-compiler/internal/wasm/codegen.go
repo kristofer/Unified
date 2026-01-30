@@ -666,8 +666,8 @@ func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) e
 	// For now, we'll assume the iterable has its length at offset 0
 	g.emitGetLocal(body, iterableLocal)
 	body.WriteByte(0x28) // i32.load
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Store length in a local
 	lengthLocal := g.localVarCount
@@ -708,8 +708,8 @@ func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) e
 	body.WriteByte(0x6C) // i32.mul
 	body.WriteByte(0x6A) // i32.add
 	body.WriteByte(0x29) // i64.load
-	body.WriteByte(0x03) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
+	g.emitULEB128(body, 0) // offset
 	g.emitSetLocal(body, loopVarLocal)
 	
 	// Generate loop body
@@ -787,8 +787,8 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	body.WriteByte(0x41) // i32.const (type ID)
 	g.emitULEB128(body, uint64(typeID))
 	body.WriteByte(0x36) // i32.store
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Store each field
 	for i, field := range structExpr.FieldInits {
@@ -802,7 +802,7 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 		
 		// Store at offset (4 + i*8)
 		body.WriteByte(0x37) // i64.store
-		body.WriteByte(0x03) // alignment
+		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8)) // offset
 	}
 	
@@ -843,7 +843,7 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 	
 	// Load field value
 	body.WriteByte(0x29) // i64.load
-	body.WriteByte(0x03) // alignment
+	g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 	g.emitULEB128(body, uint64(fieldOffset))
 	
 	return nil
@@ -872,8 +872,8 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 	body.WriteByte(0x41) // i32.const (tag value)
 	g.emitULEB128(body, uint64(variantTag))
 	body.WriteByte(0x36) // i32.store
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Store each argument
 	for i, arg := range enumExpr.Arguments {
@@ -883,7 +883,7 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 		
 		g.emitGetLocal(body, tempLocal)
 		body.WriteByte(0x37) // i64.store
-		body.WriteByte(0x03) // alignment
+		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8))
 	}
 	
@@ -913,8 +913,8 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 	body.WriteByte(0x41) // i32.const (length)
 	g.emitULEB128(body, uint64(len(listExpr.Elements)))
 	body.WriteByte(0x36) // i32.store
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Store each element
 	for i, elem := range listExpr.Elements {
@@ -924,7 +924,7 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 		
 		g.emitGetLocal(body, tempLocal)
 		body.WriteByte(0x37) // i64.store
-		body.WriteByte(0x03) // alignment
+		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8))
 	}
 	
@@ -991,8 +991,8 @@ func (g *Generator) generateIndexExpr(body *bytes.Buffer, indexExpr *ast.IndexEx
 	
 	// Load element
 	body.WriteByte(0x29) // i64.load
-	body.WriteByte(0x03) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	return nil
 }
