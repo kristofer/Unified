@@ -137,24 +137,6 @@ func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 	}
 
 	// Second pass: collect function declarations
-			for _, member := range structDecl.Members {
-				if !member.IsMethod {
-					fieldNames = append(fieldNames, member.Name)
-					fieldTypes = append(fieldTypes, member.Type)
-				}
-			}
-			g.structRegistry[structDecl.Name] = &StructInfo{
-				Name:       structDecl.Name,
-				FieldNames: fieldNames,
-				FieldTypes: fieldTypes,
-			}
-		} else if enumDecl, ok := item.(*ast.EnumDecl); ok {
-			// Register enum names so we know they're user-defined types
-			g.enumRegistry[enumDecl.Name] = true
-		}
-	}
-
-	// Second pass: collect function declarations
 	for _, item := range program.Items {
 		if fn, ok := item.(*ast.FunctionDecl); ok {
 			if err := g.addFunction(fn); err != nil {
