@@ -290,7 +290,7 @@ func (g *Generator) generateLiteral(body *bytes.Buffer, lit *ast.Literal) error 
 		if offset, ok := g.stringTable[lit.Value]; ok {
 			// String already allocated, just return its pointer
 			body.WriteByte(0x41) // i32.const
-			g.emitULEB128(body, uint64(offset))
+			g.emitLEB128(body, int64(offset))
 		} else {
 			// Allocate new string in memory
 			// Layout: [length:i32][bytes...]
@@ -307,7 +307,7 @@ func (g *Generator) generateLiteral(body *bytes.Buffer, lit *ast.Literal) error 
 			
 			// Return pointer to string
 			body.WriteByte(0x41) // i32.const
-			g.emitULEB128(body, uint64(offset))
+			g.emitLEB128(body, int64(offset))
 		}
 	default:
 		return fmt.Errorf("unsupported literal kind: %v", lit.Kind)
@@ -888,7 +888,7 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (type ID)
-	g.emitULEB128(body, uint64(typeID))
+	g.emitLEB128(body, int64(int32(typeID)))
 	body.WriteByte(0x36) // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
@@ -998,7 +998,7 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 	
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (tag value)
-	g.emitULEB128(body, uint64(variantTag))
+	g.emitLEB128(body, int64(variantTag))
 	body.WriteByte(0x36) // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
@@ -1039,7 +1039,7 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 	// Store length
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (length)
-	g.emitULEB128(body, uint64(len(listExpr.Elements)))
+	g.emitLEB128(body, int64(len(listExpr.Elements)))
 	body.WriteByte(0x36) // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
