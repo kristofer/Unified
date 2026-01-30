@@ -68,35 +68,52 @@ func (g *Generator) generateReturn(body *bytes.Buffer, ret *ast.ReturnStatement)
 
 // generateLet generates WASM bytecode for a let statement
 func (g *Generator) generateLet(body *bytes.Buffer, let *ast.LetStatement) error {
-	// Determine the WASM type for this variable
-	wasmType := g.convertType(let.Type)
+	// Determine the actual type and WASM type for this variable
+	var actualType ast.Type
+	var wasmType ValueType
 	
-	// Generate the initial value
+	// Generate the initial value first to infer type if needed
 	if let.Value != nil {
 		if err := g.generateExpression(body, let.Value); err != nil {
 			return err
 		}
 		
-		// Add type conversion if needed
+		// Get the expression's type
 		exprType := g.getExpressionType(let.Value)
-		if exprType != wasmType {
-			// Convert between types
-			if exprType == I32 && wasmType == I64 {
-				g.emitI32ToI64Conversion(body)
-			} else if exprType == I64 && wasmType == I32 {
-				g.emitI64ToI32Conversion(body)
+		
+		// If no explicit type annotation, infer from expression
+		if let.Type == nil {
+			// Use expression type as the variable type
+			wasmType = exprType
+			// Try to infer AST type from expression for struct tracking
+			actualType = g.inferASTType(let.Value, exprType)
+		} else {
+			// Use declared type
+			actualType = let.Type
+			wasmType = g.convertType(let.Type)
+			
+			// Add type conversion if needed
+			if exprType != wasmType {
+				// Convert between types
+				if exprType == I32 && wasmType == I64 {
+					g.emitI32ToI64Conversion(body)
+				} else if exprType == I64 && wasmType == I32 {
+					g.emitI64ToI32Conversion(body)
+				}
+				// Note: Float conversions would be added here in a complete implementation
 			}
-			// Note: Float conversions would be added here in a complete implementation
 		}
 	} else {
-		// Default value
+		// Default value - use declared type
+		actualType = let.Type
+		wasmType = g.convertType(let.Type)
 		g.emitDefaultValue(body, let.Type)
 	}
 
 	// Assign local variable index
 	localIndex := g.localVarCount
 	g.localVars[let.Name] = localIndex
-	g.localVarTypes[let.Name] = let.Type
+	g.localVarTypes[let.Name] = actualType
 	
 	// Track the type order for this local
 	g.localTypeOrder = append(g.localTypeOrder, wasmType)
@@ -269,7 +286,7 @@ func (g *Generator) generateLiteral(body *bytes.Buffer, lit *ast.Literal) error 
 		if offset, ok := g.stringTable[lit.Value]; ok {
 			// String already allocated, just return its pointer
 			body.WriteByte(0x41) // i32.const
-			g.emitULEB128(body, uint64(offset))
+			g.emitLEB128(body, int64(offset))
 		} else {
 			// Allocate new string in memory
 			// Layout: [length:i32][bytes...]
@@ -286,7 +303,7 @@ func (g *Generator) generateLiteral(body *bytes.Buffer, lit *ast.Literal) error 
 			
 			// Return pointer to string
 			body.WriteByte(0x41) // i32.const
-			g.emitULEB128(body, uint64(offset))
+			g.emitLEB128(body, int64(offset))
 		}
 	default:
 		return fmt.Errorf("unsupported literal kind: %v", lit.Kind)
@@ -652,8 +669,78 @@ func (g *Generator) getExpressionType(expr ast.Expression) ValueType {
 	}
 }
 
+// inferASTType tries to infer the AST type from an expression
+// This is used for type inference when no explicit type is given
+func (g *Generator) inferASTType(expr ast.Expression, wasmType ValueType) ast.Type {
+	switch e := expr.(type) {
+	case *ast.StructExpr:
+		// For struct expressions, create a TypeReference to the struct
+		return &ast.TypeReference{
+			Name:     e.Name,
+			Position: e.Pos(),
+		}
+	case *ast.EnumConstructorExpr:
+		// For enum expressions, create a TypeReference to the enum
+		return &ast.TypeReference{
+			Name:     e.EnumName,
+			Position: e.Pos(),
+		}
+	case *ast.ListExpr:
+		// For array/list expressions, we'd need element type info
+		// For now, return a generic array type
+		return &ast.TypeReference{
+			Name:     "Array",
+			Position: e.Pos(),
+		}
+	case *ast.FieldAccessExpr:
+		// Field access - try to get the field's actual type
+		if ident, ok := e.Object.(*ast.Identifier); ok {
+			if varType, exists := g.localVarTypes[ident.Name]; exists {
+				if typeRef, ok := varType.(*ast.TypeReference); ok {
+					if structInfo, exists := g.structRegistry[typeRef.Name]; exists {
+						for i, fieldName := range structInfo.FieldNames {
+							if fieldName == e.Field && i < len(structInfo.FieldTypes) {
+								return structInfo.FieldTypes[i]
+							}
+						}
+					}
+				}
+			}
+		}
+		// Fall through to default
+	case *ast.Identifier:
+		// Look up the identifier's type
+		if varType, ok := g.localVarTypes[e.Name]; ok {
+			return varType
+		}
+	case *ast.CallExpr:
+		// Function calls - would need return type tracking
+		// Fall through to default
+	}
+	
+	// Default: create a basic type based on WASM type
+	switch wasmType {
+	case I32:
+		return &ast.TypeReference{Name: "Int32", Position: ast.Position{}}
+	case I64:
+		return &ast.TypeReference{Name: "Int", Position: ast.Position{}}
+	case F32:
+		return &ast.TypeReference{Name: "Float32", Position: ast.Position{}}
+	case F64:
+		return &ast.TypeReference{Name: "Float", Position: ast.Position{}}
+	default:
+		return &ast.TypeReference{Name: "Int", Position: ast.Position{}}
+	}
+}
+
 // generateFor generates WASM bytecode for a for loop
 func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) error {
+	// Check if this is a range-based for loop
+	if rangeExpr, ok := forStmt.Iterable.(*ast.BinaryExpr); ok && 
+	   (rangeExpr.Operator == ast.OperatorRange || rangeExpr.Operator == ast.OperatorRangeIncl) {
+		return g.generateRangeFor(body, forStmt, rangeExpr)
+	}
+	
 	// For loops iterate over a collection
 	// We need to:
 	// 1. Evaluate the iterable expression (array/list)
@@ -754,6 +841,97 @@ func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) e
 	return nil
 }
 
+// generateRangeFor generates WASM bytecode for a range-based for loop
+func (g *Generator) generateRangeFor(body *bytes.Buffer, forStmt *ast.ForStatement, rangeExpr *ast.BinaryExpr) error {
+	// For range loops: for i in start..end or for i in start..=end
+	// We need to:
+	// 1. Evaluate start and end expressions
+	// 2. Loop from start to end (exclusive) or end (inclusive)
+	// 3. For each iteration, bind the current value to the loop variable
+	
+	// Generate start expression
+	if err := g.generateExpression(body, rangeExpr.Left); err != nil {
+		return err
+	}
+	
+	// Store start value in loop variable (use i64 for compatibility with Int type)
+	loopVarLocal := g.localVarCount
+	g.localVars[forStmt.Variable] = loopVarLocal
+	g.localVarTypes[forStmt.Variable] = &ast.TypeReference{Name: "Int", Position: ast.Position{}}
+	g.localTypeOrder = append(g.localTypeOrder, I64)
+	g.localVarCount++
+	
+	// Convert to i64 if needed
+	startType := g.getExpressionType(rangeExpr.Left)
+	if startType == I32 {
+		g.emitI32ToI64Conversion(body)
+	}
+	g.emitSetLocal(body, loopVarLocal)
+	
+	// Generate end expression
+	if err := g.generateExpression(body, rangeExpr.Right); err != nil {
+		return err
+	}
+	
+	// Store end value in a local (also i64)
+	endLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I64)
+	g.localVarCount++
+	
+	// Convert to i64 if needed
+	endType := g.getExpressionType(rangeExpr.Right)
+	if endType == I32 {
+		g.emitI32ToI64Conversion(body)
+	}
+	g.emitSetLocal(body, endLocal)
+	
+	// block (outer - for break)
+	body.WriteByte(0x02) // block
+	body.WriteByte(0x40) // empty block type
+	
+	// loop (inner - for continue)
+	body.WriteByte(0x03) // loop
+	body.WriteByte(0x40) // empty block type
+	
+	// Check loop condition based on range type
+	g.emitGetLocal(body, loopVarLocal)
+	g.emitGetLocal(body, endLocal)
+	
+	if rangeExpr.Operator == ast.OperatorRange {
+		// Exclusive range: loop while i < end
+		body.WriteByte(0x56) // i64.ge_s (i >= end?)
+	} else {
+		// Inclusive range: loop while i <= end
+		body.WriteByte(0x55) // i64.gt_s (i > end?)
+	}
+	
+	body.WriteByte(0x0D) // br_if
+	body.WriteByte(0x01) // break to outer block if true
+	
+	// Generate loop body
+	for _, stmt := range forStmt.Body.Statements {
+		if err := g.generateStatement(body, stmt); err != nil {
+			return err
+		}
+	}
+	
+	// Increment loop variable
+	g.emitGetLocal(body, loopVarLocal)
+	body.WriteByte(0x42) // i64.const
+	g.emitLEB128(body, 1) // 1
+	body.WriteByte(0x7C) // i64.add
+	g.emitSetLocal(body, loopVarLocal)
+	
+	// Branch back to loop start
+	body.WriteByte(0x0C) // br
+	body.WriteByte(0x00) // continue to loop
+	
+	body.WriteByte(0x0B) // end loop
+	body.WriteByte(0x0B) // end block
+	
+	return nil
+}
+
 // generateBreak generates WASM bytecode for a break statement
 func (g *Generator) generateBreak(body *bytes.Buffer, breakStmt *ast.BreakStatement) error {
 	// TODO: Implement proper label tracking for nested loops
@@ -796,14 +974,16 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store type ID (simple hash of struct name)
+	// Use modulo to ensure it fits in positive int32 range
 	typeID := uint32(0)
 	for _, ch := range structExpr.Name {
 		typeID = typeID*31 + uint32(ch)
 	}
+	typeID = typeID % 0x7FFFFFFF // Keep in positive int32 range
 	
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (type ID)
-	g.emitULEB128(body, uint64(typeID))
+	g.emitLEB128(body, int64(typeID))
 	body.WriteByte(0x36) // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
@@ -838,15 +1018,7 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 	}
 	
 	// Determine the struct type from the object expression
-	var structName string
-	if ident, ok := fieldAccess.Object.(*ast.Identifier); ok {
-		// Get the type of the variable
-		if varType, exists := g.localVarTypes[ident.Name]; exists {
-			if typeRef, ok := varType.(*ast.TypeReference); ok {
-				structName = typeRef.Name
-			}
-		}
-	}
+	structName := g.getStructTypeName(fieldAccess.Object)
 	
 	// Look up field offset and type in struct registry
 	fieldOffset := 4 // Default to first field
@@ -877,6 +1049,36 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 	return nil
 }
 
+// getStructTypeName determines the struct type name from an expression
+func (g *Generator) getStructTypeName(expr ast.Expression) string {
+	switch e := expr.(type) {
+	case *ast.Identifier:
+		// Look up the variable type
+		if varType, exists := g.localVarTypes[e.Name]; exists {
+			if typeRef, ok := varType.(*ast.TypeReference); ok {
+				return typeRef.Name
+			}
+		}
+	case *ast.FieldAccessExpr:
+		// For nested field access, get the type of the field being accessed
+		parentStructName := g.getStructTypeName(e.Object)
+		if structInfo, exists := g.structRegistry[parentStructName]; exists {
+			for i, fieldName := range structInfo.FieldNames {
+				if fieldName == e.Field && i < len(structInfo.FieldTypes) {
+					// Return the type name of this field
+					if typeRef, ok := structInfo.FieldTypes[i].(*ast.TypeReference); ok {
+						return typeRef.Name
+					}
+				}
+			}
+		}
+	case *ast.StructExpr:
+		// Direct struct construction
+		return e.Name
+	}
+	return ""
+}
+
 // generateEnumConstructor generates WASM bytecode for enum construction
 func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.EnumConstructorExpr) error {
 	// Allocate memory for the enum
@@ -893,12 +1095,12 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store tag (variant index)
-	// TODO: Look up variant tag from enum definition
-	variantTag := uint32(0) // Placeholder
+	// Keep variant tag in positive int32 range
+	variantTag := uint32(0) % 0x7FFFFFFF // Placeholder
 	
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (tag value)
-	g.emitULEB128(body, uint64(variantTag))
+	g.emitLEB128(body, int64(variantTag))
 	body.WriteByte(0x36) // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
@@ -931,26 +1133,32 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 	// Allocate memory on heap
 	g.emitHeapAlloc(body, arraySize)
 	
-	// Duplicate pointer for storing elements
-	body.WriteByte(0x22) // local.tee
+	// Store pointer in a temp local
 	tempLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	body.WriteByte(0x21) // local.set
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store length
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (length)
-	g.emitULEB128(body, uint64(len(listExpr.Elements)))
+	g.emitLEB128(body, int64(len(listExpr.Elements)))
 	body.WriteByte(0x36) // i32.store
 	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
 	g.emitULEB128(body, 0) // offset
 	
 	// Store each element
 	for i, elem := range listExpr.Elements {
+		// Load array pointer
+		g.emitGetLocal(body, tempLocal)
+		
+		// Generate element value
 		if err := g.generateExpression(body, elem); err != nil {
 			return err
 		}
 		
-		g.emitGetLocal(body, tempLocal)
+		// Store at offset (4 + i*8)
 		body.WriteByte(0x37) // i64.store
 		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8))
@@ -993,8 +1201,8 @@ func (g *Generator) generateIndexExpr(body *bytes.Buffer, indexExpr *ast.IndexEx
 	// Bounds checking: load array length and compare
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x28) // i32.load (load length)
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Check if index >= length
 	g.emitGetLocal(body, indexLocal)
@@ -1009,11 +1217,11 @@ func (g *Generator) generateIndexExpr(body *bytes.Buffer, indexExpr *ast.IndexEx
 	// Calculate element address: array + 4 + (index * 8)
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const
-	body.WriteByte(0x04) // 4 (skip length)
+	g.emitLEB128(body, 4) // 4 (skip length)
 	body.WriteByte(0x6A) // i32.add
 	g.emitGetLocal(body, indexLocal)
 	body.WriteByte(0x41) // i32.const
-	body.WriteByte(0x08) // 8
+	g.emitLEB128(body, 8) // 8
 	body.WriteByte(0x6C) // i32.mul
 	body.WriteByte(0x6A) // i32.add
 	

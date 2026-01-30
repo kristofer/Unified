@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
 	"unified-compiler/internal/ast"
 )
 
@@ -186,7 +187,7 @@ func (g *Generator) addFunction(fn *ast.FunctionDecl) error {
 		Params:  params,
 		Returns: returns,
 	}
-
+	
 	// Check if this function type already exists
 	typeIndex := g.findOrAddFunctionType(fnType)
 
@@ -275,6 +276,7 @@ func (g *Generator) generateFunctionBody(fn *ast.FunctionDecl) ([]byte, []LocalV
 	// WASM requires locals to be declared in consecutive groups of the same type
 	// However, the indices remain in the order they were declared
 	if g.localVarCount > initialLocalCount {
+		
 		// Group consecutive locals of the same type
 		for i := initialLocalCount; i < g.localVarCount; {
 			currentType := g.localTypeOrder[i]
