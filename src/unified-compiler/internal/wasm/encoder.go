@@ -227,8 +227,8 @@ func writeLEB128(buf *bytes.Buffer, value int64) {
 	}
 }
 
-// WriteBytes writes a byte slice to the buffer
-func WriteBytes(buf *bytes.Buffer, data []byte) {
+// writeBytes writes a byte slice to the buffer with length prefix
+func writeBytes(buf *bytes.Buffer, data []byte) {
 	writeULEB128(buf, uint64(len(data)))
 	buf.Write(data)
 }

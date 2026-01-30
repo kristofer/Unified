@@ -3,6 +3,7 @@ package wasm
 import (
 	"context"
 	"fmt"
+	"os"
 	"unified-compiler/internal/bytecode"
 
 	"github.com/tetratelabs/wazero"
@@ -84,7 +85,12 @@ func (r *Runtime) Close() error {
 // CompileAndRun is a convenience function that compiles and runs a WASM module
 func CompileAndRun(wasmBytes []byte) (bytecode.Value, error) {
 	runtime := NewRuntime()
-	defer runtime.Close()
+	defer func() {
+		if err := runtime.Close(); err != nil {
+			// Log error but don't override return value
+			fmt.Fprintf(os.Stderr, "Warning: error closing WASM runtime: %v\n", err)
+		}
+	}()
 
 	if err := runtime.LoadModule(wasmBytes); err != nil {
 		return bytecode.NewNullValue(), err

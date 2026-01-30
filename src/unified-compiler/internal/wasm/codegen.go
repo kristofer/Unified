@@ -94,9 +94,11 @@ func (g *Generator) generateIf(body *bytes.Buffer, ifStmt *ast.IfStatement) erro
 		return err
 	}
 
-	// Convert to i32 if needed (WASM if requires i32)
-	// TODO: Add type checking
-
+	// TODO: Type checking and conversion needed!
+	// The if instruction requires i32 on the stack, but comparison operators
+	// return i32 while other values might be i64. Need proper type conversion.
+	// Currently assumes the condition expression produces i32.
+	
 	// if instruction
 	body.WriteByte(0x04) // if
 	body.WriteByte(0x40) // empty block type
@@ -136,12 +138,15 @@ func (g *Generator) generateWhile(body *bytes.Buffer, whileStmt *ast.WhileStatem
 	body.WriteByte(0x03) // loop
 	body.WriteByte(0x40) // empty block type
 
+	// TODO: Type checking needed for while loop condition
+	// Branch instructions require i32, but generated condition may be i64
 	// Generate condition
 	if err := g.generateExpression(body, whileStmt.Condition); err != nil {
 		return err
 	}
 
 	// Branch if false (exit loop)
+	// NOTE: i32.eqz expects i32 input - this will fail if condition is i64
 	body.WriteByte(0x45) // i32.eqz (negate condition)
 	body.WriteByte(0x0D) // br_if
 	body.WriteByte(0x01) // break to outer block
@@ -297,9 +302,12 @@ func (g *Generator) generateBinaryExpr(body *bytes.Buffer, expr *ast.BinaryExpr)
 	case ast.OperatorGe:
 		body.WriteByte(0x56) // i64.ge_s
 	case ast.OperatorAnd:
-		body.WriteByte(0x71) // i32.and (assuming bool is i32)
+		// TODO: Type mismatch - should use i64.and (0x83) for consistency
+		// Currently uses i32.and which will cause validation errors with i64 operands
+		body.WriteByte(0x71) // i32.and (FIXME: should match operand types)
 	case ast.OperatorOr:
-		body.WriteByte(0x72) // i32.or
+		// TODO: Type mismatch - should use i64.or (0x84) for consistency
+		body.WriteByte(0x72) // i32.or (FIXME: should match operand types)
 	case ast.OperatorBitAnd:
 		body.WriteByte(0x83) // i64.and
 	case ast.OperatorBitOr:
@@ -327,16 +335,14 @@ func (g *Generator) generateUnaryExpr(body *bytes.Buffer, expr *ast.UnaryExpr) e
 	// Generate operator based on OperatorType
 	switch expr.Operator {
 	case ast.OperatorUnaryMinus:
-		// i64 negation: 0 - x
-		// We need to emit the operand first, then 0, then subtract
-		// Actually in WASM, we need: 0, operand, sub
-		// But we already emitted operand, so we need different approach
-		// For now, multiply by -1
+		// Negate by multiplying by -1
 		body.WriteByte(0x42) // i64.const
 		g.emitLEB128(body, -1)
 		body.WriteByte(0x7E) // i64.mul
 	case ast.OperatorNot:
-		body.WriteByte(0x45) // i32.eqz (logical not)
+		// TODO: Type mismatch - i32.eqz expects i32 but operand may be i64
+		// Use i64.eqz (0x50) for i64 operands or add type conversion
+		body.WriteByte(0x45) // i32.eqz (FIXME: should match operand type)
 	case ast.OperatorBitNot:
 		// Bitwise not: XOR with -1
 		body.WriteByte(0x42) // i64.const
