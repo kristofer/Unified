@@ -1,0 +1,4 @@
+// Simplest possible test
+fn main() -> Int {
+    return 42
+}

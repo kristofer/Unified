@@ -4,29 +4,30 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
 	"unified-compiler/internal/ast"
 )
 
 // StructInfo stores information about a struct type
 type StructInfo struct {
-	Name      string
+	Name       string
 	FieldNames []string
 	FieldTypes []ast.Type
 }
 
 // Generator converts AST to WASM module
 type Generator struct {
-	module         *Module
-	localVars      map[string]int
-	localVarTypes  map[string]ast.Type
-	localVarCount  int
-	functionIndex  int
-	localTypeOrder []ValueType          // Track the order of local variable types
-	currentFuncReturnType ast.Type     // Return type of current function being generated
-	memoryAllocator *MemoryAllocator   // Memory allocator for static data
-	stringTable     map[string]uint32  // Map string literals to memory offsets
-	structRegistry  map[string]*StructInfo // Map struct names to their info
-	enumRegistry    map[string]bool    // Map enum names to track which types are enums
+	module                *Module
+	localVars             map[string]int
+	localVarTypes         map[string]ast.Type
+	localVarCount         int
+	functionIndex         int
+	localTypeOrder        []ValueType            // Track the order of local variable types
+	currentFuncReturnType ast.Type               // Return type of current function being generated
+	memoryAllocator       *MemoryAllocator       // Memory allocator for static data
+	stringTable           map[string]uint32      // Map string literals to memory offsets
+	structRegistry        map[string]*StructInfo // Map struct names to their info
+	enumRegistry          map[string]bool        // Map enum names to track which types are enums
 }
 
 // Module represents a WASM module
@@ -97,10 +98,10 @@ func NewGenerator() *Generator {
 			Data:          make([]DataSegment, 0),
 			Globals:       make([]Global, 0),
 		},
-		localVars:      make(map[string]int),
-		localVarTypes:  make(map[string]ast.Type),
-		localTypeOrder: make([]ValueType, 0),
-		functionIndex:  0,
+		localVars:       make(map[string]int),
+		localVarTypes:   make(map[string]ast.Type),
+		localTypeOrder:  make([]ValueType, 0),
+		functionIndex:   0,
 		memoryAllocator: NewMemoryAllocator(),
 		stringTable:     make(map[string]uint32),
 		structRegistry:  make(map[string]*StructInfo),
@@ -112,7 +113,7 @@ func NewGenerator() *Generator {
 func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 	// Initialize heap pointer global
 	g.InitializeHeapPointer()
-	
+
 	// First pass: collect struct and enum declarations
 	for _, item := range program.Items {
 		if structDecl, ok := item.(*ast.StructDecl); ok {
@@ -134,7 +135,25 @@ func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 			g.enumRegistry[enumDecl.Name] = true
 		}
 	}
-	
+
+	// Second pass: collect function declarations
+			for _, member := range structDecl.Members {
+				if !member.IsMethod {
+					fieldNames = append(fieldNames, member.Name)
+					fieldTypes = append(fieldTypes, member.Type)
+				}
+			}
+			g.structRegistry[structDecl.Name] = &StructInfo{
+				Name:       structDecl.Name,
+				FieldNames: fieldNames,
+				FieldTypes: fieldTypes,
+			}
+		} else if enumDecl, ok := item.(*ast.EnumDecl); ok {
+			// Register enum names so we know they're user-defined types
+			g.enumRegistry[enumDecl.Name] = true
+		}
+	}
+
 	// Second pass: collect function declarations
 	for _, item := range program.Items {
 		if fn, ok := item.(*ast.FunctionDecl); ok {
@@ -155,7 +174,7 @@ func (g *Generator) Generate(program *ast.Program) (*Module, error) {
 			break
 		}
 	}
-	
+
 	// Add data segments from memory allocator
 	g.module.Data = g.memoryAllocator.GetDataSegments()
 
@@ -280,21 +299,22 @@ func (g *Generator) generateFunctionBody(fn *ast.FunctionDecl) ([]byte, []LocalV
 	// WASM requires locals to be declared in consecutive groups of the same type
 	// However, the indices remain in the order they were declared
 	if g.localVarCount > initialLocalCount {
+
 		// Group consecutive locals of the same type
 		for i := initialLocalCount; i < g.localVarCount; {
 			currentType := g.localTypeOrder[i]
 			count := 1
-			
+
 			// Count consecutive locals of the same type
 			for i+count < g.localVarCount && g.localTypeOrder[i+count] == currentType {
 				count++
 			}
-			
+
 			locals = append(locals, LocalVar{
 				Count: count,
 				Type:  currentType,
 			})
-			
+
 			i += count
 		}
 	}
@@ -330,8 +350,16 @@ func (g *Generator) convertType(t ast.Type) ValueType {
 			if _, isEnum := g.enumRegistry[t.Name]; isEnum {
 				return I32 // Enums are pointers
 			}
-			// For unknown user-defined types, default to I32 as pointer type
-			return I32
+			
+			// For generic type parameters and unknown user-defined types:
+			// LIMITATION: Generic type parameters (T, U, etc.) are not properly resolved yet.
+			// The compiler defaults all unknown types to I64, which means:
+			// - Generic functions work correctly when called with Int/numeric types
+			// - Generic functions will fail at runtime when called with String/pointer types
+			// TODO: Implement proper generic monomorphization - generate separate function
+			// copies for each concrete type the generic is instantiated with.
+			// Until then, generic functions should only be called with one concrete type.
+			return I64
 		}
 	default:
 		// For non-TypeReference types (function types, etc.), default to I32

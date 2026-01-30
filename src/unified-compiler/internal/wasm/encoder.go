@@ -2,6 +2,7 @@ package wasm
 
 import (
 	"bytes"
+
 )
 
 // Encode encodes a WASM module to binary format
@@ -224,7 +225,7 @@ func (m *Module) encodeCodeSection(buf *bytes.Buffer) error {
 			writeULEB128(&fnBody, uint64(local.Count))
 			fnBody.WriteByte(byte(local.Type))
 		}
-
+		
 		// Body code
 		fnBody.Write(fn.Body)
 
