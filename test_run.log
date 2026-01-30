@@ -1,0 +1,27 @@
+======================================
+Testing All .uni Files with WASM Backend
+======================================
+
+Testing: ./lib/List.uni ... [0;31mFAIL[0m
+Testing: ./lib/Tree.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/add_test.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/basic_test.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/call_test.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/comparison_test.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/minimal_test.uni ... [0;32mPASS[0m
+Testing: ./src/unified-compiler/simple_arith.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/simple_call_test.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/simple_comparison_test.uni ... [0;32mPASS[0m
+Testing: ./src/unified-compiler/simple_comparison_test2.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/simple_test.uni ... [0;32mPASS[0m
+Testing: ./src/unified-compiler/stdlib/BinaryTree.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/stdlib/HashMap.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/stdlib/List.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/stdlib/Queue.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/stdlib/Set.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/stdlib/Stack.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/test/bitwise.uni ... [0;32mPASS[0m
+Testing: ./src/unified-compiler/test/block_expr.uni ... [0;31mFAIL[0m
+Testing: ./src/unified-compiler/test/compound_assign.uni ... [0;32mPASS[0m
+Testing: ./src/unified-compiler/test/compound_assign_no_semi.uni ... [0;32mPASS[0m
+Testing: ./src/unified-compiler/test/counter_mut.uni ... 
