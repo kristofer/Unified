@@ -317,10 +317,16 @@ func (g *Generator) convertType(t ast.Type) ValueType {
 			return F64
 		default:
 			// For generic type parameters and user-defined types:
-			// - Generic type parameters (T, U, etc.) should ideally be resolved at instantiation
-			// - For now, default to I64 for numeric generics
-			// - User-defined types (structs, enums) would be pointers (I32) when heap-allocated
-			// TODO: Implement proper generic type parameter resolution
+			// LIMITATION: Generic type parameters (T, U, etc.) are not properly resolved yet.
+			// The compiler defaults all unknown types to I64, which means:
+			// - Generic functions work correctly when called with Int/numeric types
+			// - Generic functions will fail at runtime when called with String/pointer types
+			// TODO: Implement proper generic monomorphization - generate separate function
+			// copies for each concrete type the generic is instantiated with.
+			// Until then, generic functions should only be called with one concrete type.
+			//
+			// For user-defined types (structs, enums when heap-allocated), use I32 (pointer)
+			// For now, we default to I64 assuming most generics are used with numeric types
 			return I64
 		}
 	default:

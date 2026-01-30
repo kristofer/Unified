@@ -628,6 +628,8 @@ func (g *Generator) getExpressionType(expr ast.Expression) ValueType {
 			return F64
 		case ast.LiteralBool:
 			return I32 // Booleans are i32
+		case ast.LiteralString:
+			return I32 // String literals are pointers (i32)
 		default:
 			return I64
 		}
