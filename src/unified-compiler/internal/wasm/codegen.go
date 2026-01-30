@@ -909,11 +909,15 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 	
 	// Store each argument
 	for i, arg := range enumExpr.Arguments {
+		// First get the pointer
+		g.emitGetLocal(body, tempLocal)
+		
+		// Then generate the value
 		if err := g.generateExpression(body, arg); err != nil {
 			return err
 		}
 		
-		g.emitGetLocal(body, tempLocal)
+		// Now stack is [i32_pointer, i64_value] which is correct for i64.store
 		body.WriteByte(0x37) // i64.store
 		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8))
@@ -1113,7 +1117,7 @@ func (g *Generator) generateTryExpr(body *bytes.Buffer, tryExpr *ast.TryExpr) er
 	body.WriteByte(0x45) // i32.eqz (check if tag == 0)
 	
 	body.WriteByte(0x04) // if
-	body.WriteByte(0x40) // void
+	body.WriteByte(0x7E) // i64 result type
 	
 	// Tag == 0 (Ok/Some): Extract the value from offset 4
 	g.emitGetLocal(body, tempLocal)
@@ -1126,6 +1130,9 @@ func (g *Generator) generateTryExpr(body *bytes.Buffer, tryExpr *ast.TryExpr) er
 	// Tag != 0 (Err/None): Return the enum itself for error propagation
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x0F) // return (early return)
+	// After return, we need a dummy i64 value for the else branch type
+	body.WriteByte(0x42) // i64.const
+	body.WriteByte(0x00) // 0 (will never be reached)
 	
 	body.WriteByte(0x0B) // end if
 	

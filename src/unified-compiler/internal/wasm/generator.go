@@ -307,6 +307,10 @@ func (g *Generator) generateFunctionBody(fn *ast.FunctionDecl) ([]byte, []LocalV
 
 // convertType converts AST type to WASM ValueType
 func (g *Generator) convertType(t ast.Type) ValueType {
+	if t == nil {
+		return I64 // Default for nil types
+	}
+	
 	switch t := t.(type) {
 	case *ast.TypeReference:
 		switch t.Name {
@@ -326,11 +330,12 @@ func (g *Generator) convertType(t ast.Type) ValueType {
 			if _, isEnum := g.enumRegistry[t.Name]; isEnum {
 				return I32 // Enums are pointers
 			}
-			// For unknown user-defined types, use I32 as pointer type
+			// For unknown user-defined types, default to I32 as pointer type
 			return I32
 		}
 	default:
-		return I64
+		// For non-TypeReference types (function types, etc.), default to I32
+		return I32
 	}
 }
 
