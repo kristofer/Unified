@@ -342,6 +342,10 @@ func (g *Generator) generateCall(body *bytes.Buffer, call *ast.CallExpr) error {
 
 // generateBinaryExpr generates WASM bytecode for a binary expression
 func (g *Generator) generateBinaryExpr(body *bytes.Buffer, expr *ast.BinaryExpr) error {
+	// Check for string concatenation (if both operands are strings and operator is Add)
+	// For now, we'll detect this by checking if operands are string literals
+	// TODO: Implement proper type inference
+	
 	// Determine types of operands
 	leftType := g.getExpressionType(expr.Left)
 	rightType := g.getExpressionType(expr.Right)
@@ -927,14 +931,34 @@ func (g *Generator) generateIndexExpr(body *bytes.Buffer, indexExpr *ast.IndexEx
 	// TODO: Add proper type checking
 	body.WriteByte(0xA7) // i32.wrap_i64
 	
-	// TODO: Add bounds checking
+	// Store index in a temp local
+	indexLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	g.emitSetLocal(body, indexLocal)
+	
+	// Bounds checking: load array length and compare
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x28) // i32.load (load length)
+	body.WriteByte(0x02) // alignment
+	body.WriteByte(0x00) // offset
+	
+	// Check if index >= length
+	g.emitGetLocal(body, indexLocal)
+	body.WriteByte(0x4D) // i32.le_s (length <= index?)
+	
+	// If true, trap (out of bounds)
+	body.WriteByte(0x04) // if
+	body.WriteByte(0x40) // void
+	body.WriteByte(0x00) // unreachable (trap)
+	body.WriteByte(0x0B) // end
 	
 	// Calculate element address: array + 4 + (index * 8)
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const
 	body.WriteByte(0x04) // 4 (skip length)
 	body.WriteByte(0x6A) // i32.add
-	// index is on stack, multiply by 8
+	g.emitGetLocal(body, indexLocal)
 	body.WriteByte(0x41) // i32.const
 	body.WriteByte(0x08) // 8
 	body.WriteByte(0x6C) // i32.mul
