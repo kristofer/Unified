@@ -317,6 +317,7 @@ caseExpr
 
 primary
     : constructorExpr                                // New expression (must be before structExpr)
+    | enumConstructorExpr                            // Enum variant construction (must be before structExpr)
     | structExpr                                     // Struct instantiation (must be before identifier)
     | listExpr                                       // List literal
     | mapExpr                                        // Map literal
@@ -339,6 +340,10 @@ asyncExpr
 
 constructorExpr
     : NEW identifier (LT typeList GT)? LPAREN argList? RPAREN
+    ;
+
+enumConstructorExpr
+    : identifier DOUBLE_COLON identifier (LPAREN argList? RPAREN)?
     ;
 
 structExpr
