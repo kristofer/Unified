@@ -739,6 +739,12 @@ func (g *Generator) inferASTType(expr ast.Expression, wasmType ValueType) ast.Ty
 
 // generateFor generates WASM bytecode for a for loop
 func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) error {
+	// Check if this is a range-based for loop
+	if rangeExpr, ok := forStmt.Iterable.(*ast.BinaryExpr); ok && 
+	   (rangeExpr.Operator == ast.OperatorRange || rangeExpr.Operator == ast.OperatorRangeIncl) {
+		return g.generateRangeFor(body, forStmt, rangeExpr)
+	}
+	
 	// For loops iterate over a collection
 	// We need to:
 	// 1. Evaluate the iterable expression (array/list)
@@ -828,6 +834,96 @@ func (g *Generator) generateFor(body *bytes.Buffer, forStmt *ast.ForStatement) e
 	body.WriteByte(0x01) // 1
 	body.WriteByte(0x6A) // i32.add
 	g.emitSetLocal(body, indexLocal)
+	
+	// Branch back to loop start
+	body.WriteByte(0x0C) // br
+	body.WriteByte(0x00) // continue to loop
+	
+	body.WriteByte(0x0B) // end loop
+	body.WriteByte(0x0B) // end block
+	
+	return nil
+}
+
+// generateRangeFor generates WASM bytecode for a range-based for loop
+func (g *Generator) generateRangeFor(body *bytes.Buffer, forStmt *ast.ForStatement, rangeExpr *ast.BinaryExpr) error {
+	// For range loops: for i in start..end or for i in start..=end
+	// We need to:
+	// 1. Evaluate start and end expressions
+	// 2. Loop from start to end (exclusive) or end (inclusive)
+	// 3. For each iteration, bind the current value to the loop variable
+	
+	// Generate start expression
+	if err := g.generateExpression(body, rangeExpr.Left); err != nil {
+		return err
+	}
+	
+	// Store start value in loop variable (use i64 for compatibility with Int type)
+	loopVarLocal := g.localVarCount
+	g.localVars[forStmt.Variable] = loopVarLocal
+	g.localTypeOrder = append(g.localTypeOrder, I64)
+	g.localVarCount++
+	
+	// Convert to i64 if needed
+	startType := g.getExpressionType(rangeExpr.Left)
+	if startType == I32 {
+		g.emitI32ToI64Conversion(body)
+	}
+	g.emitSetLocal(body, loopVarLocal)
+	
+	// Generate end expression
+	if err := g.generateExpression(body, rangeExpr.Right); err != nil {
+		return err
+	}
+	
+	// Store end value in a local (also i64)
+	endLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I64)
+	g.localVarCount++
+	
+	// Convert to i64 if needed
+	endType := g.getExpressionType(rangeExpr.Right)
+	if endType == I32 {
+		g.emitI32ToI64Conversion(body)
+	}
+	g.emitSetLocal(body, endLocal)
+	
+	// block (outer - for break)
+	body.WriteByte(0x02) // block
+	body.WriteByte(0x40) // empty block type
+	
+	// loop (inner - for continue)
+	body.WriteByte(0x03) // loop
+	body.WriteByte(0x40) // empty block type
+	
+	// Check loop condition based on range type
+	g.emitGetLocal(body, loopVarLocal)
+	g.emitGetLocal(body, endLocal)
+	
+	if rangeExpr.Operator == ast.OperatorRange {
+		// Exclusive range: loop while i < end
+		body.WriteByte(0x56) // i64.ge_s (i >= end?)
+	} else {
+		// Inclusive range: loop while i <= end
+		body.WriteByte(0x55) // i64.gt_s (i > end?)
+	}
+	
+	body.WriteByte(0x0D) // br_if
+	body.WriteByte(0x01) // break to outer block if true
+	
+	// Generate loop body
+	for _, stmt := range forStmt.Body.Statements {
+		if err := g.generateStatement(body, stmt); err != nil {
+			return err
+		}
+	}
+	
+	// Increment loop variable
+	g.emitGetLocal(body, loopVarLocal)
+	body.WriteByte(0x42) // i64.const
+	g.emitLEB128(body, 1) // 1
+	body.WriteByte(0x7C) // i64.add
+	g.emitSetLocal(body, loopVarLocal)
 	
 	// Branch back to loop start
 	body.WriteByte(0x0C) // br
