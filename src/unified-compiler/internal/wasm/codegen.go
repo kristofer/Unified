@@ -299,40 +299,105 @@ func (g *Generator) generateCall(body *bytes.Buffer, call *ast.CallExpr) error {
 
 // generateBinaryExpr generates WASM bytecode for a binary expression
 func (g *Generator) generateBinaryExpr(body *bytes.Buffer, expr *ast.BinaryExpr) error {
+	// Determine types of operands
+	leftType := g.getExpressionType(expr.Left)
+	rightType := g.getExpressionType(expr.Right)
+	
 	// Generate left operand
 	if err := g.generateExpression(body, expr.Left); err != nil {
 		return err
 	}
-
+	
+	// Convert left operand if needed for comparison/arithmetic operations
+	// For most operations, we want both operands to be the same type
+	// Promote i32 to i64 if one operand is i64
+	targetType := leftType
+	if leftType == I32 && rightType == I64 {
+		g.emitI32ToI64Conversion(body)
+		targetType = I64
+	}
+	
 	// Generate right operand
 	if err := g.generateExpression(body, expr.Right); err != nil {
 		return err
 	}
+	
+	// Convert right operand if needed
+	if rightType == I32 && targetType == I64 {
+		g.emitI32ToI64Conversion(body)
+	} else if rightType == I64 && leftType == I32 && targetType == I32 {
+		g.emitI64ToI32Conversion(body)
+	}
 
 	// Generate operator based on OperatorType
+	// Use the target type to determine which instruction variant to use
 	switch expr.Operator {
 	case ast.OperatorAdd:
-		body.WriteByte(0x7C) // i64.add
+		if targetType == I32 {
+			body.WriteByte(0x6A) // i32.add
+		} else {
+			body.WriteByte(0x7C) // i64.add
+		}
 	case ast.OperatorSub:
-		body.WriteByte(0x7D) // i64.sub
+		if targetType == I32 {
+			body.WriteByte(0x6B) // i32.sub
+		} else {
+			body.WriteByte(0x7D) // i64.sub
+		}
 	case ast.OperatorMul:
-		body.WriteByte(0x7E) // i64.mul
+		if targetType == I32 {
+			body.WriteByte(0x6C) // i32.mul
+		} else {
+			body.WriteByte(0x7E) // i64.mul
+		}
 	case ast.OperatorDiv:
-		body.WriteByte(0x7F) // i64.div_s
+		if targetType == I32 {
+			body.WriteByte(0x6D) // i32.div_s
+		} else {
+			body.WriteByte(0x7F) // i64.div_s
+		}
 	case ast.OperatorMod:
-		body.WriteByte(0x81) // i64.rem_s
+		if targetType == I32 {
+			body.WriteByte(0x6F) // i32.rem_s
+		} else {
+			body.WriteByte(0x81) // i64.rem_s
+		}
 	case ast.OperatorEq:
-		body.WriteByte(0x51) // i64.eq
+		if targetType == I32 {
+			body.WriteByte(0x46) // i32.eq
+		} else {
+			body.WriteByte(0x51) // i64.eq
+		}
 	case ast.OperatorNe:
-		body.WriteByte(0x52) // i64.ne
+		if targetType == I32 {
+			body.WriteByte(0x47) // i32.ne
+		} else {
+			body.WriteByte(0x52) // i64.ne
+		}
 	case ast.OperatorLt:
-		body.WriteByte(0x53) // i64.lt_s
+		if targetType == I32 {
+			body.WriteByte(0x48) // i32.lt_s
+		} else {
+			body.WriteByte(0x53) // i64.lt_s
+		}
 	case ast.OperatorGt:
-		body.WriteByte(0x55) // i64.gt_s
+		if targetType == I32 {
+			body.WriteByte(0x4A) // i32.gt_s
+		} else {
+			body.WriteByte(0x55) // i64.gt_s
+		}
 	case ast.OperatorLe:
-		body.WriteByte(0x54) // i64.le_s
+		if targetType == I32 {
+			body.WriteByte(0x4C) // i32.le_s
+		} else {
+			body.WriteByte(0x54) // i64.le_s
+		}
 	case ast.OperatorGe:
-		body.WriteByte(0x56) // i64.ge_s
+		if targetType == I32 {
+			body.WriteByte(0x4E) // i32.ge_s
+		} else {
+			body.WriteByte(0x56) // i64.ge_s
+		}
 	case ast.OperatorAnd:
 		// Logical AND for boolean values (i32)
 		// Both operands are i32 (from boolean literals or comparisons)
@@ -342,15 +407,35 @@ func (g *Generator) generateBinaryExpr(body *bytes.Buffer, expr *ast.BinaryExpr)
 		// Both operands are i32 (from boolean literals or comparisons)
 		body.WriteByte(0x72) // i32.or
 	case ast.OperatorBitAnd:
-		body.WriteByte(0x83) // i64.and
+		if targetType == I32 {
+			body.WriteByte(0x71) // i32.and
+		} else {
+			body.WriteByte(0x83) // i64.and
+		}
 	case ast.OperatorBitOr:
-		body.WriteByte(0x84) // i64.or
+		if targetType == I32 {
+			body.WriteByte(0x72) // i32.or
+		} else {
+			body.WriteByte(0x84) // i64.or
+		}
 	case ast.OperatorBitXor:
-		body.WriteByte(0x85) // i64.xor
+		if targetType == I32 {
+			body.WriteByte(0x73) // i32.xor
+		} else {
+			body.WriteByte(0x85) // i64.xor
+		}
 	case ast.OperatorLShift:
-		body.WriteByte(0x86) // i64.shl
+		if targetType == I32 {
+			body.WriteByte(0x74) // i32.shl
+		} else {
+			body.WriteByte(0x86) // i64.shl
+		}
 	case ast.OperatorRShift:
-		body.WriteByte(0x88) // i64.shr_s
+		if targetType == I32 {
+			body.WriteByte(0x76) // i32.shr_s
+		} else {
+			body.WriteByte(0x88) // i64.shr_s
+		}
 	default:
 		return fmt.Errorf("unsupported binary operator: %v", expr.Operator)
 	}
