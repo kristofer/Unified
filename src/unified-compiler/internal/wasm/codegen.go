@@ -1053,9 +1053,11 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 	// Allocate memory on heap
 	g.emitHeapAlloc(body, arraySize)
 	
-	// Duplicate pointer for storing elements
-	body.WriteByte(0x22) // local.tee
+	// Store pointer in a temp local
 	tempLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)
+	g.localVarCount++
+	body.WriteByte(0x21) // local.set
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store length
@@ -1068,11 +1070,15 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 	
 	// Store each element
 	for i, elem := range listExpr.Elements {
+		// Load struct pointer
+		g.emitGetLocal(body, tempLocal)
+		
+		// Generate element value
 		if err := g.generateExpression(body, elem); err != nil {
 			return err
 		}
 		
-		g.emitGetLocal(body, tempLocal)
+		// Store at offset (4 + i*8)
 		body.WriteByte(0x37) // i64.store
 		g.emitULEB128(body, 3) // alignment (2^3 = 8 bytes)
 		g.emitULEB128(body, uint64(4+i*8))
@@ -1115,8 +1121,8 @@ func (g *Generator) generateIndexExpr(body *bytes.Buffer, indexExpr *ast.IndexEx
 	// Bounds checking: load array length and compare
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x28) // i32.load (load length)
-	body.WriteByte(0x02) // alignment
-	body.WriteByte(0x00) // offset
+	g.emitULEB128(body, 2) // alignment (2^2 = 4 bytes)
+	g.emitULEB128(body, 0) // offset
 	
 	// Check if index >= length
 	g.emitGetLocal(body, indexLocal)
@@ -1131,11 +1137,11 @@ func (g *Generator) generateIndexExpr(body *bytes.Buffer, indexExpr *ast.IndexEx
 	// Calculate element address: array + 4 + (index * 8)
 	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const
-	body.WriteByte(0x04) // 4 (skip length)
+	g.emitLEB128(body, 4) // 4 (skip length)
 	body.WriteByte(0x6A) // i32.add
 	g.emitGetLocal(body, indexLocal)
 	body.WriteByte(0x41) // i32.const
-	body.WriteByte(0x08) // 8
+	g.emitLEB128(body, 8) // 8
 	body.WriteByte(0x6C) // i32.mul
 	body.WriteByte(0x6A) // i32.add
 	
