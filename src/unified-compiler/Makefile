@@ -1,4 +1,4 @@
-.PHONY: all parser build test clean run-test run-all-tests run-lib-tests vm-info stdlib-info
+.PHONY: all parser build test clean run-test run-all-tests run-lib-tests wasm-info stdlib-info
 
 all: parser build
 
@@ -7,9 +7,9 @@ parser:
 	@echo "Generating parser from ANTLR grammar..."
 	@bash scripts/generate.sh
 
-# Build the Unified compiler with VM backend
+# Build the Unified compiler with WASM backend
 build:
-	@echo "Building Unified compiler with VM backend..."
+	@echo "Building Unified compiler with WASM backend..."
 	@go build -o bin/unified ./cmd/compiler
 	@echo "Build complete! Binary: bin/unified"
 
@@ -92,16 +92,17 @@ run-lib-tests: build
 		exit 1; \
 	fi
 
-# Display VM information
-vm-info:
-	@echo "Unified VM-based Compiler"
-	@echo "========================="
-	@echo "Architecture: Stack-based virtual machine"
-	@echo "Backend: Custom Go VM (no LLVM dependency)"
+# Display WASM information
+wasm-info:
+	@echo "Unified WASM-based Compiler"
+	@echo "==========================="
+	@echo "Architecture: WebAssembly target"
+	@echo "Backend: WASM generation with wazero runtime"
+	@echo "Runtime: Embedded wazero WebAssembly runtime"
 	@echo ""
 	@echo "Build: make build"
 	@echo "Run: ./bin/unified --input <file.uni>"
-	@echo "See VM_README.md for more information"
+	@echo "See WASM documentation for more information"
 
 # Display standard library information
 stdlib-info:
