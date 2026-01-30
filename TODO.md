@@ -4,18 +4,30 @@
 
 This document tracks the implementation tasks needed to make all 121 test files pass with the WASM backend.
 
-**Current Status:** 26 tests passing (21.5%), 95 tests failing (78.5%)
+**Current Status:** 21 tests passing (17.4%), 100 tests failing (82.6%)
 
-**Last Updated:** January 30, 2026
+**Last Updated:** January 30, 2026 - After Priority 1 work session
 
 ## Test Results Overview
 
 - **Total Tests:** 121
-- **✅ Passing:** 26 tests (21.5%)
-- **❌ Failing:** 94 tests (77.7%)
-- **⏱️ Timeout:** 1 test (0.8%)
+- **✅ Passing:** 21 tests (17.4%) - regressed from 26
+- **❌ Failing:** 100 tests (82.6%)
 
-## Working Features (26 tests passing) ✅
+## Recent Changes (January 30, 2026)
+
+### Completed Infrastructure Improvements
+1. ✅ **Added WASM Global Section**: Fixed missing global section (0x06) in encoder
+2. ✅ **Fixed ULEB128 Encoding**: Corrected heap pointer init and all load/store memargs
+3. ✅ **Struct Registry System**: Tracks field names, types, and offsets
+4. ✅ **Type System Updates**: User-defined types now correctly use I32 pointers
+5. ✅ **Memory Management**: Fixed heap allocator to avoid undeclared temp locals
+
+### Outstanding Issues
+1. ❌ **CRITICAL BLOCKER**: Field access type mismatch ("expected i32, but was i64")
+2. ❌ **Regression**: 5 tests that were passing now fail (needs investigation)
+
+## Working Features (21 tests passing) ✅
 
 The following language features are fully functional with the WASM backend:
 
@@ -76,9 +88,25 @@ The following features need to be implemented to make the failing tests pass:
 
 ## Priority 1: Critical Language Features (29 tests)
 
-### 1.1 Struct Support (4 tests) 🔴 HIGH PRIORITY
+### 1.1 Struct Support (4 tests) 🔴 HIGH PRIORITY - **BLOCKED**
 
-**Status:** Parser recognizes structs, but WASM codegen has bugs with global.get indices
+**Status:** Infrastructure complete, but blocked on field access type mismatch error
+
+**Progress Made:**
+- ✅ Added WASM global section encoding (was missing, causing "invalid index for global.get")
+- ✅ Fixed heap pointer ULEB128 encoding (1024 = 0x80, 0x08, not 0x00, 0x04, 0x00)
+- ✅ Created struct registry to track field names, types, and offsets
+- ✅ Implemented first-pass struct declaration collection
+- ✅ Fixed all WASM load/store memarg encoding (alignment and offset now use ULEB128)
+- ✅ Implemented field offset lookup based on struct type
+- ✅ Updated type inference to return actual field types
+- ✅ Struct allocation works correctly
+
+**Current Blocker:**
+- ❌ Field access fails with "type mismatch: expected i32, but was i64"
+- Works: `let p = Point { x: 42 }`
+- Fails: `return p.x` (where x is type Int/i64)
+- Root cause unclear despite extensive debugging
 
 **Failing Tests:**
 - `test/point.uni` - Basic struct with field access
@@ -89,19 +117,20 @@ The following features need to be implemented to make the failing tests pass:
 **Error Pattern:**
 ```
 Runtime error: failed to compile module: invalid function[0] export["main"]: 
-invalid index for global.get
+type mismatch: expected i32, but was i64
 ```
 
-**Implementation Required:**
-- Fix WASM global variable indexing for struct field access
-- Implement struct field offset calculations in WASM linear memory
-- Support dot notation for field access (e.g., `point.x`)
-- Implement `new` keyword for heap allocation
-- Ensure proper memory alignment for struct fields
+**Next Steps:**
+1. Debug WASM bytecode sequence for field access
+2. Try minimal reproduction with WASM tools (wasm-tools, wabt)
+3. Review type conversions in field access code path
+4. Consider alternative implementations
 
 **Related Files:**
-- `internal/wasm/codegen.go` - Need to fix global.get index calculation
-- `internal/wasm/generator.go` - Need proper struct layout in memory
+- `internal/wasm/encoder.go` - Global section encoding
+- `internal/wasm/generator.go` - Struct registry  
+- `internal/wasm/codegen.go` - Field access codegen
+- `internal/wasm/memory.go` - Heap allocation
 
 ---
 
@@ -526,4 +555,131 @@ This TODO should be updated as features are implemented:
 3. Re-run test suite periodically
 4. Document any new issues discovered
 
-**Next Review Date:** After Priority 1 items are complete
+**Next Review Date:** After Priority 1.1 struct field access blocker is resolved
+
+---
+
+## How to Proceed with Priority 2, 3, and 4
+
+### Priority 2: Advanced Language Features (32 tests)
+
+**Status:** Not started - blocked on Priority 1 completion
+
+**Recommended Approach:**
+1. **Start with Try Operator (2.2)** - Parser changes needed
+   - Add `::` operator to grammar for enum variant access
+   - Implement try operator `?` AST node
+   - Generate WASM code for early return pattern
+   - ~10 tests, moderate complexity
+
+2. **Then Generic Functions (2.1)** - Type system work
+   - Implement monomorphization (generate separate function for each type)
+   - Support explicit type arguments
+   - ~15 tests, high complexity
+   - Build on existing basic generics support
+
+3. **Finally Standard Library (2.3)** - Large but lower priority
+   - Requires Self keyword, method syntax, advanced struct features
+   - ~24 tests, very high complexity
+   - Should be last after language features are solid
+
+**Dependencies:** Requires Priority 1 to be 100% complete first
+
+---
+
+### Priority 3: Additional Features (15 tests)
+
+**Status:** Not started - low priority
+
+**Recommended Approach:**
+- **Block Expressions (3.1)**: Simple, 1 test
+  - Implement blocks as expressions (last expression is value)
+  - Low complexity, can be done anytime
+
+- **Nested Loops (3.2)**: Medium, 1 test
+  - Ensure break/continue work in nested contexts
+  - May need label tracking
+
+- **FizzBuzz (3.3)**: Should work automatically, 3 tests
+  - Likely will pass once for loops and modulo work
+  - Good integration test
+
+- **Variable Shadowing (3.4)**: Medium, 1 test
+  - Track scopes properly in WASM locals
+  
+- **Simple Tests (3.5)**: Investigation needed, 10 tests
+  - May use deprecated syntax
+  - Review individually after priorities 1-2
+
+**Dependencies:** Can start after Priority 1, alongside Priority 2
+
+---
+
+### Priority 4: Critical Bug Fixes (1 test)
+
+**Status:** Not started - needs investigation
+
+**The Timeout Bug:**
+- `test/counter_mut.uni` enters infinite loop
+- Could be compiler hang or runtime infinite loop
+- High priority once found, but low impact (1 test)
+
+**Recommended Approach:**
+1. Add timeout protection to compiler itself
+2. Debug with simple mutable counter test case
+3. May be related to mutable variable handling
+
+**Dependencies:** Can be investigated in parallel with other work
+
+---
+
+## Success Metrics and Milestones
+
+### Milestone 1: Priority 1 Complete
+- **Goal:** 56 tests passing (46%)
+- **Requires:** Fixing struct field access blocker + arrays + for loops + strings
+- **Estimate:** 2-4 days of focused work
+
+### Milestone 2: Priority 2 Complete  
+- **Goal:** 82 tests passing (68%)
+- **Requires:** Try operator + improved generics
+- **Estimate:** 3-5 days of work
+
+### Milestone 3: Priority 3 Complete
+- **Goal:** 97+ tests passing (80%+)
+- **Requires:** Block expressions + misc features
+- **Estimate:** 1-2 days of work
+
+### Milestone 4: All Priorities Complete
+- **Goal:** 118+ tests passing (97%+)
+- **Requires:** Everything above + stdlib
+- **Estimate:** 2-3 weeks total
+
+---
+
+## Immediate Action Items
+
+1. **URGENT**: Resolve struct field access type mismatch
+   - Try debugging with wasm-tools or wabt
+   - Get second opinion on generated bytecode
+   - Consider alternative field access implementation
+
+2. **Investigate regression**: Find which 5 tests broke
+   - Compare with previous test results
+   - Likely related to type system changes
+   - May need to revert some changes
+
+3. **Document workarounds**: If field access can't be fixed quickly
+   - Consider temporary limitations
+   - Update test expectations
+   - Move forward with arrays/for loops
+
+---
+
+**Maintainer Notes:**
+- Test suite must be run after each major change
+- Regressions must be addressed immediately  
+- Don't move to next priority until current is 100% complete
+- Update this TODO.md after each work session
+
+**Next Review Date:** After Priority 1.1 struct field access blocker is resolved
