@@ -102,9 +102,11 @@ func (g *Generator) generateIf(body *bytes.Buffer, ifStmt *ast.IfStatement) erro
 	body.WriteByte(0x40) // empty block type
 
 	// Then block
-	for _, stmt := range ifStmt.ThenBlock.Statements {
-		if err := g.generateStatement(body, stmt); err != nil {
-			return err
+	if ifStmt.ThenBlock != nil {
+		for _, stmt := range ifStmt.ThenBlock.Statements {
+			if err := g.generateStatement(body, stmt); err != nil {
+				return err
+			}
 		}
 	}
 
