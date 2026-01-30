@@ -39,6 +39,22 @@ func (g *Generator) generateReturn(body *bytes.Buffer, ret *ast.ReturnStatement)
 		if err := g.generateExpression(body, ret.Value); err != nil {
 			return err
 		}
+		
+		// Add type conversion if the expression type doesn't match return type
+		if g.currentFuncReturnType != nil {
+			exprType := g.getExpressionType(ret.Value)
+			returnType := g.convertType(g.currentFuncReturnType)
+			
+			if exprType != returnType {
+				// Convert between types
+				if exprType == I32 && returnType == I64 {
+					g.emitI32ToI64Conversion(body)
+				} else if exprType == I64 && returnType == I32 {
+					g.emitI64ToI32Conversion(body)
+				}
+				// Note: Float conversions would be added here in a complete implementation
+			}
+		}
 	}
 	body.WriteByte(0x0F) // return
 	return nil
@@ -46,10 +62,25 @@ func (g *Generator) generateReturn(body *bytes.Buffer, ret *ast.ReturnStatement)
 
 // generateLet generates WASM bytecode for a let statement
 func (g *Generator) generateLet(body *bytes.Buffer, let *ast.LetStatement) error {
+	// Determine the WASM type for this variable
+	wasmType := g.convertType(let.Type)
+	
 	// Generate the initial value
 	if let.Value != nil {
 		if err := g.generateExpression(body, let.Value); err != nil {
 			return err
+		}
+		
+		// Add type conversion if needed
+		exprType := g.getExpressionType(let.Value)
+		if exprType != wasmType {
+			// Convert between types
+			if exprType == I32 && wasmType == I64 {
+				g.emitI32ToI64Conversion(body)
+			} else if exprType == I64 && wasmType == I32 {
+				g.emitI64ToI32Conversion(body)
+			}
+			// Note: Float conversions would be added here in a complete implementation
 		}
 	} else {
 		// Default value
@@ -60,6 +91,9 @@ func (g *Generator) generateLet(body *bytes.Buffer, let *ast.LetStatement) error
 	localIndex := g.localVarCount
 	g.localVars[let.Name] = localIndex
 	g.localVarTypes[let.Name] = let.Type
+	
+	// Track the type order for this local
+	g.localTypeOrder = append(g.localTypeOrder, wasmType)
 	g.localVarCount++
 
 	// Store to local variable
@@ -391,5 +425,62 @@ func (g *Generator) emitULEB128(body *bytes.Buffer, value uint64) {
 			break
 		}
 		body.WriteByte(b | 0x80)
+	}
+}
+
+// emitI32ToI64Conversion emits instructions to convert i32 to i64
+func (g *Generator) emitI32ToI64Conversion(body *bytes.Buffer) {
+	// i64.extend_i32_s - sign-extend i32 to i64
+	body.WriteByte(0xAC)
+}
+
+// emitI64ToI32Conversion emits instructions to convert i64 to i32
+func (g *Generator) emitI64ToI32Conversion(body *bytes.Buffer) {
+	// i32.wrap_i64 - wrap i64 to i32 (truncate)
+	body.WriteByte(0xA7)
+}
+
+// getExpressionType returns the WASM type that an expression produces
+// This is a simplified implementation - a full type inference system would be more complex
+func (g *Generator) getExpressionType(expr ast.Expression) ValueType {
+	switch e := expr.(type) {
+	case *ast.Literal:
+		switch e.Kind {
+		case ast.LiteralInt:
+			return I64 // Integer literals are i64
+		case ast.LiteralFloat:
+			return F64
+		case ast.LiteralBool:
+			return I32 // Booleans are i32
+		default:
+			return I64
+		}
+	case *ast.BinaryExpr:
+		switch e.Operator {
+		case ast.OperatorEq, ast.OperatorNe, ast.OperatorLt, ast.OperatorLe, ast.OperatorGt, ast.OperatorGe:
+			return I32 // Comparison operators return i32
+		case ast.OperatorAnd, ast.OperatorOr:
+			return I32 // Logical operators return i32
+		default:
+			// Arithmetic operators return the type of their operands
+			return g.getExpressionType(e.Left)
+		}
+	case *ast.UnaryExpr:
+		if e.Operator == ast.OperatorNot {
+			return I32 // Logical NOT returns i32
+		}
+		return g.getExpressionType(e.Operand)
+	case *ast.Identifier:
+		// Look up the variable type
+		if varType, ok := g.localVarTypes[e.Name]; ok {
+			return g.convertType(varType)
+		}
+		return I64 // Default to i64
+	case *ast.CallExpr:
+		// Would need to look up function return type
+		// For now, default to i64
+		return I64
+	default:
+		return I64 // Default to i64
 	}
 }
