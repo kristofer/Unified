@@ -764,12 +764,17 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	// Calculate struct size (simplified: 4 bytes for type + 8 bytes per field)
 	structSize := uint32(4 + (len(structExpr.FieldInits) * 8))
 	
-	// Allocate memory on heap
+	// Allocate memory on heap (leaves pointer on stack)
 	g.emitHeapAlloc(body, structSize)
 	
-	// Duplicate pointer for storing fields
-	body.WriteByte(0x22) // local.tee
+	// We need to use this pointer multiple times (for type ID and each field)
+	// So we store it in a temporary local
 	tempLocal := g.localVarCount
+	g.localTypeOrder = append(g.localTypeOrder, I32)  // Pointer is i32
+	g.localVarCount++
+	
+	// Store pointer to temp local (consumes the pointer from heap alloc)
+	body.WriteByte(0x21) // local.set
 	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store type ID (simple hash of struct name)
@@ -787,13 +792,15 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	
 	// Store each field
 	for i, field := range structExpr.FieldInits {
+		// Load struct pointer
+		g.emitGetLocal(body, tempLocal)
+		
 		// Generate field value
 		if err := g.generateExpression(body, field.Value); err != nil {
 			return err
 		}
 		
 		// Store at offset (4 + i*8)
-		g.emitGetLocal(body, tempLocal)
 		body.WriteByte(0x37) // i64.store
 		body.WriteByte(0x03) // alignment
 		g.emitULEB128(body, uint64(4+i*8)) // offset
@@ -812,9 +819,27 @@ func (g *Generator) generateFieldAccess(body *bytes.Buffer, fieldAccess *ast.Fie
 		return err
 	}
 	
-	// TODO: Look up field offset based on struct type
-	// For now, assume fields are at fixed offsets (4 bytes for type + 8*index)
-	fieldOffset := 4 // Placeholder
+	// Determine the struct type from the object expression
+	var structName string
+	if ident, ok := fieldAccess.Object.(*ast.Identifier); ok {
+		// Get the type of the variable
+		if varType, exists := g.localVarTypes[ident.Name]; exists {
+			if typeRef, ok := varType.(*ast.TypeReference); ok {
+				structName = typeRef.Name
+			}
+		}
+	}
+	
+	// Look up field offset in struct registry
+	fieldOffset := 4 // Default to first field
+	if structInfo, exists := g.structRegistry[structName]; exists {
+		for i, fieldName := range structInfo.FieldNames {
+			if fieldName == fieldAccess.Field {
+				fieldOffset = 4 + i*8
+				break
+			}
+		}
+	}
 	
 	// Load field value
 	body.WriteByte(0x29) // i64.load
