@@ -134,6 +134,8 @@ func (g *Generator) addFunction(fn *ast.FunctionDecl) error {
 		// Add parameter as local variable
 		g.localVars[param.Name] = g.localVarCount
 		g.localVarTypes[param.Name] = param.Type
+		// Track parameter types in order
+		g.localTypeOrder = append(g.localTypeOrder, params[i])
 		g.localVarCount++
 	}
 

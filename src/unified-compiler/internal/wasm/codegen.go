@@ -547,8 +547,18 @@ func (g *Generator) getExpressionType(expr ast.Expression) ValueType {
 		case ast.OperatorAnd, ast.OperatorOr:
 			return I32 // Logical operators return i32
 		default:
-			// Arithmetic operators return the type of their operands
-			return g.getExpressionType(e.Left)
+			// Arithmetic operators return the promoted type of their operands
+			// If either operand is i64, the result is i64
+			leftType := g.getExpressionType(e.Left)
+			rightType := g.getExpressionType(e.Right)
+			if leftType == I64 || rightType == I64 {
+				return I64
+			} else if leftType == F64 || rightType == F64 {
+				return F64
+			} else if leftType == F32 || rightType == F32 {
+				return F32
+			}
+			return I32
 		}
 	case *ast.UnaryExpr:
 		if e.Operator == ast.OperatorNot {
