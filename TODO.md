@@ -6,26 +6,47 @@ This document tracks the implementation tasks needed to make all 121 test files 
 
 **Current Status:** 21 tests passing (17.4%), 100 tests failing (82.6%)
 
-**Last Updated:** January 30, 2026 - After Priority 1 work session
+**Last Updated:** January 30, 2026 - After Priority 2 parser work
 
 ## Test Results Overview
 
 - **Total Tests:** 121
-- **✅ Passing:** 21 tests (17.4%) - regressed from 26
+- **✅ Passing:** 21 tests (17.4%)
 - **❌ Failing:** 100 tests (82.6%)
+
+## Priority 1 & 2 Status Summary
+
+### Priority 1: Critical Language Features (29 tests) ⚠️ **PARTIAL**
+- **Status:** Infrastructure complete, blocked on WASM code generation bugs
+- **Completed:** WASM global section, heap allocator, struct registry
+- **Blocked:** Field access type mismatch, array allocation issues
+
+### Priority 2: Advanced Language Features (32 tests) ⚠️ **15% COMPLETE**
+- **2.1 Generic Functions (15 tests):** ❌ Not started - needs monomorphization
+- **2.2 Try Operator (10 tests):** 🟡 50% complete - parser done, codegen blocked
+- **2.3 Standard Library (24 tests):** ❌ Not started - needs Self keyword, methods
+
+**See PRIORITY2_WORK_SUMMARY.md for detailed analysis**
 
 ## Recent Changes (January 30, 2026)
 
-### Completed Infrastructure Improvements
-1. ✅ **Added WASM Global Section**: Fixed missing global section (0x06) in encoder
-2. ✅ **Fixed ULEB128 Encoding**: Corrected heap pointer init and all load/store memargs
-3. ✅ **Struct Registry System**: Tracks field names, types, and offsets
-4. ✅ **Type System Updates**: User-defined types now correctly use I32 pointers
-5. ✅ **Memory Management**: Fixed heap allocator to avoid undeclared temp locals
+### Priority 2 Work Session - Parser Infrastructure
 
-### Outstanding Issues
-1. ❌ **CRITICAL BLOCKER**: Field access type mismatch ("expected i32, but was i64")
-2. ❌ **Regression**: 5 tests that were passing now fail (needs investigation)
+#### ✅ Completed Infrastructure Improvements
+1. **ANTLR 4.13.2 Installation**: Downloaded from Maven Central to avoid keyword conflicts
+2. **Parser Regeneration**: Successfully regenerated all parser files
+3. **Enum Constructor Support**: Added `Type::Variant(args)` syntax to grammar
+4. **Visitor Implementation**: Implemented VisitEnumConstructorExpr in AST builder
+
+#### 🟡 Partial Completions
+1. **Enum Constructor Parsing**: ✅ Works - `Result::Ok(42)` now parses
+2. **Try Operator Parsing**: ✅ Works - `expr?` recognized
+3. **Enum Constructor Codegen**: ❌ Type mismatch errors
+4. **Try Operator Codegen**: ❌ Not implemented
+
+#### ❌ Outstanding Issues (From Priority 1)
+1. **CRITICAL BLOCKER**: Field access type mismatch ("expected i32, but was i64")
+2. **Regression**: 5 tests that were passing now fail (needs investigation)
 
 ## Working Features (21 tests passing) ✅
 
@@ -561,29 +582,56 @@ This TODO should be updated as features are implemented:
 
 ## How to Proceed with Priority 2, 3, and 4
 
-### Priority 2: Advanced Language Features (32 tests)
+### ⚠️ CRITICAL: Priority 1 Must Be Completed First
 
-**Status:** Not started - blocked on Priority 1 completion
+**DO NOT** proceed with Priority 2, 3, or 4 until Priority 1 is **100% complete**. The struct field access blocker and array allocation issues must be resolved first.
 
-**Recommended Approach:**
-1. **Start with Try Operator (2.2)** - Parser changes needed
-   - Add `::` operator to grammar for enum variant access
-   - Implement try operator `?` AST node
-   - Generate WASM code for early return pattern
-   - ~10 tests, moderate complexity
+### Priority 2: Advanced Language Features (32 tests) - **15% COMPLETE**
 
-2. **Then Generic Functions (2.1)** - Type system work
-   - Implement monomorphization (generate separate function for each type)
-   - Support explicit type arguments
-   - ~15 tests, high complexity
-   - Build on existing basic generics support
+**Status**: Parser infrastructure complete, WASM codegen needs work
 
-3. **Finally Standard Library (2.3)** - Large but lower priority
-   - Requires Self keyword, method syntax, advanced struct features
-   - ~24 tests, very high complexity
-   - Should be last after language features are solid
+#### Current State After January 30 Work Session:
+- ✅ **Parser Infrastructure**: ANTLR 4.13.2 installed, parser regenerated
+- ✅ **Enum Constructor Syntax**: `Type::Variant(args)` parsing works
+- ✅ **Try Operator Syntax**: `expr?` parsing works
+- ❌ **Enum Constructor Codegen**: Type mismatch bugs (i32 vs i64)
+- ❌ **Try Operator Codegen**: Not implemented
+- ❌ **Generic Monomorphization**: Not started
+- ❌ **Self Keyword**: Not added to grammar
+- ❌ **Method Syntax**: Not added to grammar
 
-**Dependencies:** Requires Priority 1 to be 100% complete first
+#### Recommended Approach (After Priority 1 Complete):
+
+**Step 1: Fix Enum Constructor WASM Codegen** (2-4 hours, 0-2 tests)
+1. Debug type mismatch in `internal/wasm/codegen.go::generateEnumConstructor`
+2. Ensure enum memory layout is correct
+3. Fix i32/i64 pointer vs value type issues
+4. Test with: `test/enum_simple.uni`, enum constructor tests
+
+**Step 2: Implement Try Operator Codegen** (4-8 hours, 10 tests)
+1. Implement `generateTryExpr` in `internal/wasm/codegen.go`
+2. Add Result/Option enum variant detection
+3. Generate early return pattern on Error/None variants
+4. Implement value unwrapping for Ok/Some variants
+5. Test with: `test/try_operator_*.uni` (10 tests)
+
+**Step 3: Implement Generic Function Monomorphization** (2-3 days, 15 tests)
+1. Track type arguments at function call sites in semantic analysis
+2. Generate specialized function instances per type combination
+3. Update type inference for generic return types
+4. Handle generic constraints and bounds
+5. Update function name mangling for monomorphized versions
+6. Test with: `test/generics/*.uni` (15 tests)
+
+**Step 4: Add Self Keyword and Method Syntax** (3-5 days, 24 tests)
+1. Add `Self` keyword to lexer and parser (already in grammar as SELF)
+2. Update type resolution to handle Self references
+3. Add method syntax to grammar (`structDecl` member functions)
+4. Implement method resolution in semantic analysis
+5. Generate WASM code for method calls (implicit self parameter)
+6. Test with: `test/stdlib/*.uni`, `lib/*.uni` (24 tests)
+
+**Expected Result After Priority 2**: 70-72 tests passing (58-60%)
 
 ---
 
@@ -591,27 +639,35 @@ This TODO should be updated as features are implemented:
 
 **Status:** Not started - low priority
 
-**Recommended Approach:**
-- **Block Expressions (3.1)**: Simple, 1 test
-  - Implement blocks as expressions (last expression is value)
-  - Low complexity, can be done anytime
+**Dependency**: Can start alongside Priority 2, but should focus on Priority 2 first
 
-- **Nested Loops (3.2)**: Medium, 1 test
-  - Ensure break/continue work in nested contexts
-  - May need label tracking
+#### Recommended Approach:
 
-- **FizzBuzz (3.3)**: Should work automatically, 3 tests
-  - Likely will pass once for loops and modulo work
-  - Good integration test
+**Block Expressions (3.1)**: Simple, 1 test
+- Implement blocks as expressions (last expression is value)
+- Low complexity, can be done anytime
+- Test with: `test/block_expr.uni`
 
-- **Variable Shadowing (3.4)**: Medium, 1 test
-  - Track scopes properly in WASM locals
-  
-- **Simple Tests (3.5)**: Investigation needed, 10 tests
-  - May use deprecated syntax
-  - Review individually after priorities 1-2
+**Nested Loops (3.2)**: Medium, 1 test
+- Ensure break/continue work in nested contexts
+- May need label tracking
+- Test with: `test/integration/nested_loops.uni`
 
-**Dependencies:** Can start after Priority 1, alongside Priority 2
+**FizzBuzz (3.3)**: Should work automatically, 3 tests
+- Likely will pass once for loops and modulo work
+- Good integration test
+- Test with: `test/fib.uni`, `test/fizz.uni`, `test/integration/fizzbuzz_complete.uni`
+
+**Variable Shadowing (3.4)**: Medium, 1 test
+- Track scopes properly in WASM locals
+- Test with: `test/shadowing.uni`
+
+**Simple Tests (3.5)**: Investigation needed, 10 tests
+- May use deprecated syntax
+- Review individually after priorities 1-2
+- Files: `add_test.uni`, `basic_test.uni`, etc.
+
+**Expected Result After Priority 3**: 85-87 tests passing (70-72%)
 
 ---
 
@@ -619,67 +675,80 @@ This TODO should be updated as features are implemented:
 
 **Status:** Not started - needs investigation
 
-**The Timeout Bug:**
+#### The Timeout Bug:
 - `test/counter_mut.uni` enters infinite loop
 - Could be compiler hang or runtime infinite loop
 - High priority once found, but low impact (1 test)
 
-**Recommended Approach:**
+#### Recommended Approach:
 1. Add timeout protection to compiler itself
 2. Debug with simple mutable counter test case
 3. May be related to mutable variable handling
 
 **Dependencies:** Can be investigated in parallel with other work
 
----
-
-## Success Metrics and Milestones
-
-### Milestone 1: Priority 1 Complete
-- **Goal:** 56 tests passing (46%)
-- **Requires:** Fixing struct field access blocker + arrays + for loops + strings
-- **Estimate:** 2-4 days of focused work
-
-### Milestone 2: Priority 2 Complete  
-- **Goal:** 82 tests passing (68%)
-- **Requires:** Try operator + improved generics
-- **Estimate:** 3-5 days of work
-
-### Milestone 3: Priority 3 Complete
-- **Goal:** 97+ tests passing (80%+)
-- **Requires:** Block expressions + misc features
-- **Estimate:** 1-2 days of work
-
-### Milestone 4: All Priorities Complete
-- **Goal:** 118+ tests passing (97%+)
-- **Requires:** Everything above + stdlib
-- **Estimate:** 2-3 weeks total
+**Expected Result After Priority 4**: 86-88 tests passing (71-73%)
 
 ---
 
-## Immediate Action Items
+## Priority Completion Checklist
 
-1. **URGENT**: Resolve struct field access type mismatch
-   - Try debugging with wasm-tools or wabt
-   - Get second opinion on generated bytecode
-   - Consider alternative field access implementation
+Use this checklist to track overall progress:
 
-2. **Investigate regression**: Find which 5 tests broke
-   - Compare with previous test results
-   - Likely related to type system changes
-   - May need to revert some changes
+### Priority 1: Critical Language Features (29 tests)
+- [ ] 1.1 Struct Support (4 tests) - **BLOCKED** on field access type mismatch
+- [ ] 1.2 Array Support (11 tests) - Needs heap allocation fixes
+- [ ] 1.3 For Loop & Range (4 tests) - Needs range operator in codegen
+- [ ] 1.4 String Operations (10 tests) - Type mismatches, missing runtime functions
 
-3. **Document workarounds**: If field access can't be fixed quickly
-   - Consider temporary limitations
-   - Update test expectations
-   - Move forward with arrays/for loops
+### Priority 2: Advanced Language Features (32 tests)
+- [ ] 2.1 Generic Functions (15 tests) - Needs monomorphization
+- [x] 2.2 Try Operator - Parser (50% complete)
+- [ ] 2.2 Try Operator - Codegen (0% complete)
+- [ ] 2.3 Standard Library (24 tests) - Needs Self, methods
+
+### Priority 3: Additional Features (15 tests)
+- [ ] 3.1 Block Expressions (1 test)
+- [ ] 3.2 Nested Loops (1 test)
+- [ ] 3.3 FizzBuzz (3 tests)
+- [ ] 3.4 Variable Shadowing (1 test)
+- [ ] 3.5 Simple Tests (10 tests)
+
+### Priority 4: Critical Bug Fixes (1 test)
+- [ ] 4.1 Infinite Loop/Timeout (1 test)
+
+---
+
+## Documentation Updates Needed
+
+After completing each priority:
+
+### After Priority 1 Complete:
+- [ ] Update CLAUDE.md with struct/array implementation details
+- [ ] Update test status in this TODO.md
+- [ ] Document WASM memory layout for structs/arrays
+
+### After Priority 2 Complete:
+- [ ] Update CLAUDE.md with generic monomorphization approach
+- [ ] Document try operator code generation pattern
+- [ ] Update spec/UnifiedSpecification.md if needed
+
+### After Priority 3 Complete:
+- [ ] Update test status to reflect ~85 tests passing
+- [ ] Review and update all example code
+
+### After Priority 4 Complete:
+- [ ] Final test suite run and documentation
+- [ ] Update README.md with current capabilities
+- [ ] Create migration guide for any breaking changes
 
 ---
 
 **Maintainer Notes:**
+- **DO NOT skip Priority 1** - it's foundational for all other work
 - Test suite must be run after each major change
 - Regressions must be addressed immediately  
-- Don't move to next priority until current is 100% complete
 - Update this TODO.md after each work session
+- Refer to PRIORITY2_WORK_SUMMARY.md for detailed Priority 2 analysis
 
-**Next Review Date:** After Priority 1.1 struct field access blocker is resolved
+**Next Review Date:** After Priority 1 struct field access blocker is resolved
