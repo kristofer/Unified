@@ -265,16 +265,29 @@ func (g *Generator) generateLiteral(body *bytes.Buffer, lit *ast.Literal) error 
 		}
 	case ast.LiteralString:
 		// String literals need to be stored in data section and referenced
-		// For now, allocate in memory and store bytes
-		// TODO: Add string to data section
-		_ = []byte(lit.Value) // stringBytes - will be used when data section is implemented
-		
-		// Allocate memory: [length:i32][bytes...]
-		// For now, return a placeholder pointer
-		body.WriteByte(0x41) // i32.const
-		g.emitULEB128(body, 0) // Placeholder address
-		
-		// TODO: Store string data in memory
+		// Check if we've already allocated this string
+		if offset, ok := g.stringTable[lit.Value]; ok {
+			// String already allocated, just return its pointer
+			body.WriteByte(0x41) // i32.const
+			g.emitULEB128(body, uint64(offset))
+		} else {
+			// Allocate new string in memory
+			// Layout: [length:i32][bytes...]
+			stringBytes := []byte(lit.Value)
+			
+			// Create data with length prefix
+			data := make([]byte, 4+len(stringBytes))
+			binary.LittleEndian.PutUint32(data[0:4], uint32(len(stringBytes)))
+			copy(data[4:], stringBytes)
+			
+			// Allocate in memory
+			offset := g.memoryAllocator.AllocateWithData(data)
+			g.stringTable[lit.Value] = offset
+			
+			// Return pointer to string
+			body.WriteByte(0x41) // i32.const
+			g.emitULEB128(body, uint64(offset))
+		}
 	default:
 		return fmt.Errorf("unsupported literal kind: %v", lit.Kind)
 	}
@@ -742,21 +755,31 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 	// Allocate memory for the struct
 	// For simplicity, we'll use a fixed layout:
 	// - First 4 bytes: type ID (hash of struct name)
-	// - Following bytes: fields in order
+	// - Following bytes: fields in order (8 bytes each for i64)
 	
 	// Calculate struct size (simplified: 4 bytes for type + 8 bytes per field)
-	_ = 4 + (len(structExpr.FieldInits) * 8) // structSize - will be used when allocator is implemented
+	structSize := uint32(4 + (len(structExpr.FieldInits) * 8))
 	
-	// Allocate memory (we'll need a memory allocator)
-	// For now, we'll use a simple bump allocator with a global
-	// TODO: Implement proper memory allocation
+	// Allocate memory on heap
+	g.emitHeapAlloc(body, structSize)
 	
-	// Push struct pointer (placeholder - would call allocator)
-	body.WriteByte(0x41) // i32.const
-	g.emitULEB128(body, 0) // Placeholder address
+	// Duplicate pointer for storing fields
+	body.WriteByte(0x22) // local.tee
+	tempLocal := g.localVarCount
+	g.emitULEB128(body, uint64(tempLocal))
 	
-	// Store type ID
-	// TODO: Implement type ID system
+	// Store type ID (simple hash of struct name)
+	typeID := uint32(0)
+	for _, ch := range structExpr.Name {
+		typeID = typeID*31 + uint32(ch)
+	}
+	
+	g.emitGetLocal(body, tempLocal)
+	body.WriteByte(0x41) // i32.const (type ID)
+	g.emitULEB128(body, uint64(typeID))
+	body.WriteByte(0x36) // i32.store
+	body.WriteByte(0x02) // alignment
+	body.WriteByte(0x00) // offset
 	
 	// Store each field
 	for i, field := range structExpr.FieldInits {
@@ -766,16 +789,14 @@ func (g *Generator) generateStructExpr(body *bytes.Buffer, structExpr *ast.Struc
 		}
 		
 		// Store at offset (4 + i*8)
-		body.WriteByte(0x41) // i32.const (address)
-		g.emitULEB128(body, 0) // Placeholder
-		body.WriteByte(0x29) // i64.store
+		g.emitGetLocal(body, tempLocal)
+		body.WriteByte(0x37) // i64.store
 		body.WriteByte(0x03) // alignment
 		g.emitULEB128(body, uint64(4+i*8)) // offset
 	}
 	
 	// Push the struct pointer as result
-	body.WriteByte(0x41) // i32.const
-	g.emitULEB128(body, 0) // Placeholder address
+	g.emitGetLocal(body, tempLocal)
 	
 	return nil
 }
@@ -804,18 +825,23 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 	// Allocate memory for the enum
 	// Layout: [tag:i32][data1:i64][data2:i64]...
 	
-	_ = 4 + (len(enumExpr.Arguments) * 8) // enumSize - will be used when allocator is implemented
+	enumSize := uint32(4 + (len(enumExpr.Arguments) * 8))
 	
-	// Allocate memory (placeholder)
-	body.WriteByte(0x41) // i32.const
-	g.emitULEB128(body, 0) // Placeholder address
+	// Allocate memory on heap
+	g.emitHeapAlloc(body, enumSize)
+	
+	// Duplicate pointer for storing data
+	body.WriteByte(0x22) // local.tee
+	tempLocal := g.localVarCount
+	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store tag (variant index)
-	// TODO: Look up variant tag
-	body.WriteByte(0x41) // i32.const (address)
-	g.emitULEB128(body, 0)
+	// TODO: Look up variant tag from enum definition
+	variantTag := uint32(0) // Placeholder
+	
+	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (tag value)
-	body.WriteByte(0x00) // Placeholder
+	g.emitULEB128(body, uint64(variantTag))
 	body.WriteByte(0x36) // i32.store
 	body.WriteByte(0x02) // alignment
 	body.WriteByte(0x00) // offset
@@ -826,16 +852,14 @@ func (g *Generator) generateEnumConstructor(body *bytes.Buffer, enumExpr *ast.En
 			return err
 		}
 		
-		body.WriteByte(0x41) // i32.const (address)
-		g.emitULEB128(body, 0)
-		body.WriteByte(0x29) // i64.store
+		g.emitGetLocal(body, tempLocal)
+		body.WriteByte(0x37) // i64.store
 		body.WriteByte(0x03) // alignment
 		g.emitULEB128(body, uint64(4+i*8))
 	}
 	
 	// Push enum pointer
-	body.WriteByte(0x41) // i32.const
-	g.emitULEB128(body, 0)
+	g.emitGetLocal(body, tempLocal)
 	
 	return nil
 }
@@ -845,15 +869,18 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 	// Allocate memory for the array
 	// Layout: [length:i32][elem0:i64][elem1:i64]...
 	
-	_ = 4 + (len(listExpr.Elements) * 8) // arraySize - will be used when allocator is implemented
+	arraySize := uint32(4 + (len(listExpr.Elements) * 8))
 	
-	// Allocate memory (placeholder)
-	body.WriteByte(0x41) // i32.const
-	g.emitULEB128(body, 0) // Placeholder address
+	// Allocate memory on heap
+	g.emitHeapAlloc(body, arraySize)
+	
+	// Duplicate pointer for storing elements
+	body.WriteByte(0x22) // local.tee
+	tempLocal := g.localVarCount
+	g.emitULEB128(body, uint64(tempLocal))
 	
 	// Store length
-	body.WriteByte(0x41) // i32.const (address)
-	g.emitULEB128(body, 0)
+	g.emitGetLocal(body, tempLocal)
 	body.WriteByte(0x41) // i32.const (length)
 	g.emitULEB128(body, uint64(len(listExpr.Elements)))
 	body.WriteByte(0x36) // i32.store
@@ -866,16 +893,14 @@ func (g *Generator) generateListExpr(body *bytes.Buffer, listExpr *ast.ListExpr)
 			return err
 		}
 		
-		body.WriteByte(0x41) // i32.const (address)
-		g.emitULEB128(body, 0)
-		body.WriteByte(0x29) // i64.store
+		g.emitGetLocal(body, tempLocal)
+		body.WriteByte(0x37) // i64.store
 		body.WriteByte(0x03) // alignment
 		g.emitULEB128(body, uint64(4+i*8))
 	}
 	
 	// Push array pointer
-	body.WriteByte(0x41) // i32.const
-	g.emitULEB128(body, 0)
+	g.emitGetLocal(body, tempLocal)
 	
 	return nil
 }
