@@ -127,15 +127,42 @@ func (g *Generator) generateLet(body *bytes.Buffer, let *ast.LetStatement) error
 
 // generateAssignment generates WASM bytecode for an assignment statement
 func (g *Generator) generateAssignment(body *bytes.Buffer, assign *ast.AssignmentStatement) error {
-	// Generate the value expression
-	if err := g.generateExpression(body, assign.Value); err != nil {
-		return err
-	}
-
 	// Look up the variable
 	localIndex, ok := g.localVars[assign.Target]
 	if !ok {
 		return fmt.Errorf("undefined variable: %s", assign.Target)
+	}
+
+	// For compound assignments (+=, -=, etc.), we need to load the current value first
+	if assign.Operator != ast.AssignNormal {
+		// Load current value
+		g.emitGetLocal(body, localIndex)
+		
+		// Generate the right-hand side expression
+		if err := g.generateExpression(body, assign.Value); err != nil {
+			return err
+		}
+		
+		// Apply the operation
+		switch assign.Operator {
+		case ast.AssignAdd:
+			body.WriteByte(0x7C) // i64.add
+		case ast.AssignSub:
+			body.WriteByte(0x7D) // i64.sub
+		case ast.AssignMul:
+			body.WriteByte(0x7E) // i64.mul
+		case ast.AssignDiv:
+			body.WriteByte(0x7F) // i64.div_s
+		case ast.AssignMod:
+			body.WriteByte(0x81) // i64.rem_s
+		default:
+			return fmt.Errorf("unsupported compound assignment operator: %v", assign.Operator)
+		}
+	} else {
+		// Normal assignment: just generate the value expression
+		if err := g.generateExpression(body, assign.Value); err != nil {
+			return err
+		}
 	}
 
 	// Store to local variable
