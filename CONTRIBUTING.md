@@ -104,8 +104,8 @@ make test
 #### Run Tests for Specific Components
 ```bash
 # Test a specific package
-go test ./internal/vm -v
-go test ./internal/bytecode -v
+go test ./internal/wasm -v
+go test ./internal/ast -v
 go test ./cmd/compiler -v
 
 # Test all packages with verbose output
@@ -115,10 +115,10 @@ go test -v ./...
 #### Run Specific Tests
 ```bash
 # Run a single test function
-go test ./internal/vm -run TestVMSimpleArithmetic -v
+go test ./internal/wasm -run TestWASMGenerator -v
 
 # Run tests matching a pattern
-go test ./internal/vm -run TestVM.* -v
+go test ./internal/wasm -run TestWASM.* -v
 ```
 
 #### Check Test Coverage
@@ -136,7 +136,12 @@ go tool cover -html=coverage.out
 # Build the compiler first
 make build
 
-# Run example programs
+# Run all .uni test files (from repository root)
+cd ../..
+./test_all_uni_files.sh
+
+# Run specific example programs (from compiler directory)
+cd src/unified-compiler
 ./bin/unified --input test/integration/simple_return.uni
 ./bin/unified --input test/integration/function_call.uni
 ./bin/unified --input test/integration/local_variables.uni
@@ -144,40 +149,47 @@ make build
 
 **Important:** All tests must pass before submitting a PR. The CI system will also run these tests.
 
+**Current Test Status:** 26 of 121 .uni files passing (21.5%). See [TODO.md](../../TODO.md) for details.
+
 ### 5. Submit Pull Request
 
 See [Pull Requests](#pull-requests) section below.
 
 ## Phased Implementation
 
-The Unified language is being built in phases. **Always work on the current phase.**
+The Unified compiler has migrated to a WebAssembly backend. **Current focus is on achieving feature parity.**
 
-### Current Phase
+### Current Focus
 
-Check `docs/planning/PHASED_ROADMAP.md` for the current phase status.
+See [TODO.md](TODO.md) for the complete implementation roadmap.
 
-### Phase Workflow
+**Priority Tasks:**
+1. Fix struct support (WASM global.get index bugs)
+2. Fix array support (memory allocation and indexing)
+3. Implement for loops with range operator
+4. Fix string operations (type mismatches and runtime functions)
 
-1. **Read Phase Documentation**
-   - Understand goals and requirements
-   - Review test requirements
-   - Check success criteria
+### Development Workflow
 
-2. **Write Tests First**
-   - Create test files in appropriate `test/phaseN/` directory
-   - Write unit tests for components
-   - Write integration tests
+1. **Pick a Task from TODO.md**
+   - Start with Priority 1 items
+   - Each task shows affected test files
+   - Tasks include expected error patterns
+
+2. **Write/Update Tests**
+   - Test files already exist in the repository
+   - Run `./test_all_uni_files.sh` to verify changes
+   - Focus on making failing tests pass
 
 3. **Implement Features**
-   - Start with lexer/parser changes if needed
-   - Update AST structures
-   - Implement code generation
-   - Add semantic checks (when applicable)
+   - Update WASM code generator (`internal/wasm/codegen.go`)
+   - Add runtime functions if needed (`internal/wasm/runtime.go`)
+   - Update parser/AST if syntax support is missing
 
-4. **Verify Success Criteria**
-   - All tests pass
-   - Documentation updated
-   - Example programs work
+4. **Verify Success**
+   - Run test suite again
+   - Check that test count improves
+   - Update TODO.md with progress
 
 5. **Move to Next Phase**
    - Only after current phase is complete

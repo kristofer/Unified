@@ -1,18 +1,18 @@
 # Unified Compiler
 
-A compiler for the Unified language with a custom VM-based backend written in Go.
+A compiler for the Unified language with a WebAssembly backend written in Go.
 
 ## Overview
 
-The Unified compiler uses ANTLR4 for parsing and implements a custom virtual machine for code execution. This provides excellent portability while maintaining good performance.
+The Unified compiler uses ANTLR4 for parsing and generates WebAssembly bytecode for execution. The WASM runtime is provided by wazero, a pure Go implementation with zero C dependencies.
 
 ## Architecture
 
 ```
-Source Code (.uni) → Lexer → Parser → AST → Bytecode Generator → Bytecode → VM → Execution
+Source Code (.uni) → Lexer → Parser → AST → WASM Generator → WASM Binary → wazero Runtime → Execution
 ```
 
-See [VM_README.md](VM_README.md) for details on the VM architecture.
+See [WASM_MIGRATION_SUMMARY.md](../../WASM_MIGRATION_SUMMARY.md) for details on the WASM backend architecture.
 
 ## Project Structure
 
@@ -20,9 +20,10 @@ See [VM_README.md](VM_README.md) for details on the VM architecture.
 - `grammar`: ANTLR grammar definition
 - `internal/ast`: Abstract Syntax Tree definitions and visitor
 - `internal/parser`: ANTLR-generated parser
-- `internal/bytecode`: Bytecode generator and instruction set
-- `internal/vm`: Virtual machine execution engine
+- `internal/wasm`: WebAssembly code generator and encoder
+- `internal/bytecode`: Type definitions (shared with WASM)
 - `internal/semantic`: Semantic analysis (symbol table, type inference, checker)
+- `internal/vm`: Legacy VM code (deprecated, replaced by WASM)
 - `scripts`: Build and utility scripts
 - `test`: Test cases and integration test files
 
@@ -48,12 +49,16 @@ echo $?
 
 ## Testing
 
-The compiler has comprehensive test coverage with **116 test cases** across all phases (as of Jan 26, 2026).
+The compiler is tested with 121 .uni test files across the repository.
 
-**Status: ALL TESTS PASSING ✅**
+**Current Status: 26 tests passing (21.5%)**
 
 ```bash
-# Run all tests
+# Run all .uni test files (from repository root)
+cd ../..
+./test_all_uni_files.sh
+
+# Run Go unit tests (from compiler directory)
 go test ./...
 
 # Run with verbose output
@@ -63,41 +68,56 @@ go test ./... -v
 go test ./... -cover
 
 # Run specific package tests
-go test ./internal/semantic -v
-go test ./internal/bytecode -v
+go test ./internal/wasm -v
+go test ./internal/ast -v
 ```
 
-See [TESTING.md](TESTING.md) for the complete testing guide.  
-See [TEST_RESULTS_2026-01-26.md](TEST_RESULTS_2026-01-26.md) for detailed test results and analysis.
+See [../../TODO.md](../../TODO.md) for detailed test results and implementation roadmap.
 
 ## Current Features
 
-### Phase 1 - Core Language Features ✅
+### Working Features (26 tests passing) ✅
+
+**Phase 1 - Core Language Features:**
 - ✅ Function declarations and calls
-- ✅ Function parameters
+- ✅ Function parameters and return values
 - ✅ Arithmetic operations (+, -, *, /, %)
 - ✅ Comparison operations (==, !=, <, <=, >, >=)
 - ✅ Logical operations (&&, ||, !)
+- ✅ Bitwise operations (&, |, ^, ~, <<, >>)
 - ✅ Local variables (let statements)
-- ✅ Return statements
-- ✅ Integer, float, boolean, and string literals
-- ✅ Basic expressions
-
-### Phase 2 - Control Flow ✅
+- ✅ Mutable variables (let mut)
+- ✅ Variable assignment
+- ✅ Compound assignment (+=, -=, *=, /=, %=)
 - ✅ If/else statements
 - ✅ While loops
-- ✅ For loops (with ranges)
-- ✅ Loop statements (infinite loops)
-- ✅ Break and continue statements
-- ✅ Nested loops
+- ✅ Return statements
+- ✅ Integer, float, boolean literals
+- ✅ Basic expressions and precedence
+- ✅ Optional semicolons
+- ✅ Type inference for basic types
+- ✅ Simple enums
+- ✅ Basic generics
 
-### Phase 3 - Variables, Mutability, and Assignment ✅
-- ✅ Mutable variables (`let mut`)
-- ✅ Mutability checking at compile time
-- ✅ Assignment statements (`x = value`)
-- ✅ Compound assignment (`+=`, `-=`, `*=`, `/=`, `%=`)
-- ✅ Variable shadowing
-- ✅ Type inference for literals and expressions
+### Features In Progress (95 tests failing)
+
+See [../../TODO.md](../../TODO.md) for the complete list of features being implemented:
+
+**Priority 1 (Critical):**
+- 🔴 Struct support (heap allocation, field access)
+- 🔴 Array operations (literals, indexing, iteration)
+- 🔴 For loops with ranges
+- 🔴 String operations (length, concat, etc.)
+
+**Priority 2 (Important):**
+- 🟡 Advanced generics and type inference
+- 🟡 Try operator (?) for error handling
+- 🟡 Nested loop control flow
+
+**Priority 3 (Nice to have):**
+- 🟢 Standard library collections
+- 🟢 Block expressions
+- 🟢 Variable shadowing
 - ✅ Symbol table with scope management
 - ✅ Semantic analysis (mutability, undefined variables, type checking)
 - ✅ Clear error messages for violations

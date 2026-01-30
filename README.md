@@ -2,7 +2,7 @@
 
 [![Status](https://img.shields.io/badge/status-phase%201%20complete-green)](docs/PROJECT_STATUS.md)
 [![Phase](https://img.shields.io/badge/current-phase%202%20ready-blue)](docs/planning/AI_IMPLEMENTATION_PLAN.md)
-[![Tests](https://img.shields.io/badge/tests-76%20passing-brightgreen)](src/unified-compiler/TESTING.md)
+[![Tests](https://img.shields.io/badge/tests-26%20passing-yellow)](TODO.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A modern systems programming language that combines memory safety, performance, and developer ergonomics.
@@ -19,7 +19,7 @@ A modern systems programming language that combines memory safety, performance, 
 - **[📐 Language Spec](spec/UnifiedSpecifiation.md)** - Complete language specification
 - **[🗺️ Phased Roadmap](docs/planning/PHASED_ROADMAP.md)** - High-level implementation plan
 - **[🏛️ Architecture](docs/design/ARCHITECTURE.md)** - Compiler architecture
-- **[⚡ VM Guide](src/unified-compiler/VM_README.md)** - Virtual machine documentation
+- **[⚡ WASM Backend](WASM_MIGRATION_SUMMARY.md)** - WebAssembly backend documentation
 
 ### Getting Started
 - **[🤝 Contributing](CONTRIBUTING.md)** - How to contribute
@@ -46,7 +46,7 @@ The Unified compiler now targets WebAssembly with comprehensive feature support:
 
 See [WASM Migration Summary](WASM_MIGRATION_SUMMARY.md) and [WASM Feature Expansion](WASM_FEATURE_EXPANSION_SUMMARY.md) for complete details.
 
-**Test Compatibility:** ~10 existing test files now work with WASM backend. See [WASM Test Compatibility](WASM_TEST_COMPATIBILITY.md) for the complete list.
+**Test Results:** 26 of 121 tests passing (21.5%) with WASM backend. See [TODO.md](TODO.md) for detailed test results and implementation roadmap.
 
 ## 🚀 Overview
 
@@ -168,8 +168,10 @@ Unified is a modern systems programming language that combines memory safety, pe
 - I/O, networking, filesystem utilities
 
 ## Compilation
-- Uses LLVM as a backend for wide platform support
-- Generates efficient native code with strong optimizations
+- Uses WebAssembly (WASM) as the compilation target
+- Powered by wazero - a pure Go WebAssembly runtime
+- Generates portable bytecode that runs anywhere
+- Zero C dependencies for maximum portability
 
 The language emphasizes memory safety without garbage collection overhead, expressive but pragmatic syntax, and powerful concurrency primitives, aiming to be suitable for systems programming while maintaining developer productivity.
 
@@ -249,23 +251,38 @@ Before you begin, ensure you have the following installed:
 
 ### Running Tests Locally
 
-The Unified compiler has a comprehensive test suite with 76+ tests covering all components.
+The Unified compiler uses a WASM backend. To test all .uni files:
 
-#### Run All Tests
+#### Run All .uni Test Files
+```bash
+# From repository root
+./test_all_uni_files.sh
+```
+
+This tests all 121 .uni files with the WASM compiler and generates:
+- `test_working.txt` - List of passing tests
+- `test_failing.txt` - List of failing tests  
+- `test_results.txt` - Detailed output for all tests
+
+**Current Results:** 26 passing (21.5%), 95 failing (78.5%)
+
+See [TODO.md](TODO.md) for detailed analysis and implementation roadmap.
+
+#### Run Go Unit Tests
 ```bash
 cd src/unified-compiler
 make test
 ```
 
-This runs all unit tests and integration tests across the entire codebase.
+This runs all unit tests for the compiler components.
 
 #### Run Tests for Specific Components
 ```bash
-# Test the virtual machine
-go test ./internal/vm -v
+# Test the WASM generator
+go test ./internal/wasm -v
 
-# Test the bytecode generator
-go test ./internal/bytecode -v
+# Test the AST builder
+go test ./internal/ast -v
 
 # Test integration (end-to-end compilation)
 go test ./cmd/compiler -v
@@ -277,7 +294,7 @@ go test -v ./...
 #### Run Specific Test Functions
 ```bash
 # Run a specific test by name
-go test ./internal/vm -run TestVMSimpleArithmetic -v
+go test ./internal/wasm -run TestWASMGenerator -v
 
 # Run tests matching a pattern
 go test ./internal/vm -run TestVM.* -v
@@ -354,49 +371,39 @@ For more detailed testing information, see [Testing Guide](src/unified-compiler/
 
 This project is optimized for development with GitHub Copilot and other AI coding assistants:
 
-1. **Start here**: [AI Implementation Plan](docs/planning/AI_IMPLEMENTATION_PLAN.md)
-2. **Current task**: Implement Phase 2 (Control Flow)
-3. **Follow the guide**: Each phase has detailed tasks, tests, and examples
-4. **Test continuously**: Write tests as you implement features
-5. **Document as you go**: Update documentation with each phase
+1. **Start here**: [TODO.md](TODO.md) - Implementation roadmap with all failing tests
+2. **Current status**: WASM backend functional but needs feature completion
+3. **Test results**: 26/121 tests passing (21.5%)
+4. **Priority**: Fix structs, arrays, for loops, and strings (Priority 1 in TODO.md)
+5. **Test continuously**: Run `./test_all_uni_files.sh` to verify progress
 
-See [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md) for detailed workflow.
+See [WASM Migration Summary](WASM_MIGRATION_SUMMARY.md) for architecture details.
 
 ### Phased Development
 
-Unified is being built in 15 carefully planned phases:
+Unified's compiler architecture has evolved:
 
-- **✅ Phase 1**: VM-Based Minimal Compiler (COMPLETE - 76 tests passing)
-- **🎯 Phase 2**: Control Flow (NEXT - if/else, loops, break/continue)
-- **Phase 3**: Variables & Mutability (mutable vars, assignments, type inference)
-- **Phase 4**: Functions & Expressions (lambdas, blocks as expressions)
-- **Phase 5**: Structs (user-defined types, methods)
-- **Phase 6**: Enums & Pattern Matching (algebraic data types, match expressions)
-- **Phase 7**: Error Handling (? operator, Result type)
-- **Phase 8**: Arrays & Slices (collections with iteration)
-- **Phase 9**: String Operations (interpolation, methods)
-- **Phase 10**: Generics (type parameters, monomorphization)
-- **Phase 11**: Modules (import/export, visibility)
-- **Phase 12**: Ownership (move semantics, borrow checking)
-- **Phase 13**: Standard Library (collections, I/O, utilities)
-- **Phase 14**: Concurrency (async/await, actors, channels)
-- **Phase 15**: Tooling (REPL, debugger, package manager)
+- **✅ Phase 1**: WASM Backend Implementation (COMPLETE - architecture in place)
+- **🎯 Current**: Feature parity with all 121 test files
+  - Priority 1: Structs, arrays, for loops, strings (30 tests)
+  - Priority 2: Generics, try operator (22 tests)
+  - Priority 3: Standard library (24 tests)
+- **Future**: Advanced language features (ownership, concurrency, tooling)
 
-Each phase has specific goals, test requirements, and success criteria. See [AI Implementation Plan](docs/planning/AI_IMPLEMENTATION_PLAN.md) for complete details on each phase.
+The original 15-phase plan has been superseded by the WASM migration. The new implementation roadmap focuses on achieving feature completeness with the WASM backend.
+
+See [TODO.md](TODO.md) for the complete implementation roadmap with specific tasks for each failing test.
 
 ### For AI Agents - Quick Start
 
 **Ready to implement?** Here's your workflow:
 
-1. Read [AI Implementation Plan](docs/planning/AI_IMPLEMENTATION_PLAN.md)
-2. Check [Project Status](docs/PROJECT_STATUS.md) (currently: Phase 2 ready)
-3. Follow Phase 2 tasks sequentially
-4. Write tests for each feature (aim for 85%+ coverage)
+1. Read [TODO.md](TODO.md) for the complete implementation roadmap
+2. Focus on Priority 1 items first (structs, arrays, for loops, strings)
+3. Test files show expected behavior - use them as specification
+4. Run `./test_all_uni_files.sh` to verify each change
 5. Use `report_progress` tool to commit changes
-6. Update documentation as you complete features
-7. Run `make test` continuously - keep all 76+ tests passing
-
-See [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md) for detailed development workflow.
+6. See [WASM Migration Summary](WASM_MIGRATION_SUMMARY.md) for architecture details
 
 ### Reference Project
 
