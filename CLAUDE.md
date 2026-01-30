@@ -6,22 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the implementation of the **Unified Programming Language** - a modern systems programming language designed to combine memory safety, performance, and developer ergonomics. The language draws inspiration from Rust, Go, Swift, and Elixir while establishing its own unique approach to programming challenges.
 
-The compiler uses a **virtual machine (VM) architecture** written in Go, providing excellent portability across all platforms where Go runs, while maintaining good performance.
+The compiler uses a **WebAssembly (WASM) backend** written in Go, providing excellent portability across all platforms. The WASM runtime is wazero, a pure Go implementation with zero C dependencies.
 
 ## Core Architecture
 
 ### Compiler Structure (`src/unified-compiler/`)
 
-The Unified compiler is built in Go and uses ANTLR4 for parsing, with a custom bytecode generator and virtual machine:
+The Unified compiler is built in Go and uses ANTLR4 for parsing, with a WebAssembly code generator:
 
 - **`cmd/compiler/main.go`**: Main entry point, handles command-line arguments and orchestrates compilation pipeline
 - **`grammar/`**: ANTLR4 grammar files (`UnifiedLexer.g4`, `UnifiedParser.g4`) defining language syntax
 - **`internal/ast/`**: Abstract Syntax Tree definitions and visitor pattern implementation
 - **`internal/parser/`**: ANTLR-generated parser code (generated from grammar files)
-- **`internal/bytecode/`**: Bytecode generator that converts AST to VM bytecode instructions
-- **`internal/vm/`**: Virtual machine that executes bytecode (stack-based)
-- **`internal/semantic/`**: Semantic analysis (not yet implemented)
-- **`test/`**: Test cases including `.uni` source files like `fib.uni` and `fizz.uni`
+- **`internal/wasm/`**: WebAssembly code generator that converts AST to WASM bytecode
+- **`internal/bytecode/`**: Type definitions (shared between WASM and legacy code)
+- **`internal/vm/`**: Legacy VM code (deprecated, replaced by WASM)
+- **`internal/semantic/`**: Semantic analysis (symbol table, type checking, type inference)
+- **`test/`**: Test cases including 121 `.uni` source files
 
 ### Language Features
 
@@ -44,8 +45,15 @@ make build   # Build the compiler binary
 
 ### Testing
 ```bash
-make test    # Run Go tests
-./bin/unified --input test/fib.uni  # Compile and run test file
+# Run all .uni test files (from repository root)
+./test_all_uni_files.sh
+
+# Run Go unit tests
+cd src/unified-compiler
+make test
+
+# Compile and run a specific test file
+./bin/unified --input test/integration/simple_return.uni
 ```
 
 ### Clean Build
@@ -64,22 +72,33 @@ bash scripts/generate.sh  # Requires ANTLR4 to be installed
 1. **Lexical Analysis**: Source code → tokens (ANTLR lexer)
 2. **Parsing**: Tokens → parse tree (ANTLR parser) 
 3. **AST Building**: Parse tree → AST (`ast.go` visitor pattern)
-4. **Bytecode Generation**: AST → bytecode instructions (`bytecode/generator.go`)
-5. **VM Execution**: Bytecode → program execution (`vm/vm.go`)
+4. **WASM Generation**: AST → WASM bytecode (`wasm/generator.go`, `wasm/codegen.go`)
+5. **WASM Encoding**: WASM module → binary format (`wasm/encoder.go`)
+6. **Runtime Execution**: WASM binary → wazero runtime → program execution
 
-The compiler is currently in Phase 1 implementation, supporting:
+The compiler currently supports (26 of 121 tests passing):
 - Basic function declarations and calls
 - Variable declarations and assignments
-- Arithmetic and logical expressions
-- Control flow (if statements, basic loops)
-- Literal values (integers, floats, booleans, strings)
+- Arithmetic, logical, and bitwise expressions
+- Control flow (if statements, while loops)
+- Mutable variables with assignment
+- Literal values (integers, floats, booleans)
+- Optional semicolons
+- Basic enums and generics
+
+**In Progress** (see TODO.md for details):
+- Struct operations (heap allocation, field access)
+- Array operations (literals, indexing, iteration)
+- For loops with ranges
+- String operations (length, concat, etc.)
+- Advanced generics
+- Try operator (?) for error handling
 
 ## Key Dependencies
 
 - **ANTLR4**: Parser generator, must be installed separately
 - **ANTLR Go runtime**: `github.com/antlr4-go/antlr/v4` for generated parser
-
-Note: Previous LLVM dependencies have been removed in favor of the custom VM implementation.
+- **wazero**: `github.com/tetratelabs/wazero` - Pure Go WebAssembly runtime (zero C dependencies)
 
 ## Language Specification
 
@@ -89,28 +108,48 @@ The complete language specification is documented in `spec/UnifiedSpecifiation.m
 - Concurrency with actors and async/await
 - Pattern matching and algebraic data types
 - Standard library organization
-- VM bytecode implementation guidelines
+- WebAssembly compilation target
 
 ## Test Files
 
-Example Unified programs in `test/`:
-- `fib.uni`: Fibonacci implementations (recursive and iterative)
-- `fizz.uni`: FizzBuzz-style example
+The repository contains 121 `.uni` test files across multiple directories:
+- `test/integration/` - Integration tests for language features
+- `test/generics/` - Generic function tests
+- `test/stdlib/` - Standard library tests
+- Root test files - Basic functionality tests
+
+**Current Test Results:** 26 passing (21.5%), 95 failing (78.5%)
+
+See `TODO.md` for detailed analysis of test results and implementation roadmap.
 
 ## Implementation Status
 
-**Current Phase 1** supports basic language constructs with VM execution. Future phases will add:
-- **Phase 2**: Advanced expressions and control flow
-- **Phase 3**: Memory management (ownership, borrowing, regions)
-- **Phase 4**: Advanced type system (generics, interfaces, type inference)  
-- **Phase 5**: Concurrency (actors, async/await, channels)
-- **Phase 6**: Standard library and tooling
+**Current Phase:** WASM Backend Feature Completion
+
+The compiler has migrated from a custom VM to WebAssembly. Core architecture is complete, but many language features need WASM code generation implementation.
+
+**Test Status:**
+- **26 tests passing (21.5%)** - Basic features work (functions, variables, if/else, while, arithmetic, logic)
+- **95 tests failing (78.5%)** - Advanced features need implementation (structs, arrays, for loops, strings, etc.)
+
+**Priority Tasks** (see TODO.md for complete details):
+
+1. **Fix struct support** - WASM global.get index bugs (4 tests)
+2. **Fix array support** - Memory allocation and indexing (11 tests)
+3. **Implement for loops** - Range operator support (4 tests)
+4. **Fix string operations** - Type mismatches and runtime functions (11 tests)
+5. **Improve generics** - Advanced type inference (15 tests)
+6. **Add try operator** - Error handling with ? operator (10 tests)
+
+Once these are complete, ~82 tests should pass (68%).
 
 ## Important Notes
 
-- The compiler uses a custom Go-based virtual machine for execution
+- The compiler uses WebAssembly as the compilation target (WASM 1.0 spec)
+- Runtime is wazero - pure Go, zero C dependencies, highly portable
 - Grammar files use ANTLR4 LL(*) parsing approach
 - AST nodes implement visitor pattern for traversal
-- Bytecode is stack-based for simplicity
-- VM is highly portable, running anywhere Go runs
+- WASM bytecode is stack-based following the standard
+- Many language features work, but need WASM codegen implementation
 - Project follows Go module structure with `go.mod` in compiler directory
+- Test suite has 121 .uni files - run `./test_all_uni_files.sh` to verify changes
