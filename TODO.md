@@ -2,17 +2,19 @@
 
 ## Summary
 
-This document tracks the implementation tasks needed to make all 121 test files pass with the WASM backend.
+This document tracks the implementation tasks needed to make all 123 test files pass with the WASM backend.
 
-**Current Status:** 21 tests passing (17.4%), 100 tests failing (82.6%)
+**Current Status:** 56 tests passing (45.5%), 67 tests failing (54.5%)
 
-**Last Updated:** January 30, 2026 - After Priority 2 parser work
+**Last Updated:** February 2, 2026 - After comprehensive test audit (see TEST_BASELINE_2026-02-02.md)
 
 ## Test Results Overview
 
-- **Total Tests:** 121
-- **✅ Passing:** 21 tests (17.4%)
-- **❌ Failing:** 100 tests (82.6%)
+- **Total Tests:** 123
+- **✅ Passing:** 56 tests (45.5%)
+- **❌ Failing:** 67 tests (54.5%)
+
+**See TEST_BASELINE_2026-02-02.md for comprehensive analysis**
 
 ## Priority 1 & 2 Status Summary
 
@@ -48,7 +50,7 @@ This document tracks the implementation tasks needed to make all 121 test files 
 1. **CRITICAL BLOCKER**: Field access type mismatch ("expected i32, but was i64")
 2. **Regression**: 5 tests that were passing now fail (needs investigation)
 
-## Working Features (21 tests passing) ✅
+## Working Features (56 tests passing) ✅
 
 The following language features are fully functional with the WASM backend:
 
@@ -65,13 +67,18 @@ The following language features are fully functional with the WASM backend:
 - ✅ Return statements
 - ✅ If/else statements
 - ✅ While loops
+- ✅ For loops with ranges ✅ **WORKING**
+- ✅ Break/continue in loops ✅ **WORKING**
 - ✅ Type inference for basic types
 - ✅ Operator precedence
 - ✅ Optional semicolons
-- ✅ Basic enum variants (simple cases)
-- ✅ Generic functions (basic cases without complex type inference)
+- ✅ Basic enum variants
+- ✅ Generic functions (basic cases)
+- ✅ Structs with field access ✅ **WORKING**
+- ✅ Arrays (literals, indexing, iteration) ✅ **WORKING**
+- ✅ Strings (length, concat, trim, case, search, substring) ✅ **WORKING**
 
-### Passing Test Files
+### Passing Test Files (56 tests)
 ```
 ./src/unified-compiler/minimal_test.uni
 ./src/unified-compiler/simple_comparison_test.uni
@@ -79,6 +86,7 @@ The following language features are fully functional with the WASM backend:
 ./src/unified-compiler/test/bitwise.uni
 ./src/unified-compiler/test/compound_assign.uni
 ./src/unified-compiler/test/compound_assign_no_semi.uni
+./src/unified-compiler/test/counter_mut.uni
 ./src/unified-compiler/test/enum_option.uni
 ./src/unified-compiler/test/enum_result.uni
 ./src/unified-compiler/test/enum_simple.uni
@@ -87,186 +95,266 @@ The following language features are fully functional with the WASM backend:
 ./src/unified-compiler/test/generics/16_nested_calls.uni
 ./src/unified-compiler/test/generics/19_arithmetic_ops.uni
 ./src/unified-compiler/test/generics/20_complex_inference.uni
+./src/unified-compiler/test/integration/array_basics.uni
+./src/unified-compiler/test/integration/array_boundary.uni
+./src/unified-compiler/test/integration/array_empty.uni
+./src/unified-compiler/test/integration/array_find_max.uni
+./src/unified-compiler/test/integration/array_length.uni
+./src/unified-compiler/test/integration/array_search.uni
+./src/unified-compiler/test/integration/array_sum.uni
+./src/unified-compiler/test/integration/fizzbuzz_complete.uni
+./src/unified-compiler/test/integration/for_sum.uni
 ./src/unified-compiler/test/integration/function_call.uni
 ./src/unified-compiler/test/integration/if_else.uni
 ./src/unified-compiler/test/integration/local_variables.uni
+./src/unified-compiler/test/integration/nested_loops.uni
+./src/unified-compiler/test/integration/range_test.uni
+./src/unified-compiler/test/integration/simple_for_loop.uni
+./src/unified-compiler/test/integration/simple_for_test.uni
 ./src/unified-compiler/test/integration/simple_return.uni
+./src/unified-compiler/test/integration/string_array.uni
+./src/unified-compiler/test/integration/string_case.uni
+./src/unified-compiler/test/integration/string_compare.uni
+./src/unified-compiler/test/integration/string_concat.uni
+./src/unified-compiler/test/integration/string_demo_all.uni
+./src/unified-compiler/test/integration/string_length.uni
+./src/unified-compiler/test/integration/string_search.uni
+./src/unified-compiler/test/integration/string_substring.uni
+./src/unified-compiler/test/integration/string_trim.uni
 ./src/unified-compiler/test/integration/while_factorial.uni
 ./src/unified-compiler/test/no_semicolons_multi.uni
 ./src/unified-compiler/test/no_semicolons_simple.uni
+./src/unified-compiler/test/point.uni
 ./src/unified-compiler/test/precedence.uni
+./src/unified-compiler/test/rectangle.uni
 ./src/unified-compiler/test/semicolons_all.uni
 ./src/unified-compiler/test/semicolons_mixed.uni
+./src/unified-compiler/test/simple_comparison.uni
 ./src/unified-compiler/test/simple_precedence.uni
+./src/unified-compiler/test/simple_test.uni
+./src/unified-compiler/test/try_operator_multiple_errors.uni
+./src/unified-compiler/test/try_operator_propagate_err.uni
+./src/unified-compiler/test/try_operator_short_circuit.uni
 ./src/unified-compiler/test/type_inference.uni
 ```
 
-## Required Implementations (95 tests failing)
+## Required Implementations (67 tests failing)
 
 The following features need to be implemented to make the failing tests pass:
 
+**See TEST_BASELINE_2026-02-02.md for detailed error analysis and categorization**
+
 ---
 
-## Priority 1: Critical Language Features (29 tests)
+## Priority 0: Test Infrastructure ✅ COMPLETE
 
-### 1.1 Struct Support (4 tests) 🔴 HIGH PRIORITY - **BLOCKED**
+### Establish Accurate Testing Baseline ✅
 
-**Status:** Infrastructure complete, but blocked on field access type mismatch error
+**Status:** Complete - see TEST_BASELINE_2026-02-02.md
+
+**Findings:**
+- ✅ Test infrastructure works correctly on Linux
+- ✅ 123 total tests (not 121 as previously documented)
+- ✅ 56 passing (45.5%, not 21.5%!)
+- ⚠️ macOS compatibility issue: `timeout` command doesn't exist
+- ✅ Comprehensive baseline report created
+
+**macOS Compatibility:**
+- Issue: `timeout` command in `test_all_uni_files.sh` doesn't exist on macOS
+- Solutions available:
+  - Option A: Install coreutils (`brew install coreutils`) and use `gtimeout`
+  - Option B: Create cross-platform timeout wrapper
+  - Option C: Remove timeout (not recommended)
+- Recommended: Document Option A for macOS users
+
+---
+
+## Priority 1: Critical Language Features (Updated Based on Baseline)
+
+**MAJOR UPDATE:** Based on TEST_BASELINE_2026-02-02.md analysis, priority order has changed significantly.
+
+### NEW Priority 1.1: Parser Grammar Improvements (26 tests) 🔴 HIGHEST PRIORITY
+
+**Status:** Not started - **BIGGEST IMPACT OPPORTUNITY**
+
+**Error Category:** 38.8% of all failures are parser grammar issues
+
+**Failing Tests:** All 26 standard library tests fail due to missing parser features
+- `lib/List.uni`, `lib/Tree.uni`
+- `stdlib/BinaryTree.uni`, `stdlib/HashMap.uni`, `stdlib/List.uni`, `stdlib/Queue.uni`, `stdlib/Set.uni`, `stdlib/Stack.uni`
+- All `test/stdlib/*.uni` tests (18 tests)
+
+**Implementation Required:**
+- Add `Self` keyword to parser (refers to current type in methods)
+- Add `new` method syntax support
+- Add `mut self` parameter syntax
+- Add struct field shorthand syntax (fields without explicit types in body)
+- Support method definitions inside structs
+
+**Impact:** Unlocking these 26 tests = +21% pass rate improvement!
+
+**Related Files:**
+- `grammar/UnifiedParser.g4` - Add grammar rules
+- `grammar/UnifiedLexer.g4` - Add keywords if needed
+- `internal/ast/ast.go` - Add AST nodes for new syntax
+- `internal/semantic/` - Method resolution
+
+---
+
+### 1.1 Struct Support (2 tests) 🟢 MOSTLY WORKING
+
+**Status:** ✅ Structs work! Only 2 edge case failures remaining
 
 **Progress Made:**
-- ✅ Added WASM global section encoding (was missing, causing "invalid index for global.get")
-- ✅ Fixed heap pointer ULEB128 encoding (1024 = 0x80, 0x08, not 0x00, 0x04, 0x00)
-- ✅ Created struct registry to track field names, types, and offsets
-- ✅ Implemented first-pass struct declaration collection
-- ✅ Fixed all WASM load/store memarg encoding (alignment and offset now use ULEB128)
-- ✅ Implemented field offset lookup based on struct type
-- ✅ Updated type inference to return actual field types
-- ✅ Struct allocation works correctly
+- ✅ Basic struct allocation works
+- ✅ Field access works (point.uni, rectangle.uni pass!)
+- ✅ WASM global section encoding fixed
+- ✅ Heap allocation works
+- ❌ Nested struct field access has type mismatch (1 test)
+- ❌ new keyword with structs (1 test)
 
-**Current Blocker:**
-- ❌ Field access fails with "type mismatch: expected i32, but was i64"
-- Works: `let p = Point { x: 42 }`
-- Fails: `return p.x` (where x is type Int/i64)
-- Root cause unclear despite extensive debugging
+**Passing Tests:**
+- `test/point.uni` ✅
+- `test/rectangle.uni` ✅
 
 **Failing Tests:**
-- `test/point.uni` - Basic struct with field access
-- `test/rectangle.uni` - Struct with multiple fields
-- `test/nested_structs.uni` - Nested struct access
-- `test/new_keyword_basic.uni` - Struct initialization with `new`
-
-**Error Pattern:**
-```
-Runtime error: failed to compile module: invalid function[0] export["main"]: 
-type mismatch: expected i32, but was i64
-```
+- `test/nested_structs.uni` - Nested field access type mismatch (i64 vs i32)
+- `test/new_keyword_basic.uni` - new keyword support
 
 **Next Steps:**
-1. Debug WASM bytecode sequence for field access
-2. Try minimal reproduction with WASM tools (wasm-tools, wabt)
-3. Review type conversions in field access code path
-4. Consider alternative implementations
-
-**Related Files:**
-- `internal/wasm/encoder.go` - Global section encoding
-- `internal/wasm/generator.go` - Struct registry  
-- `internal/wasm/codegen.go` - Field access codegen
-- `internal/wasm/memory.go` - Heap allocation
+1. Fix nested struct field access type issue
+2. Add new keyword support (likely parser grammar issue)
 
 ---
 
-### 1.2 Array Support (11 tests) 🔴 HIGH PRIORITY
+### 1.2 Array Support (3 tests) 🟢 MOSTLY WORKING
 
-**Status:** Parser supports array literals, but WASM codegen fails with global.get errors
+**Status:** ✅ Arrays work! Only 3 edge case failures remaining
+
+**Progress Made:**
+- ✅ Array literals work
+- ✅ Array indexing works
+- ✅ Array iteration works
+- ✅ Array length access works
+- ✅ Bounds checking works
+- ❌ Array element assignment (1 test)
+- ❌ Array operations with doubles (1 test)
+- ❌ Array reversal (1 test)
+
+**Passing Tests (8 tests):**
+- `test/integration/array_basics.uni` ✅
+- `test/integration/array_boundary.uni` ✅
+- `test/integration/array_empty.uni` ✅
+- `test/integration/array_find_max.uni` ✅
+- `test/integration/array_length.uni` ✅
+- `test/integration/array_search.uni` ✅
+- `test/integration/array_sum.uni` ✅
+
+**Failing Tests (3 tests):**
+- `test/integration/array_assignment.uni` - Element assignment
+- `test/integration/array_double.uni` - Double type operations
+- `test/integration/array_reverse.uni` - Reversal algorithm
+- `test/integration/new_keyword.uni` - new keyword with arrays
+
+**Next Steps:**
+1. Implement array element assignment
+2. Fix double type handling
+3. Debug array reversal issue
+
+---
+
+### 1.3 For Loop & Range Support ✅ WORKING
+
+**Status:** ✅ For loops and ranges work!
+
+**All 3 tests passing:**
+- `test/integration/for_sum.uni` ✅
+- `test/integration/simple_for_loop.uni` ✅
+- `test/integration/simple_for_test.uni` ✅
+- `test/integration/range_test.uni` ✅
+
+**No action needed** - Feature complete!
+
+---
+
+### 1.4 String Operations ✅ MOSTLY WORKING
+
+**Status:** ✅ Strings work! Only 2 edge case failures
+
+**Progress Made:**
+- ✅ String literals work
+- ✅ String length works
+- ✅ String comparison works
+- ✅ String concatenation works
+- ✅ String substring works
+- ✅ String search works
+- ✅ String trim works
+- ✅ String case conversion works
+- ❌ Complex string operations (1 test)
+- ❌ String functions (1 test)
+
+**Passing Tests (11 tests):**
+- `test/integration/string_array.uni` ✅
+- `test/integration/string_case.uni` ✅
+- `test/integration/string_compare.uni` ✅
+- `test/integration/string_concat.uni` ✅
+- `test/integration/string_demo_all.uni` ✅
+- `test/integration/string_length.uni` ✅
+- `test/integration/string_search.uni` ✅
+- `test/integration/string_substring.uni` ✅
+- `test/integration/string_trim.uni` ✅
+
+**Failing Tests (2 tests):**
+- `test/integration/string_comprehensive.uni` - Complex operations
+- `test/integration/string_function.uni` - Function handling
+
+**Next Steps:**
+1. Debug comprehensive string test
+2. Fix string function test
+
+---
+
+### NEW Priority 1.5: Type System Issues (7 tests) 🟡 MEDIUM PRIORITY
+
+**Status:** Type mismatch errors in simple test files
+
+**Error Pattern:** "type mismatch: expected i32, but was i64" on function calls
 
 **Failing Tests:**
-- `test/integration/array_basics.uni` - Array literals and indexing
-- `test/integration/array_assignment.uni` - Array element assignment
-- `test/integration/array_boundary.uni` - Array bounds checking
-- `test/integration/array_double.uni` - Array element operations
-- `test/integration/array_empty.uni` - Empty array handling
-- `test/integration/array_find_max.uni` - Array iteration and max
-- `test/integration/array_length.uni` - Array length property
-- `test/integration/array_reverse.uni` - Array reversal
-- `test/integration/array_search.uni` - Array searching
-- `test/integration/array_sum.uni` - Array sum calculation
-- `test/integration/new_keyword.uni` - Array with new keyword
-
-**Error Pattern:**
-```
-Runtime error: failed to compile module: invalid function[0] export["main"]: 
-invalid index for global.get
-```
+- `src/unified-compiler/add_test.uni`
+- `src/unified-compiler/basic_test.uni`
+- `src/unified-compiler/call_test.uni`
+- `src/unified-compiler/comparison_test.uni`
+- `src/unified-compiler/simple_arith.uni`
+- `src/unified-compiler/simple_call_test.uni`
+- `src/unified-compiler/simple_comparison_test2.uni`
 
 **Implementation Required:**
-- Fix array memory allocation in WASM heap
-- Implement array indexing with bounds checking
-- Support array literals `[1, 2, 3]`
-- Implement array length access
-- Support array element assignment
-- Proper memory layout: [length, capacity, ...elements]
+- Fix i32/i64 type coercion in function parameters
+- Ensure consistent type usage across WASM generator
+- May be related to parameter passing convention
+
+**Impact:** Quick wins, relatively simple fixes
 
 **Related Files:**
-- `internal/wasm/codegen.go` - Array operations
-- `internal/wasm/generator.go` - Memory allocator for arrays
+- `internal/wasm/codegen.go` - Function call type handling
 
 ---
 
-### 1.3 For Loop & Range Support (4 tests) 🔴 HIGH PRIORITY
+## Priority 2: Advanced Language Features (Updated Based on Baseline)
 
-**Status:** Parser doesn't support range operator `..` in binary expressions
+### 2.1 Generic Functions (13 tests) 🟡 MEDIUM PRIORITY
 
-**Failing Tests:**
-- `test/integration/for_sum.uni` - For loop with range
-- `test/integration/simple_for_loop.uni` - Basic for loop
-- `test/integration/simple_for_test.uni` - For loop variations
-- `test/integration/range_test.uni` - Range expressions
+**Status:** Basic generics work (5 tests pass), advanced inference fails (13 tests fail)
 
-**Error Pattern:**
-```
-Error generating WASM: error adding function sum_range: 
-unsupported binary operator: Range
-```
+**Passing Tests (5 tests):**
+- `test/generics/13_generic_with_control_flow.uni` ✅
+- `test/generics/14_multiple_same_type_calls.uni` ✅
+- `test/generics/16_nested_calls.uni` ✅
+- `test/generics/19_arithmetic_ops.uni` ✅
+- `test/generics/20_complex_inference.uni` ✅
 
-**Implementation Required:**
-- Add Range operator to AST binary expression handling
-- Implement for-in loop code generation for WASM
-- Support range syntax: `for i in 0..10 {}`
-- Support inclusive ranges: `for i in 0..=10 {}`
-- Properly handle loop variable scoping
-
-**Related Files:**
-- `internal/wasm/codegen.go` - Add range operator handling
-- `internal/ast/ast.go` - Ensure Range is in BinaryOp enum
-
----
-
-### 1.4 String Operations (10 tests) 🟡 MEDIUM PRIORITY
-
-**Status:** String literals work, but operations have type mismatches and missing runtime functions
-
-**Failing Tests:**
-- `test/integration/string_length.uni` - String length
-- `test/integration/string_compare.uni` - String comparison
-- `test/integration/string_concat.uni` - String concatenation
-- `test/integration/string_substring.uni` - String slicing
-- `test/integration/string_search.uni` - String searching
-- `test/integration/string_trim.uni` - String trimming
-- `test/integration/string_case.uni` - Case conversion
-- `test/integration/string_array.uni` - String arrays
-- `test/integration/string_function.uni` - String functions
-- `test/integration/string_comprehensive.uni` - Complex string ops
-- `test/integration/string_demo_all.uni` - String demo
-
-**Error Pattern:**
-```
-Runtime error: failed to compile module: invalid function[0] export["main"]: 
-type mismatch: expected i64, but was i32
-```
-
-**Implementation Required:**
-- Fix type mismatch between i32 (string length) and i64 (expected return)
-- Implement string length runtime function
-- Implement string comparison runtime function
-- Implement string concatenation runtime function
-- Implement string substring/slice function
-- Implement string search functions
-- Store strings in data section with length prefix
-- Add string manipulation helper functions in WASM
-
-**Related Files:**
-- `internal/wasm/codegen.go` - String operations
-- `internal/wasm/runtime.go` - Add string helper functions
-
----
-
-## Priority 2: Advanced Language Features (32 tests)
-
-### 2.1 Generic Functions (9 tests) 🟡 MEDIUM PRIORITY
-
-**Status:** Basic generics work, but complex type inference and monomorphization fail
-
-**Failing Tests:**
+**Failing Tests (13 tests):**
 - `test/generics/01_identity_function.uni`
 - `test/generics/02_box_struct.uni`
 - `test/generics/03_option_enum.uni`
@@ -297,38 +385,37 @@ type mismatch: expected i64, but was i32
 
 ---
 
-### 2.2 Try Operator (?) (10 tests) 🟡 MEDIUM PRIORITY
+### 2.2 Try Operator (?) (7 tests) 🟡 MEDIUM PRIORITY
 
-**Status:** Parser doesn't recognize `::` for enum variants, try operator not implemented
+**Status:** Parser recognizes `?` and enum constructors, 3 tests pass, 7 tests fail
 
-**Failing Tests:**
+**Passing Tests (3 tests):**
+- `test/try_operator_multiple_errors.uni` ✅
+- `test/try_operator_propagate_err.uni` ✅
+- `test/try_operator_short_circuit.uni` ✅
+
+**Failing Tests (7 tests):**
 - `test/try_operator_basic_ok.uni`
 - `test/try_operator_bool.uni`
 - `test/try_operator_chained.uni`
 - `test/try_operator_in_conditional.uni`
 - `test/try_operator_in_expression.uni`
-- `test/try_operator_multiple_errors.uni`
 - `test/try_operator_nested_calls.uni`
-- `test/try_operator_propagate_err.uni`
-- `test/try_operator_short_circuit.uni`
 - `test/try_operator_string.uni`
 
-**Error Pattern:**
-```
-extraneous input '::' expecting ...
-Error generating WASM: error adding function: undefined variable: Result
-```
+**Progress Made:**
+- ✅ Parser recognizes `?` operator
+- ✅ Enum constructor syntax `Type::Variant(args)` works
+- ✅ Some basic try operator cases work
+- ❌ Complex try operator expressions fail
 
 **Implementation Required:**
-- Add `::` operator to grammar for enum variant access (e.g., `Result::Ok`)
-- Implement try operator `?` in parser and AST
-- Generate WASM code for early return on Error variant
-- Support Result<T, E> and Option<T> pattern matching
-- Implement automatic error propagation
+- Complete try operator WASM codegen for all cases
+- Handle try operator in complex expressions
+- Support chained try operators
+- Implement proper error unwrapping
 
 **Related Files:**
-- `grammar/UnifiedParser.g4` - Add `::` operator
-- `internal/ast/ast.go` - Add TryExpression node
 - `internal/wasm/codegen.go` - Try operator code generation
 
 ---
@@ -400,12 +487,14 @@ extraneous input 'mut' expecting {')', SELF, Identifier}
 
 ---
 
-## Priority 3: Additional Features (15 tests)
+## Priority 3: Additional Features (Updated Based on Baseline)
 
 ### 3.1 Block Expressions (1 test) 🟢 LOW PRIORITY
 
 **Failing Test:**
 - `test/block_expr.uni`
+
+**Error:** "unsupported expression type: *ast.Block"
 
 **Implementation Required:**
 - Support blocks as expressions that return values
@@ -414,33 +503,7 @@ extraneous input 'mut' expecting {')', SELF, Identifier}
 
 ---
 
-### 3.2 Nested Loops with Break/Continue (1 test) 🟡 MEDIUM PRIORITY
-
-**Failing Test:**
-- `test/integration/nested_loops.uni`
-
-**Error:** Unknown - needs investigation
-
-**Implementation Required:**
-- Ensure break/continue work in nested loops
-- Support labeled loops for multi-level break/continue
-
----
-
-### 3.3 FizzBuzz Implementation (2 tests) 🟢 LOW PRIORITY
-
-**Failing Tests:**
-- `test/fib.uni` - Fibonacci implementation
-- `test/fizz.uni` - FizzBuzz implementation
-- `test/integration/fizzbuzz_complete.uni`
-
-**Implementation Required:**
-- These likely fail due to missing features above (for loops, modulo, etc.)
-- Should work once Priority 1 & 2 features are complete
-
----
-
-### 3.4 Variable Shadowing (1 test) 🟢 LOW PRIORITY
+### 3.2 Variable Shadowing (1 test) 🟢 LOW PRIORITY
 
 **Failing Test:**
 - `test/shadowing.uni`
@@ -451,70 +514,84 @@ extraneous input 'mut' expecting {')', SELF, Identifier}
 
 ---
 
-### 3.5 Simple Tests with Unknown Issues (10 tests) 🟢 LOW PRIORITY
+### 3.3 FizzBuzz and Other Programs (2 tests) 🟢 WORKING/LOW PRIORITY
+
+**Status:** FizzBuzz complete works! ✅
+
+**Passing:**
+- `test/integration/fizzbuzz_complete.uni` ✅
 
 **Failing Tests:**
-- `add_test.uni`
-- `basic_test.uni`
-- `call_test.uni`
-- `comparison_test.uni`
-- `simple_arith.uni`
-- `simple_call_test.uni`
-- `simple_comparison_test2.uni`
+- `test/fib.uni` - Fibonacci implementation (needs investigation)
+- `test/fizz.uni` - FizzBuzz implementation (needs investigation)
 
-These are older test files that may use deprecated syntax or have other issues.
-Need individual investigation.
+**Implementation Required:**
+- Investigate why simpler fib/fizz tests fail when fizzbuzz_complete works
+- May use deprecated syntax or have other issues
 
 ---
 
 ## Priority 4: Critical Bug Fixes
 
-### 4.1 Infinite Loop/Timeout (1 test) ⏱️ CRITICAL
+### 4.1 Infinite Loop/Timeout ✅ RESOLVED
 
-**Failing Test:**
-- `test/counter_mut.uni` (TIMEOUT)
+**Status:** ✅ counter_mut.uni PASSES - no timeout!
 
-**Issue:** Compiler or runtime enters infinite loop when processing this file
+**Resolution:**
+- Previous documentation claimed this test timed out
+- Comprehensive testing shows it passes successfully
+- No infinite loop issue exists
 
-**Implementation Required:**
-- Debug why compilation or execution hangs
-- Add timeout protection to prevent infinite loops
-- Investigate mutable counter implementation
+**This issue is resolved and can be removed from priority list.**
 
 ---
 
-## Implementation Roadmap
+## Implementation Roadmap (Updated February 2, 2026)
 
-### Phase 1 (Immediate - Critical Features)
-1. Fix struct global.get index bug (4 tests)
-2. Fix array global.get index bug (11 tests)
-3. Implement for loop and range operator (4 tests)
-4. Fix string type mismatches (11 tests)
+**See TEST_BASELINE_2026-02-02.md for comprehensive analysis**
 
-**Expected Result:** 56 tests passing (46%)
+### Current Status: 56/123 tests passing (45.5%)
 
-### Phase 2 (Short-term - Advanced Features)
-1. Implement try operator and `::` syntax (10 tests)
-2. Improve generic type inference (15 tests)
-3. Fix nested loops and break/continue (1 test)
+### Phase 1 (Immediate - Highest Impact) - Parser Grammar
 
-**Expected Result:** 82 tests passing (68%)
+**Focus:** Add missing parser features (26 tests, 21% improvement)
 
-### Phase 3 (Medium-term - Library Support)
-1. Add Self keyword support
-2. Add method syntax
-3. Fix struct field syntax
-4. Implement standard library collections (24 tests)
+1. Add `Self` keyword support
+2. Add `new` method syntax
+3. Add `mut self` parameter syntax
+4. Add struct field shorthand syntax
 
-**Expected Result:** 106 tests passing (88%)
+**Expected Result:** 82 tests passing (67%)
+
+### Phase 2 (Short-term - Edge Cases)
+
+**Focus:** Fix remaining edge cases and type issues (10 tests)
+
+1. Fix type system i32/i64 issues (7 tests)
+2. Fix nested struct field access (1 test)
+3. Fix array edge cases (3 tests)
+4. Fix string edge cases (2 tests)
+
+**Expected Result:** 92 tests passing (75%)
+
+### Phase 3 (Medium-term - Advanced Features)
+
+**Focus:** Generics and try operator (20 tests)
+
+1. Implement generic monomorphization (13 tests)
+2. Complete try operator codegen (7 tests)
+
+**Expected Result:** 112 tests passing (91%)
 
 ### Phase 4 (Long-term - Polish)
+
+**Focus:** Remaining features (11 tests)
+
 1. Block expressions (1 test)
 2. Variable shadowing (1 test)
-3. Fix simple test files (10 tests)
-4. Debug timeout issue (1 test)
+3. Investigate simple test failures (2 tests)
 
-**Expected Result:** 118+ tests passing (97%+)
+**Expected Result:** 120+ tests passing (97%+)
 
 ---
 
@@ -559,12 +636,17 @@ A comprehensive test runner `test_all_uni_files.sh` has been created that:
 
 ---
 
-## Notes
+## Notes (Updated February 2, 2026)
 
-- The WASM backend is functional for basic language features (26 tests passing)
-- Most failures are due to missing advanced features, not fundamental architecture issues
-- The migration from VM to WASM is sound; implementation just needs to catch up
-- Once structs and arrays are fixed (Priority 1.1 & 1.2), many other tests will likely pass
+- The WASM backend is **much more functional** than previously documented
+- **56 tests passing (45.5%)**, not 26 (21.5%) as documented
+- **Major features work**: functions, variables, control flow, arrays, strings, for loops, structs, enums
+- Most failures (38.8%) are due to **parser grammar gaps** (Self, new, mut self, field syntax)
+- **Biggest opportunity**: Adding parser support would unlock 26 tests (+21% improvement)
+- The migration from VM to WASM is sound; many features already implemented
+- Once parser grammar is fixed, ~82 tests will pass (67%)
+
+**Key Insight:** Focus on parser grammar first (Priority 1.1) for maximum impact!
 
 ---
 

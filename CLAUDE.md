@@ -76,23 +76,27 @@ bash scripts/generate.sh  # Requires ANTLR4 to be installed
 5. **WASM Encoding**: WASM module → binary format (`wasm/encoder.go`)
 6. **Runtime Execution**: WASM binary → wazero runtime → program execution
 
-The compiler currently supports (26 of 121 tests passing):
+The compiler currently supports (56 of 123 tests passing):
 - Basic function declarations and calls
 - Variable declarations and assignments
 - Arithmetic, logical, and bitwise expressions
-- Control flow (if statements, while loops)
+- Control flow (if statements, while loops, for loops)
 - Mutable variables with assignment
 - Literal values (integers, floats, booleans)
 - Optional semicolons
 - Basic enums and generics
+- Structs with field access ✅
+- Arrays (literals, indexing, iteration, bounds checking) ✅
+- Strings (length, concat, trim, case, search, substring) ✅
+- For loops with ranges ✅
+- Nested loops with break/continue ✅
 
-**In Progress** (see TODO.md for details):
-- Struct operations (heap allocation, field access)
-- Array operations (literals, indexing, iteration)
-- For loops with ranges
-- String operations (length, concat, etc.)
-- Advanced generics
-- Try operator (?) for error handling
+**In Progress** (see TODO.md and TEST_BASELINE_2026-02-02.md for details):
+- Parser grammar improvements (Self, new, mut self, field syntax) - **HIGHEST PRIORITY**
+- Advanced generics (monomorphization, type inference)
+- Try operator (?) codegen completion
+- Type system improvements (i32/i64 coercion)
+- Edge cases for structs, arrays, strings
 
 ## Key Dependencies
 
@@ -112,15 +116,15 @@ The complete language specification is documented in `spec/UnifiedSpecifiation.m
 
 ## Test Files
 
-The repository contains 121 `.uni` test files across multiple directories:
+The repository contains 123 `.uni` test files across multiple directories:
 - `test/integration/` - Integration tests for language features
 - `test/generics/` - Generic function tests
 - `test/stdlib/` - Standard library tests
 - Root test files - Basic functionality tests
 
-**Current Test Results:** 26 passing (21.5%), 95 failing (78.5%)
+**Current Test Results:** 56 passing (45.5%), 67 failing (54.5%)
 
-See `TODO.md` for detailed analysis of test results and implementation roadmap.
+See `TODO.md` for detailed analysis of test results and `TEST_BASELINE_2026-02-02.md` for comprehensive baseline report.
 
 ## Implementation Status
 
@@ -129,19 +133,18 @@ See `TODO.md` for detailed analysis of test results and implementation roadmap.
 The compiler has migrated from a custom VM to WebAssembly. Core architecture is complete, but many language features need WASM code generation implementation.
 
 **Test Status:**
-- **26 tests passing (21.5%)** - Basic features work (functions, variables, if/else, while, arithmetic, logic)
-- **95 tests failing (78.5%)** - Advanced features need implementation (structs, arrays, for loops, strings, etc.)
+- **56 tests passing (45.5%)** - Core features work: functions, variables, if/else, while, for loops, arrays, strings, structs, enums
+- **67 tests failing (54.5%)** - Mainly parser grammar gaps (Self, new, mut self) and advanced features (generics monomorphization)
 
-**Priority Tasks** (see TODO.md for complete details):
+**Priority Tasks** (see TODO.md and TEST_BASELINE_2026-02-02.md for complete details):
 
-1. **Fix struct support** - WASM global.get index bugs (4 tests)
-2. **Fix array support** - Memory allocation and indexing (11 tests)
-3. **Implement for loops** - Range operator support (4 tests)
-4. **Fix string operations** - Type mismatches and runtime functions (11 tests)
-5. **Improve generics** - Advanced type inference (15 tests)
-6. **Add try operator** - Error handling with ? operator (10 tests)
+1. **Add parser grammar features** - Self, new, mut self, field syntax (26 tests, 21% improvement) - **HIGHEST IMPACT**
+2. **Fix type system issues** - i32/i64 coercion (7 tests)
+3. **Complete try operator** - Codegen for all cases (7 tests)
+4. **Improve generics** - Monomorphization and advanced type inference (13 tests)
+5. **Fix edge cases** - Structs, arrays, strings (8 tests)
 
-Once these are complete, ~82 tests should pass (68%).
+Once parser grammar is complete, ~82 tests should pass (67%).
 
 ## Important Notes
 
@@ -152,4 +155,5 @@ Once these are complete, ~82 tests should pass (68%).
 - WASM bytecode is stack-based following the standard
 - Many language features work, but need WASM codegen implementation
 - Project follows Go module structure with `go.mod` in compiler directory
-- Test suite has 121 .uni files - run `./test_all_uni_files.sh` to verify changes
+- Test suite has 123 .uni files - run `./test_all_uni_files.sh` to verify changes
+- **Current baseline: 56 passing (45.5%)** - see TEST_BASELINE_2026-02-02.md for details
