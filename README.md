@@ -2,7 +2,7 @@
 
 [![Status](https://img.shields.io/badge/status-phase%201%20complete-green)](docs/PROJECT_STATUS.md)
 [![Phase](https://img.shields.io/badge/current-phase%202%20ready-blue)](docs/planning/AI_IMPLEMENTATION_PLAN.md)
-[![Tests](https://img.shields.io/badge/tests-26%20passing-yellow)](TODO.md)
+[![Tests](https://img.shields.io/badge/tests-56%20passing%20(45.5%25)-yellow)](TODO.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A modern systems programming language that combines memory safety, performance, and developer ergonomics.
@@ -46,7 +46,7 @@ The Unified compiler now targets WebAssembly with comprehensive feature support:
 
 See [WASM Migration Summary](WASM_MIGRATION_SUMMARY.md) and [WASM Feature Expansion](WASM_FEATURE_EXPANSION_SUMMARY.md) for complete details.
 
-**Test Results:** 26 of 121 tests passing (21.5%) with WASM backend. See [TODO.md](TODO.md) for detailed test results and implementation roadmap.
+**Test Results:** 56 of 123 tests passing (45.5%) with WASM backend. See [TODO.md](TODO.md) for detailed test results and [TEST_BASELINE_2026-02-02.md](TEST_BASELINE_2026-02-02.md) for comprehensive baseline analysis.
 
 ## 🚀 Overview
 

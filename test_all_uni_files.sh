@@ -2,11 +2,29 @@
 
 # Script to test all .uni files with the WASM compiler
 # This script will run all .uni files and categorize them as working or failing
+#
+# macOS Note: This script uses the 'timeout' command which is not available on macOS by default.
+# To use on macOS, install coreutils: brew install coreutils
+# Then either:
+#   - Use 'gtimeout' instead of 'timeout' (change line 45 below)
+#   - Create an alias: alias timeout=gtimeout
+#   - Or run without timeout by commenting out the timeout wrapper
 
 COMPILER="./src/unified-compiler/bin/unified"
 OUTPUT_FILE="test_results.txt"
 WORKING_FILE="test_working.txt"
 FAILING_FILE="test_failing.txt"
+
+# Detect timeout command (Linux has 'timeout', macOS with coreutils has 'gtimeout')
+if command -v timeout &> /dev/null; then
+    TIMEOUT_CMD="timeout"
+elif command -v gtimeout &> /dev/null; then
+    TIMEOUT_CMD="gtimeout"
+else
+    echo "Warning: 'timeout' command not found. Tests will run without timeout protection."
+    echo "On macOS, install with: brew install coreutils"
+    TIMEOUT_CMD=""
+fi
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -37,11 +55,17 @@ for file in $UNI_FILES; do
     echo -n "Testing: $file ... "
     
     # Run the compiler with a 5 second timeout and capture output
-    OUTPUT=$(timeout 5 $COMPILER --input "$file" 2>&1)
-    EXIT_CODE=$?
+    if [ -n "$TIMEOUT_CMD" ]; then
+        OUTPUT=$($TIMEOUT_CMD 5 $COMPILER --input "$file" 2>&1)
+        EXIT_CODE=$?
+    else
+        # No timeout available - run without it
+        OUTPUT=$($COMPILER --input "$file" 2>&1)
+        EXIT_CODE=$?
+    fi
     
-    # Check for timeout
-    if [ $EXIT_CODE -eq 124 ]; then
+    # Check for timeout (exit code 124 from timeout command)
+    if [ -n "$TIMEOUT_CMD" ] && [ $EXIT_CODE -eq 124 ]; then
         echo -e "${YELLOW}TIMEOUT${NC}"
         echo "⏱️  $file (TIMEOUT)" >> "$FAILING_FILE"
         echo "⏱️  $file (TIMEOUT)" >> "$OUTPUT_FILE"
