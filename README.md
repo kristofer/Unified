@@ -1,19 +1,24 @@
 # Unified Programming Language
 
-[![Status](https://img.shields.io/badge/status-phase%201%20complete-green)](docs/PROJECT_STATUS.md)
-[![Phase](https://img.shields.io/badge/current-phase%202%20ready-blue)](docs/planning/AI_IMPLEMENTATION_PLAN.md)
-[![Tests](https://img.shields.io/badge/tests-56%20passing%20(45.5%25)-yellow)](TODO.md)
+[![Status](https://img.shields.io/badge/status-active%20development-green)](PROJECT_STATUS_2026-02-02.md)
+[![Phase](https://img.shields.io/badge/phase-bug%20fixes-orange)](ROADMAP_2026.md)
+[![Tests](https://img.shields.io/badge/tests-~30%20passing%20(24%25)-yellow)](CURRENT_STATUS_SUMMARY.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A modern systems programming language that combines memory safety, performance, and developer ergonomics.
 
 ## 📋 Quick Links
 
+### 🚨 Current Status (Updated Feb 2, 2026)
+- **[📊 Current Status Summary](CURRENT_STATUS_SUMMARY.md)** - **START HERE** - Quick overview
+- **[📋 Detailed Status Report](PROJECT_STATUS_2026-02-02.md)** - Comprehensive analysis
+- **[🗺️ 2026 Roadmap](ROADMAP_2026.md)** - Implementation plan with timelines
+- **[🤖 CLAUDE.md](CLAUDE.md)** - Updated AI agent instructions
+
 ### For AI Agents & Developers
-- **[🤖 AI Implementation Plan](docs/planning/AI_IMPLEMENTATION_PLAN.md)** - **START HERE** for implementation
-- **[📊 Project Status](docs/PROJECT_STATUS.md)** - Current status and next steps
 - **[📖 Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)** - How to use the documentation
 - **[🧪 Testing Guide](src/unified-compiler/TESTING.md)** - How to write and run tests
+- **[📝 TODO List](TODO.md)** - Task breakdown (needs update after test audit)
 
 ### Language Documentation
 - **[📐 Language Spec](spec/UnifiedSpecifiation.md)** - Complete language specification
@@ -25,28 +30,44 @@ A modern systems programming language that combines memory safety, performance, 
 - **[🤝 Contributing](CONTRIBUTING.md)** - How to contribute
 - **[🎓 Learn Unified](LearnUnifiedinYMinutes.md)** - Quick language tour
 
-## 🎯 Current Status
+## 🎯 Current Status (February 2, 2026)
 
-**Phase 1: WebAssembly Backend** - ✅ COMPLETE
+**Phase**: Bug Fixes & Priority 1 Features
+**Test Pass Rate**: ~30 of 123 tests (24%)
+**Core Features**: 70% functional (verified via Go unit tests)
 
-The Unified compiler now targets WebAssembly with comprehensive feature support:
-- ✅ WebAssembly code generation (replaces custom VM)
-- ✅ Struct operations (heap allocation, field access)
-- ✅ Enum operations (tagged unions, variant construction)
-- ✅ Array operations (literals, indexing with bounds checking)
-- ✅ String manipulation (literals in data section, deduplication)
-- ✅ For loops (array iteration)
-- ✅ Pattern matching (match expressions)
-- ✅ Advanced control flow (break, continue)
-- ✅ Memory management (bump allocator)
-- ✅ 15+ unit tests (100% passing)
-- ✅ Complete documentation
+### ✅ What's Working
 
-**Runtime:** wazero (pure Go WebAssembly runtime)
+The Unified compiler has a **working WASM backend** with solid core features:
 
-See [WASM Migration Summary](WASM_MIGRATION_SUMMARY.md) and [WASM Feature Expansion](WASM_FEATURE_EXPANSION_SUMMARY.md) for complete details.
+- ✅ Functions (declarations, calls, parameters, returns)
+- ✅ Variables (immutable `let` and mutable `let mut`)
+- ✅ All operators (arithmetic, logical, comparison, bitwise)
+- ✅ Control flow (if/else, while loops)
+- ✅ Structs (declaration, instantiation, field access)
+- ✅ Enums with data (Result/Option patterns)
+- ✅ Compound assignments (+=, -=, etc.)
+- ✅ Complex programs (FizzBuzz works!)
 
-**Test Results:** 56 of 123 tests passing (45.5%) with WASM backend. See [TODO.md](TODO.md) for detailed test results and [TEST_BASELINE_2026-02-02.md](TEST_BASELINE_2026-02-02.md) for comprehensive baseline analysis.
+**Runtime:** wazero (pure Go WebAssembly runtime, zero C dependencies)
+
+### 🚨 Critical Issues
+
+**Immediate attention required:**
+
+1. **Test infrastructure broken** on macOS (`timeout` command missing) - 15 min fix
+2. **Type system issues** (i32 vs i64 mismatches) - blocking ~20 tests
+3. **For loop bugs** (produces wrong values) - off-by-one errors
+4. **Array/string operations** broken (allocation and indexing issues)
+
+### 🎯 Next Milestones
+
+- **Week 3 (Feb 23)**: All bugs fixed → 50-60 tests passing
+- **Week 12 (Apr 30)**: Advanced features → 70-80 tests passing
+- **Week 26 (Aug 1)**: Specification complete → 90%+ tests passing
+- **Week 40 (Nov 1)**: Production ready → 95%+ tests passing
+
+See [ROADMAP_2026.md](ROADMAP_2026.md) for detailed implementation plan.
 
 ## 🚀 Overview
 

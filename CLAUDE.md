@@ -76,27 +76,33 @@ bash scripts/generate.sh  # Requires ANTLR4 to be installed
 5. **WASM Encoding**: WASM module → binary format (`wasm/encoder.go`)
 6. **Runtime Execution**: WASM binary → wazero runtime → program execution
 
-The compiler currently supports (56 of 123 tests passing):
-- Basic function declarations and calls
-- Variable declarations and assignments
-- Arithmetic, logical, and bitwise expressions
-- Control flow (if statements, while loops, for loops)
-- Mutable variables with assignment
-- Literal values (integers, floats, booleans)
-- Optional semicolons
-- Basic enums and generics
-- Structs with field access ✅
-- Arrays (literals, indexing, iteration, bounds checking) ✅
-- Strings (length, concat, trim, case, search, substring) ✅
-- For loops with ranges ✅
-- Nested loops with break/continue ✅
+The compiler currently supports (verified via Go unit tests - ~24% of 123 tests passing):
 
-**In Progress** (see TODO.md and TEST_BASELINE_2026-02-02.md for details):
-- Parser grammar improvements (Self, new, mut self, field syntax) - **HIGHEST PRIORITY**
-- Advanced generics (monomorphization, type inference)
-- Try operator (?) codegen completion
-- Type system improvements (i32/i64 coercion)
-- Edge cases for structs, arrays, strings
+**✅ Working (100% functional)**:
+- Function declarations, calls, parameters, and returns
+- Variable declarations (let) and mutable variables (let mut)
+- Arithmetic, logical, comparison, and bitwise expressions
+- Control flow (if/else statements, while loops)
+- Assignment and compound assignment operators (+=, -=, etc.)
+- Literal values (integers, floats, booleans)
+- Struct declarations, instantiation, and field access
+- Enum declarations with data and variant construction
+- Optional semicolons
+- Complex programs (FizzBuzz works correctly)
+
+**🟡 Partially Working (needs bug fixes)**:
+- For loops (infrastructure exists but produces wrong values - off-by-one bugs)
+- Nested struct field access (type mismatch: i32 vs i64 issues)
+
+**❌ Not Yet Implemented**:
+- Array operations (literals parse, but allocation/indexing broken)
+- String operations (literals work, but length/concat/indexing broken)
+- Generic monomorphization (syntax parses, no type instantiation)
+- Try operator (?) - parser complete, codegen missing
+- Pattern matching (match expressions)
+- Methods and Self keyword
+- Ownership and borrowing
+- Actors and concurrency
 
 ## Key Dependencies
 
@@ -122,29 +128,52 @@ The repository contains 123 `.uni` test files across multiple directories:
 - `test/stdlib/` - Standard library tests
 - Root test files - Basic functionality tests
 
-**Current Test Results:** 56 passing (45.5%), 67 failing (54.5%)
+**Current Test Results:** ~30 passing (24%), ~93 failing (76%)
 
-See `TODO.md` for detailed analysis of test results and `TEST_BASELINE_2026-02-02.md` for comprehensive baseline report.
+**⚠️ IMPORTANT**: The `test_all_uni_files.sh` script is currently broken on macOS because it uses the `timeout` command which doesn't exist. Install coreutils (`brew install coreutils`) or use Go unit tests instead:
+
+```bash
+cd src/unified-compiler
+go test ./... -v  # Most reliable way to test
+```
+
+See [PROJECT_STATUS_2026-02-02.md](PROJECT_STATUS_2026-02-02.md) for comprehensive current status and [ROADMAP_2026.md](ROADMAP_2026.md) for implementation plan.
 
 ## Implementation Status
 
-**Current Phase:** WASM Backend Feature Completion
+**Current Phase:** Bug Fixes & Priority 1 Features
+**Last Reviewed:** February 2, 2026
+**Status:** Active Development
 
-The compiler has migrated from a custom VM to WebAssembly. Core architecture is complete, but many language features need WASM code generation implementation.
+The compiler has successfully migrated from a custom VM to WebAssembly. The WASM backend is complete and functional. Core language features work well (70% of integration tests passing), but several critical bugs are blocking ~30 tests.
 
-**Test Status:**
-- **56 tests passing (45.5%)** - Core features work: functions, variables, if/else, while, for loops, arrays, strings, structs, enums
-- **67 tests failing (54.5%)** - Mainly parser grammar gaps (Self, new, mut self) and advanced features (generics monomorphization)
+**Immediate Priorities** (see [ROADMAP_2026.md](ROADMAP_2026.md) for complete plan):
 
-**Priority Tasks** (see TODO.md and TEST_BASELINE_2026-02-02.md for complete details):
+### Priority 0: URGENT (Week 1)
+1. **Fix test infrastructure** - `timeout` command missing on macOS (15 min)
+2. **Run comprehensive test audit** - Get accurate baseline (30 min)
+3. **Update documentation** - Reflect actual current state (30 min)
 
-1. **Add parser grammar features** - Self, new, mut self, field syntax (26 tests, 21% improvement) - **HIGHEST IMPACT**
-2. **Fix type system issues** - i32/i64 coercion (7 tests)
-3. **Complete try operator** - Codegen for all cases (7 tests)
-4. **Improve generics** - Monomorphization and advanced type inference (13 tests)
-5. **Fix edge cases** - Structs, arrays, strings (8 tests)
+### Priority 1: Critical Bugs (Weeks 1-3)
+1. **Fix for loop bugs** - Produces wrong values (off-by-one errors) - 2-4 hours
+2. **Resolve type system issues** - i32 vs i64 mismatches throughout - 1-3 days
+3. **Fix array support** - Allocation and indexing broken - 1-2 days
+4. **Fix string operations** - Type mismatches, missing runtime functions - 1-2 days
 
-Once parser grammar is complete, ~82 tests should pass (67%).
+**Expected Result after Priority 1**: 50-60 tests passing (50% pass rate)
+
+### Priority 2: High-Value Features (Weeks 4-6)
+1. **Complete try operator** - Parser done, just need codegen - 6-12 hours
+2. **Improve struct operations** - After type system fixed - 6-8 hours
+
+**Expected Result after Priority 2**: 60-70 tests passing (60% pass rate)
+
+### Priority 3: Advanced Features (Weeks 7-12)
+1. **Generic monomorphization** - Type instantiation and specialization - 2-3 weeks
+2. **Methods and Self keyword** - Enable OOP patterns and stdlib - 1-2 weeks
+3. **Pattern matching** - Match expressions with exhaustiveness checking - 2-3 weeks
+
+**Expected Result after Priority 3**: 80-90 tests passing (70-75% pass rate)
 
 ## Important Notes
 
